@@ -32,7 +32,7 @@ class AI(Plugins):
         self.init_status()
 
         # 初始化大模型API配置
-        self.api_token = "sk-b66215a7888341ae80ae61cf3a6bcb38"  # API访问令牌
+        self.api_token = os.environ["DPSK_KEY"]  # API访问令牌
         self.base_url = "https://api.deepseek.com"  # API基础URL
 
         self.user_cooldown = {}  # 用户冷却时间记录字典

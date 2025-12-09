@@ -29,9 +29,7 @@ class TheresaMathAI(Plugins):
         self.init_status()
 
         # 初始化大模型API配置
-        # self.api_token = "sk_xVt7G6yFnZqBUaTaw7L350l0L0EsnQyMrc4PnVxq_fI"  # API访问令牌
-        # self.base_url = "https://api.novita.ai/openai"  # API基础URL
-        self.api_token = "sk-b66215a7888341ae80ae61cf3a6bcb38"
+        self.api_token = os.environ["DPSK_KEY"]
         self.base_url = "https://api.deepseek.com/v3.2_speciale_expires_on_20251215"
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
