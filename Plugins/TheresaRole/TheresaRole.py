@@ -1,13 +1,10 @@
-import requests
 import re
 import os
-import platform
 import time
-from PIL import Image
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
-from Plugins import Plugins
-from CQMessage.CQType import At, Reply
+from Plugins import plugin_main, Plugins
+from CQMessage.CQType import At
 from openai import OpenAI
 
 log = Log()
@@ -38,21 +35,9 @@ class TheresaRole(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
 
+    @plugin_main(check_group=True)
     async def main(self, event: GroupMessageEventHandler, debug):
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
-        group_id = event.group_id
-        effected_group_id: list = self.config.get("effected_group")
         roles: list = ["oldzhang", "nikki"]
-        if group_id not in effected_group_id:
-            return
-
         message = event.message
 
         role = None

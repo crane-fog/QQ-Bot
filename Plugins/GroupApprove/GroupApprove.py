@@ -5,8 +5,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 from Logging.PrintLog import Log
-from Plugins import Plugins
-from Interface.Api import Api
+from Plugins import plugin_main, Plugins
 
 log = Log()
 
@@ -25,19 +24,8 @@ class GroupApprove(Plugins):
         self.all_inform = None
         self.spacer = ""
 
+    @plugin_main(check_group=True, require_db=True)
     async def main(self, event: GroupRequestEvent, debug):
-        enable = self.config.get("enable")
-
-        if not self.bot.database_enable:
-            self.set_status("disable")
-            return
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
         if self.all_inform is None:
             while True:
                 try:
@@ -49,48 +37,41 @@ class GroupApprove(Plugins):
                     continue
 
         group_id = event.group_id
-        effected_group: list = self.config.get('effected_group')
-        if group_id not in effected_group:
+
+        self.spacer = self.config.get("spacer")
+        if not self.spacer:
+            self.spacer = " "
+        sub_type = event.sub_type
+        if sub_type != "add":
             return
-        else:
-
-            self.spacer = self.config.get("spacer")
-            if not self.spacer:
-                self.spacer = " "
-            sub_type = event.sub_type
-            if sub_type != "add":
-                return
-            # 正式进入插件运行部分
-            flag = event.flag
-            full_comment = event.comment
-            requests = full_comment.split('\n答案：')
-            self.real_answer = requests[1]
-            reject_flag = self.config.get("reject")
-            if not self.request_conform(debug):
-                if reject_flag:
-                    reasons = self.config.get("reason")
-                    reason = reasons[0] + self.spacer + reasons[1]
-                    try:
-                        self.api.GroupService.set_group_add_request(self, flag=flag, approve="false",
-                                                                          reason=reason)
-                    except Exception as e:
-                        log.error(f"插件：{self.name}运行时出错：{e}")
-                    else:
-                        log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的正确入群申请{flag}拒绝，"
-                                  f"拒绝理由为{reason}", debug)
-            else:
-                answer_cuts = self.real_answer.split(self.spacer)
-                stu_id = int(answer_cuts[0])
-                if self.stu_id_conform(stu_id):
-                    try:
-                        self.api.GroupService.set_group_add_request(self, flag=flag)
-                    except Exception as e:
-                        log.error(f"插件：{self.name}运行时出错：{e}")
-                    else:
-                        log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的正确入群申请{flag}批准", debug)
+        # 正式进入插件运行部分
+        flag = event.flag
+        full_comment = event.comment
+        requests = full_comment.split("\n答案：")
+        self.real_answer = requests[1]
+        reject_flag = self.config.get("reject")
+        if not self.request_conform(debug):
+            if reject_flag:
+                reasons = self.config.get("reason")
+                reason = reasons[0] + self.spacer + reasons[1]
+                try:
+                    self.api.GroupService.set_group_add_request(self, flag=flag, approve="false", reason=reason)
+                except Exception as e:
+                    log.error(f"插件：{self.name}运行时出错：{e}")
                 else:
-                    log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的未查询到学号信息的入群申请{flag}挂起", debug)
-
+                    log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的正确入群申请{flag}拒绝，" f"拒绝理由为{reason}", debug)
+        else:
+            answer_cuts = self.real_answer.split(self.spacer)
+            stu_id = int(answer_cuts[0])
+            if self.stu_id_conform(stu_id):
+                try:
+                    self.api.GroupService.set_group_add_request(self, flag=flag)
+                except Exception as e:
+                    log.error(f"插件：{self.name}运行时出错：{e}")
+                else:
+                    log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的正确入群申请{flag}批准", debug)
+            else:
+                log.debug(f"插件：{self.name}运行正确，成功将{group_id}中的未查询到学号信息的入群申请{flag}挂起", debug)
 
     def request_conform(self, debug):
         answer_cuts = self.real_answer.split(self.spacer)

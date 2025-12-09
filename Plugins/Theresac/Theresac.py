@@ -1,4 +1,4 @@
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 from Event.EventHandler import GroupMessageEventHandler
 import subprocess
 
@@ -13,20 +13,8 @@ class Theresac(Plugins):
                             """
         self.init_status()
 
+    @plugin_main(check_group=True)
     async def main(self, event: GroupMessageEventHandler, debug):
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
-        group_id = event.group_id
-        effected_group_id: list = self.config.get("effected_group")
-        if group_id not in effected_group_id:
-            return
-
         message = event.message
         if not message.startswith("Theresac"):
             return
@@ -38,5 +26,5 @@ class Theresac(Plugins):
         result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
 
         msg = result.stdout
-        self.api.GroupService.send_group_msg(self, group_id=group_id, message=f"{msg}")
+        self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=f"{msg}")
         return

@@ -1,4 +1,4 @@
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 from Logging.PrintLog import Log
 
 log = Log()
@@ -18,6 +18,7 @@ class TestPlugins(Plugins):
                             """
         self.init_status()
 
+    @plugin_main(check_group=False)
     async def main(self, event, debug):
         """
         函数的入口，每个插件都必须有一个主入口 \n
@@ -27,14 +28,6 @@ class TestPlugins(Plugins):
         :param debug: 是否输出debug信息
         :return:
         """
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-            return
 
         self.set_status("error")
         log.debug("成功将该插件状态变为error", debug)
