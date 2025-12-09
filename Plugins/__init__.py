@@ -1,12 +1,44 @@
 # Plugins/__init__.py
 import configparser
 import os
-import inspect
+import functools
 
 from Interface.Api import Api
 
 # 获取当前目录的路径
 plugins_path = os.path.dirname(__file__)
+
+
+def plugin_main(check_group=False, require_db=False):
+    """
+    :param check_group: 是否检查群权限 (默认 False)
+    :param require_db: 是否需要数据库 (默认 False)
+    """
+
+    def decorator(func):
+        @functools.wraps(func)
+        async def wrapper(self, event, debug):
+            # 检查数据库依赖
+            if require_db and not self.bot.database_enable:
+                self.set_status("error")
+                return
+
+            # 检查群权限
+            if check_group and hasattr(event, "group_id"):
+                group_id = event.group_id
+                effected_group_id: list = self.config.get("effected_group")
+                if group_id not in effected_group_id:
+                    return
+
+            # 更新运行状态
+            if self.status != "error":
+                self.set_status("running")
+
+            return await func(self, event, debug)
+
+        return wrapper
+
+    return decorator
 
 
 class Plugins:

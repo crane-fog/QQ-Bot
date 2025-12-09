@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 from sqlalchemy import update, delete
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 
 
 log = Log()
@@ -37,19 +37,8 @@ class CardComf(Plugins):
         self.check_not_present: bool = self.config.get('check_not_present')
         self.check_major: bool = self.config.get('check_major')
 
+    @plugin_main(check_group=True, require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
-
-        enable = self.config.get("enable")
-
-        if not self.bot.database_enable:
-            self.set_status("disable")
-            return
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
         check_with_stu_list = self.config.get("check_with_stu_list")
         check_assistants = self.config.get("check_assistants")
         self.at: bool = self.config.get('at')
@@ -380,7 +369,6 @@ class CardComf(Plugins):
                 indexs_dict = {lc.stu_id: {'name': lc.name, 'is_present': False} for lc in
                            indexs}
 
-
             return {'data': indexs_dict}
 
     async def increment_counts_for_users(self, user_ids, debug):
@@ -422,7 +410,7 @@ class CardComf(Plugins):
                         # 更新映射中的 counts
                         user_counts_map[user_id] = new_counts
                     else:
-                        #更新未曾录入的用户
+                        # 更新未曾录入的用户
                         new_counts = 1
                         add_stmt = self.warn_counts(
                             user_id=user_id,
@@ -459,7 +447,7 @@ class CardComf(Plugins):
         stu_id = Column(Integer, primary_key=True)
         name = Column(String)
         major = Column(String)
-        #ingroup = Column(Integer)
+        # ingroup = Column(Integer)
 
     class warn_counts(Basement):
         __tablename__ = 'warn_counts'

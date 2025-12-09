@@ -1,8 +1,7 @@
 from Event.EventHandler.NoticeEventHandler import GroupRecallEvent
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 from CQMessage.CQType import At
-from Interface.Api import Api
 import redis
 import random
 import json
@@ -29,27 +28,15 @@ class RecallPrevent(Plugins):
         self.redis_client = None
         self.init_status()
 
+    @plugin_main(check_group=True)
     async def main(self, event, debug):
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
         # 初始化同步 Redis 连接
         if not self.redis_client:
             host = self.config.get("host", "localhost")
             port = int(self.config.get("port", 6379))
             db = int(self.config.get("db", 0))
             self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
-
         group_id = event.group_id
-        effected_group_id: list = self.config.get("effected_group")
-        if group_id not in effected_group_id:
-            return
-
 
         for_administer = bool(self.config.get("for_administer"))
 

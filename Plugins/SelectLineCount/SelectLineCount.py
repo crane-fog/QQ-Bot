@@ -6,7 +6,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from CQMessage.CQType import At
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 
 log = Log()
 
@@ -23,18 +23,8 @@ class SelectLineCount(Plugins):
         self.init_status()
         self.all_line_count = None
 
+    @plugin_main(check_group=True, require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
-        if not self.bot.database_enable:
-            self.set_status("disable")
-            return
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
         if self.all_line_count is None:
             while True:
                 try:
@@ -58,10 +48,6 @@ class SelectLineCount(Plugins):
             return
         else:  # 正式进入插件运行部分
             group_id = event.group_id
-            effected_group: list = self.config.get("effected_group")
-            if group_id not in effected_group:
-                self.api.groupService.send_group_msg(group_id=group_id, message=f"该功能未在此群{group_id}生效")
-                return
 
             user_id = event.user_id
             sender_card = event.card.split("-")

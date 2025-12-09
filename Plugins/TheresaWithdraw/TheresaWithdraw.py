@@ -1,6 +1,6 @@
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 from CQMessage.CQType import At
 import re
 
@@ -17,26 +17,14 @@ class TheresaWithdraw(Plugins):
                             """
         self.init_status()
 
+    @plugin_main(check_group=True)
     async def main(self, event: GroupMessageEventHandler, debug):
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
-        group_id = event.group_id
-        effected_group_id: list = self.config.get("effected_group")
-        if group_id not in effected_group_id:
-            return
-
         message = event.message
         pattern = re.compile(r'(\[CQ:reply,id=.+\])(.+)')
         p = pattern.match(message)
         if p is None:
             return
-        
+
         # 检查是否是ask命令
         if not "Twithdraw" in message:
             return
@@ -52,11 +40,9 @@ class TheresaWithdraw(Plugins):
                 self.api.groupService.delete_msg(message_id=target_message_id)
                 self.api.groupService.delete_msg(message_id=event.message_id)
 
-
-
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
             log.debug(f"插件：{self.name}运行正确，撤回用户", debug)
-            
+
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(

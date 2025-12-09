@@ -1,7 +1,8 @@
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 import random
+
 log = Log()
 
 
@@ -23,28 +24,18 @@ class Repeater(Plugins):
         self.init_status()
         self.message_latest = {}
         self.counts = {}
-        
-    async def main(self, event: GroupMessageEvent, debug):
-        
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
 
-        if self.status != "error":
-            self.set_status("running")
+    @plugin_main(check_group=True)
+    async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
-        effected_group: list = self.config.get("effected_group")
         threshold = int(self.config.get("threshold"))
         ban = bool(self.config.get("ban"))
         recall = bool(self.config.get("recall"))
         for_everyone = bool(self.config.get("for_everyone"))
-        if group_id not in effected_group:
-            return
 
         if not self.message_latest.get(group_id):
             self.message_latest[group_id] = ""
-        
+
         if event.message == "Theresa 晚安" or event.message == "Theresa 早安":
             return
 

@@ -1,6 +1,6 @@
 from Event.EventHandler.NoticeEventHandler import GroupPokeEvent
 from Logging.PrintLog import Log
-from Plugins import Plugins
+from Plugins import plugin_main, Plugins
 from CQMessage.CQType import At, Face
 from random import randint
 import time
@@ -26,20 +26,9 @@ class DontPoke(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.init_status()
 
+    @plugin_main(check_group=True)
     async def main(self, event: GroupPokeEvent, debug):
-        enable = self.config.get("enable")
-        if not enable:
-            self.set_status("disable")
-            return
-
-        if self.status != "error":
-            self.set_status("running")
-
         group_id = event.group_id
-        effected_group_id: list = self.config.get("effected_group")
-        if group_id not in effected_group_id:
-            return
-        
         target_id = event.target_id
         self_id = event.self_id
         if (target_id != self_id):
