@@ -29,9 +29,9 @@ class TheresaGoodMorning(Plugins):
                                 支持文本提问
                             """
         self.init_status()
-        
+
         # 初始化大模型API配置
-        self.api_token = 'sk-b66215a7888341ae80ae61cf3a6bcb38'  # API访问令牌
+        self.api_token = os.environ["DPSK_KEY"]  # API访问令牌
         self.base_url = 'https://api.deepseek.com'  # API基础URL
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
@@ -52,15 +52,15 @@ class TheresaGoodMorning(Plugins):
             return
 
         message = event.message
-        
+
         # 检查是否是晚安命令
         if not (message.startswith(f"Theresa 晚安") or message.startswith(f"Theresa 早安")):
             return
-        
+
         # 冷却检查
         current_time = time.time()
         last_ask_time = self.user_cooldown.get(event.user_id, 0)
-        
+
         if current_time - last_ask_time < self.cooldown_time:
             remaining = self.cooldown_time - int(current_time - last_ask_time)
             self.api.groupService.send_group_msg(
@@ -81,15 +81,15 @@ class TheresaGoodMorning(Plugins):
 
             # 获取大模型回复
             response = self.get_api_response(question)
-            
+
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
             if message.startswith(f"Theresa 晚安"):
                 self.api.groupService.set_group_ban(group_id=event.group_id, user_id=event.user_id, duration=self.get_seconds_to_next_6am())
-            
+
             log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
-            
+
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
