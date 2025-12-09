@@ -1,4 +1,7 @@
 from Plugins import Plugins
+from Logging.PrintLog import Log
+
+log = Log()
 
 
 class TestPlugins(Plugins):
@@ -31,4 +34,9 @@ class TestPlugins(Plugins):
 
         if self.status != "error":
             self.set_status("running")
+            return
+
+        self.set_status("error")
+        log.debug("成功将该插件状态变为error", debug)
+        log.error(f"这个错误是由测试插件：{self.name}主动产生的，Nothing goes wrong！")
         return
