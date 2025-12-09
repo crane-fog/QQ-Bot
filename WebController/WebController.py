@@ -160,8 +160,12 @@ class WebController:
 
     def get_all_plugins_info(self):
         plugins_info = {}
+        loaded_plugin_names = set()
+
+        # 1. 获取已加载插件的信息
         for plugins in self.bot.plugins_list:
             plugins_name = plugins.name
+            loaded_plugin_names.add(plugins_name)
             plugins_type = plugins.type
             plugins_status = plugins.status
             plugins_info[plugins_name] = {}
@@ -176,28 +180,92 @@ class WebController:
                 "error_info": plugins_error_info
             }
             plugins_info[plugins_name]["config"] = plugins.config
+
+        # 2. 扫描未加载的插件 (从 plugins.ini 和 文件夹)
+        from Plugins import plugins_path
+
+        plugins_config_path = os.path.join(plugins_path, "plugins.ini")
+        groups_config_path = os.path.join(plugins_path, "groups.ini")
+
+        config = configparser.ConfigParser()
+        config.optionxform = str
+        if os.path.exists(plugins_config_path):
+            config.read(plugins_config_path, encoding="utf-8")
+
+        g_config = configparser.ConfigParser()
+        g_config.optionxform = str
+        if os.path.exists(groups_config_path):
+            g_config.read(groups_config_path, encoding="utf-8")
+
+        for item in os.listdir(plugins_path):
+            plugin_dir = os.path.join(plugins_path, item)
+            if os.path.isdir(plugin_dir) and not item.startswith("__"):
+                if item not in loaded_plugin_names:
+                    # 这是一个未加载的插件
+                    plugin_config = {}
+                    if config.has_section(item):
+                        for k, v in config.items(item):
+                            # 简单的类型转换，为了前端显示
+                            if v.lower() in ("true", "false"):
+                                plugin_config[k] = v.lower() == "true"
+                            elif "," in v:
+                                try:
+                                    plugin_config[k] = [int(x) for x in v.split(",")]
+                                except:
+                                    plugin_config[k] = v.split(",")
+                            else:
+                                plugin_config[k] = v
+
+                    # 确保有 enable 字段
+                    if "enable" not in plugin_config:
+                        plugin_config["enable"] = False
+
+                    # 构建 effected_group
+                    effected_group = []
+                    for section in g_config.sections():
+                        if section.isdigit():
+                            if g_config.has_option(section, item):
+                                if g_config.getboolean(section, item):
+                                    try:
+                                        effected_group.append(int(section))
+                                    except ValueError:
+                                        pass
+                    plugin_config["effected_group"] = effected_group
+
+                    plugins_info[item] = {
+                        "type": "Unknown (Disabled)",
+                        "status": "disable",
+                        "other_info": {"author": "Unknown", "introduction": "插件未加载，请启用并重启 Bot 以加载。", "error_info": ""},
+                        "config": plugin_config,
+                    }
+
         return plugins_info
 
     def update_plugin_status(self, plugin_name, new_status):
-        config = configparser.ConfigParser()
-        config_path = self.bot.config_file
-        enable = "True" if new_status == "running" else "False"
-        # print(enable)
-        try:
-            # print("start read config")
-            config.read(config_path, encoding='utf-8')
-            # print(plugin_name in config)
-            if plugin_name in config:
-                config.set(plugin_name, 'enable', enable)
-                with open(config_path, 'w') as configfile:
-                    config.write(configfile)
-                for plugin in self.bot.plugins_list:
-                    if plugin.name == plugin_name:
-                        plugin.status = new_status
+        # 此方法似乎未被前端直接调用，或者逻辑需要更新
+        # 暂时保留，但指向 plugins.ini
+        from Plugins import plugins_path
 
-                return True
-            else:
-                return False
+        config_path = os.path.join(plugins_path, "plugins.ini")
+        config = configparser.ConfigParser()
+        config.optionxform = str
+
+        enable = "True" if new_status == "running" else "False"
+        try:
+            config.read(config_path, encoding='utf-8')
+            if not config.has_section(plugin_name):
+                config.add_section(plugin_name)
+
+            config.set(plugin_name, "enable", enable)
+            with open(config_path, "w", encoding="utf-8") as configfile:
+                config.write(configfile)
+
+            for plugin in self.bot.plugins_list:
+                if plugin.name == plugin_name:
+                    plugin.status = new_status
+                    plugin.config["enable"] = new_status == "running"
+
+            return True
         except Exception as e:
             print(f"Error updating plugin status: {e}")
             return False
@@ -208,39 +276,71 @@ class WebController:
             return {'success': False, "message": "缺少插件名称"}
 
         try:
+            from Plugins import plugins_path
+
+            plugins_config_path = os.path.join(plugins_path, "plugins.ini")
+            groups_config_path = os.path.join(plugins_path, "groups.ini")
+
+            p_config = configparser.ConfigParser()
+            p_config.optionxform = str
+            p_config.read(plugins_config_path, encoding="utf-8")
+
+            if not p_config.has_section(plugin_name):
+                p_config.add_section(plugin_name)
+
+            g_config = configparser.ConfigParser()
+            g_config.optionxform = str
+            g_config.read(groups_config_path, encoding="utf-8")
+
+            if "effected_group" in config_data:
+                new_groups = set()
+                raw_groups = config_data["effected_group"]
+
+                if isinstance(raw_groups, list):
+                    new_groups = set(map(str, raw_groups))
+                elif isinstance(raw_groups, str):
+                    if raw_groups.strip():
+                        new_groups = set(x.strip() for x in raw_groups.split(",") if x.strip())
+
+                for section in g_config.sections():
+                    if g_config.has_option(section, plugin_name):
+                        g_config.remove_option(section, plugin_name)
+                        if not g_config.options(section):
+                            g_config.remove_section(section)
+
+                for group_id in new_groups:
+                    if not g_config.has_section(group_id):
+                        g_config.add_section(group_id)
+                    g_config.set(group_id, plugin_name, "True")
+
+            # 更新配置文件中的值
+            for key, value in config_data.items():
+                if key in ["plugin_name", "effected_group"]:
+                    continue
+                if isinstance(value, list):
+                    p_config.set(plugin_name, key, ",".join(map(str, value)))
+                else:
+                    p_config.set(plugin_name, key, str(value))
+
+            # 保存配置文件
+            with open(plugins_config_path, "w", encoding="utf-8") as f:
+                p_config.write(f)
+
+            with open(groups_config_path, "w", encoding="utf-8") as f:
+                g_config.write(f)
+
+            # 如果插件已加载，更新内存中的配置和状态
             for plugin in self.bot.plugins_list:
                 if plugin_name == plugin.name:
-                    config = configparser.ConfigParser()
-                    config.read(plugin.config_path, encoding='gbk')
-
-                    # 确保有一个合适的节名
-                    if not config.has_section(plugin_name):
-                        config.add_section(plugin_name)
-
-                    # 更新配置文件中的值
-                    for key, value in config_data.items():
-                        if key == "plugin_name":
-                            continue
-                        if isinstance(value, list):
-                            config.set(plugin_name, key, ','.join(map(str, value)))
-                        else:
-                            config.set(plugin_name, key, str(value))
-
-                    # 保存配置文件
-                    with open(plugin.config_path, 'w', encoding="gbk") as configfile:
-                        config.write(configfile)
-
                     plugin.load_config()
                     status = "running" if plugin.config.get("enable") else "disable"
                     plugin.set_status(status=status)
+                    break
 
-                    return {'success': True}
-                else:
-                    continue
+            return {"success": True}
+
         except Exception as e:
             return {'success': False, "message": f"后端执行操作时出错：{e}"}
-
-        return {'success': False, "message": f"没有找到{plugin_name}插件的本地配置文件！"}
 
 
 if __name__ == "__main__":
