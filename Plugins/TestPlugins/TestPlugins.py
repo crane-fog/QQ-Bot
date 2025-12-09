@@ -15,6 +15,7 @@ class TestPlugins(Plugins):
         self.author = "somebody"  # 插件开发作者（不用留真名，但是当插件报错的时候需要根据这个名字找到对应的人来修）
         self.introduction = """
                                 这是一个插件的模板，开发一个新的插件至少应该包含以下部分
+                                usage: （未知）
                             """
         self.init_status()
 

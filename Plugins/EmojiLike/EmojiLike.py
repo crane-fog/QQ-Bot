@@ -14,7 +14,8 @@ class EmojiLike(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                对群聊中的消息随机贴表情（贴表情测试）
+                                对群聊中的消息随机贴表情
+                                usage: auto
                             """
         self.init_status()
 

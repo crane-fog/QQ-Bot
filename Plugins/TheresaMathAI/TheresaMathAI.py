@@ -23,8 +23,8 @@ class TheresaMathAI(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                远程大模型问答插件
-                                支持文本提问
+                                deepseek-v3.2-speciale
+                                usage: math ask <提问内容>
                             """
         self.init_status()
 

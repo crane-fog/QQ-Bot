@@ -19,6 +19,7 @@ class QiuDao(Plugins):
         self.author = "just monika"  # 插件开发作者（不用留真名，但是当插件报错的时候需要根据这个名字找到对应的人来修）
         self.introduction = """
                                 根据高程期末考试成绩发送对应的表情
+                                usage: （未知）
                             """
         self.init_status()
         self.all_line_count = None

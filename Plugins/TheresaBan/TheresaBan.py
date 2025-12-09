@@ -14,7 +14,8 @@ class TheresaBan(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                禁言
+                                禁言，仅限群管理员使用
+                                usage: Theresa ban <@> <禁言秒数>
                             """
         self.init_status()
 

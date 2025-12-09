@@ -21,7 +21,8 @@ class DontPoke(Plugins):
         self.type = "Poke"
         self.author = "Heai"
         self.introduction = """
-                                回复戳一戳（收发戳一戳测试）
+                                回复戳一戳
+                                usage: 戳！
                             """
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.init_status()

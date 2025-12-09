@@ -132,6 +132,7 @@ class TheresaDora(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 制作哆啦A梦大叫图片
+                                usage: Dora <内容>
                             """
         self.init_status()
 

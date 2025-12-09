@@ -22,8 +22,8 @@ class TheresaGoodMorning(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                远程大模型问答插件
-                                支持文本提问
+                                早安/晚安小特
+                                usage: Theresa <早安/晚安>
                             """
         self.init_status()
 

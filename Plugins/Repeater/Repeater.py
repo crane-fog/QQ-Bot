@@ -18,8 +18,8 @@ class Repeater(Plugins):
         self.type = "Group"
         self.author = "kiriko"
         self.introduction = """
-                                插件描述：人类的本质……
-                                插件功能：当群聊有一定数量条复读消息时，bot会撤回最后一个复读消息并禁言该用户十分钟
+                                人类的本质……
+                                usage: auto
                             """
         self.init_status()
         self.message_latest = {}

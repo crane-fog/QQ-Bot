@@ -13,7 +13,8 @@ class TheresaWithdraw(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                撤回
+                                防止防撤回的撤回
+                                usage: <回复消息>Twithdraw
                             """
         self.init_status()
 

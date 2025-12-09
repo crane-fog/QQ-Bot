@@ -25,8 +25,8 @@ class CardComf(Plugins):
         self.type = "Group"
         self.author = "kiriko"
         self.introduction = """
-                                插件描述：使用名片检查指令后检查名片
-                                插件功能：检查群名片
+                                检查群名片
+                                usage: （未知）
                             """
         self.init_status()
         self.all_stu_info = None

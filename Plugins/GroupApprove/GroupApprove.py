@@ -18,6 +18,7 @@ class GroupApprove(Plugins):
         self.author = "kiriko"  # 插件开发作者（不用留真名，但是当插件报错的时候需要根据这个名字找到对应的人来修）
         self.introduction = """
                                 自动处理入群申请,当回答入群答案和设置内的good_request相同是自动同意申请
+                                usage: auto
                             """
         self.init_status()
         self.real_answer = ""

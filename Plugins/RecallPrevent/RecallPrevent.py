@@ -22,8 +22,8 @@ class RecallPrevent(Plugins):
         self.type = "GroupRecall"
         self.author = "kiriko"
         self.introduction = """
-                                插件描述：撤回你的撤回
-                                插件功能：自动发送撤回消息内容的消息
+                                撤回你的撤回
+                                usage: auto
                             """
         self.redis_client = None
         self.init_status()

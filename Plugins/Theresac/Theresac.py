@@ -9,7 +9,8 @@ class Theresac(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                cmd
+                                执行命令，仅限Bot主人使用
+                                usage: Theresac <命令>
                             """
         self.init_status()
 
