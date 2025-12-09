@@ -13,6 +13,7 @@ class Plugins:
     """
     插件的父类，所有编写的插件都继承这个类
     """
+
     def __init__(self, server_address: str, bot):
         self.server_address = server_address
         self.api = Api(server_address)
@@ -24,8 +25,6 @@ class Plugins:
         self.status = None  # running/disable/error
         self.error_info = ""
         self.config = None
-        caller_file = inspect.getfile(self.__class__)
-        self.config_path = os.path.join(os.path.dirname(os.path.abspath(caller_file)), 'config.ini')
 
     async def main(self, event, debug):
         raise NotImplementedError("方法还未实现")
@@ -42,20 +41,17 @@ class Plugins:
 
     def init_status(self):
         """
-        在初始化插件对象的时候加载配置文件中的enable信息，初始只设置为running或者disable
-        :param:
-        :return: True or False
+        在初始化插件对象的时候加载配置文件，并设置状态为running
         """
-        # 使用安全的方式来解析字符串为布尔值
         self.load_config()
-        enable = self.config.get("enable")
-        self.status = "running" if enable else "disable"
+        self.status = "running"
 
     def load_config(self):
         """
         用于从插件的配置文件中加载插件的配置参数
         :return: 不返回值，加载完成的配置直接赋值给self.config
         """
+
         def convert_value(value):
             """
             自动的尝试将配置文件中的信息转化为合适的数据类型
@@ -63,11 +59,11 @@ class Plugins:
             :return:
             """
             # 尝试将值转换为布尔值
-            if value.lower() in ('true', 'false'):
-                return value.lower() == 'true'
+            if value.lower() in ("true", "false"):
+                return value.lower() == "true"
             # 尝试将值转换为逗号分隔的列表
-            if ',' in value:
-                items = value.split(',')
+            if "," in value:
+                items = value.split(",")
                 # 尝试将每个列表项转换为整数
                 try:
                     return [int(item) for item in items]
@@ -76,22 +72,15 @@ class Plugins:
             # 否则将值作为字符串返回
             return value
 
-        config_path = self.config_path
-        config = configparser.ConfigParser()
-        config.read(config_path, encoding="utf-8")
-
         config_dict = {}
-        for section in config.sections():
-            for key, value in config.items(section):
-                config_dict[key] = convert_value(value)
 
-        # 读取统一的插件配置文件
         plugins_config_path = os.path.join(plugins_path, "plugins.ini")
-        u_config = configparser.ConfigParser()
-        u_config.read(plugins_config_path, encoding="utf-8")
-        if u_config.has_option("Plugins", self.name):
-            config_dict["enable"] = u_config.getboolean("Plugins", self.name)
-        else:
-            config_dict["enable"] = False
+        if os.path.exists(plugins_config_path):
+            u_config = configparser.ConfigParser()
+            u_config.read(plugins_config_path, encoding="utf-8")
+
+            if u_config.has_section(self.name):
+                for key, value in u_config.items(self.name):
+                    config_dict[key] = convert_value(value)
 
         self.config = config_dict

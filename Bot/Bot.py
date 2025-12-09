@@ -132,26 +132,30 @@ class Bot:
         """
         log.info("开始加载插件")
 
+        # 读取统一的插件配置文件
+        plugins_config_path = os.path.join(plugins_path, "plugins.ini")
+        plugins_config = ConfigParser()
+        if os.path.exists(plugins_config_path):
+            plugins_config.read(plugins_config_path, encoding="utf-8")
+        else:
+            log.warning(f"未找到插件配置文件：{plugins_config_path}，将不加载任何插件")
+            return
+
         for _, name, ispkg in iter_modules([plugins_path]):
             if not ispkg:
                 continue  # 如果不是插件包就跳过
 
+            # 检查插件是否启用
+            enable = False
+            if plugins_config.has_section(name):
+                if plugins_config.has_option(name, "enable"):
+                    enable = plugins_config.getboolean(name, "enable")
+
+            if not enable:
+                log.info(f"插件 {name} 未启用，跳过加载")
+                continue
+
             try:
-                plugin_config_path = os.path.join(plugins_path, name, 'config.ini')
-
-                 # 检查配置文件是否存在
-                if os.path.exists(plugin_config_path):
-                    log.debug(f"找到插件 {name} 的配置文件")
-                    config = ConfigParser()
-                    config.read(plugin_config_path)
-
-                    if config.getboolean(name, 'exclude', fallback=False):  # 如果 exclude=true，跳过加载
-                        log.info(f"插件 {name} 被排除，跳过加载")
-                        continue
-                else:
-                    log.warning(f"插件 {name} 的配置文件不存在，跳过加载")
-                    continue
-
                 # 从Plugins包动态导入子包
                 plugin_module = import_module(f".{name}", 'Plugins')
                 # 获取子包中的插件类，假设类名与模块名相同
