@@ -78,11 +78,20 @@ class Plugins:
 
         config_path = self.config_path
         config = configparser.ConfigParser()
-        config.read(config_path, encoding='gbk')
+        config.read(config_path, encoding="utf-8")
 
         config_dict = {}
         for section in config.sections():
             for key, value in config.items(section):
                 config_dict[key] = convert_value(value)
+
+        # 读取统一的插件配置文件
+        plugins_config_path = os.path.join(plugins_path, "plugins.ini")
+        u_config = configparser.ConfigParser()
+        u_config.read(plugins_config_path, encoding="utf-8")
+        if u_config.has_option("Plugins", self.name):
+            config_dict["enable"] = u_config.getboolean("Plugins", self.name)
+        else:
+            config_dict["enable"] = False
 
         self.config = config_dict
