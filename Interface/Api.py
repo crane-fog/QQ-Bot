@@ -1,5 +1,5 @@
 import aiohttp
-
+import json
 import requests
 
 
@@ -63,6 +63,20 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", params=params)
             return response.json()
 
+        def send_group_img(self, group_id, image_path):
+            params = {"group_id": group_id, "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]}
+            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            return response.json()
+
+        def send_group_file(self, group_id, file_path, name, folder_id=None):
+            if folder_id:
+                params = json.dumps({"group_id": group_id, "file": f"file://{file_path}", "name": name, "folder_id": folder_id})
+            else:
+                params = json.dumps({"group_id": group_id, "file": f"file://{file_path}", "name": name})
+            headers = {"Content-Type": "application/json"}
+            response = requests.post(self.api.bot_api_address + "upload_group_file", data=params, headers=headers)
+            return response.json()
+
         def set_group_ban(self, group_id, user_id, duration):
             params = {
                 "group_id": group_id,
@@ -103,7 +117,7 @@ class Api:
             }
             response = requests.post(self.api.bot_api_address + "get_group_info", params=params)
             return response.json()
-        
+
         def set_msg_emoji_like(self, message_id, emoji_id):
             params = {
                 "message_id": message_id,

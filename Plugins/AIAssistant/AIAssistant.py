@@ -28,7 +28,7 @@ class AIAssistant(Plugins):
                                 支持文本和图片提问，图片会自动OCR识别后与大模型交互
                             """
         self.init_status()
-        
+
         # 初始化大模型API配置
         self.bot_id = ''  # 默认Coze bot ID
         self.user_id = ''  # 默认用户ID
@@ -36,17 +36,13 @@ class AIAssistant(Plugins):
         self.base_url = ''  # Coze API基础URL
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
-        self.cooldown_time = int(self.config.get("cooldown_time"))   # 冷却时间（秒）
+        self.cooldown_time = 1  # 冷却时间（秒）
 
         # OCR配置
         if platform.system() == "Windows":
             # Windows 环境下指定 Tesseract 路径
             pytesseract.pytesseract.tesseract_cmd = self.config.get("windows_tesseract_path")
         # Linux 环境下不需要设置，默认会从 PATH 查找
-
-        self.image_temp_dir = "./temp_images"  # 图片临时保存目录
-        if not os.path.exists(self.image_temp_dir):
-            os.makedirs(self.image_temp_dir)
 
     async def main(self, event: GroupMessageEventHandler, debug):
         enable = self.config.get("enable")
@@ -58,21 +54,21 @@ class AIAssistant(Plugins):
             self.set_status("running")
 
         message = event.message
-        
+
         # 检查是否是纯ask命令
         if message.strip() == f"{self.bot.bot_name} ask":
             self.api.groupService.send_group_msg(group_id=event.group_id, message="请输入你的问题哦")
             log.debug(f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复", debug)
             return
-        
+
         # 检查是否是ask命令
         if not message.startswith(f"{self.bot.bot_name} ask"):
             return
-        
+
         # 冷却检查
         current_time = time.time()
         last_ask_time = self.user_cooldown.get(event.user_id, 0)
-        
+
         if current_time - last_ask_time < self.cooldown_time:
             remaining = self.cooldown_time - int(current_time - last_ask_time)
             self.api.groupService.send_group_msg(
@@ -90,11 +86,11 @@ class AIAssistant(Plugins):
             # 提取问题内容
             # 删除CQ码
             question = re.sub(r'\[.*?\]', '', message[len(f"{self.bot.bot_name} ask"):]).strip()
-            
+
             # 检查消息中是否包含图片
             image_urls = self.extract_image_urls(event.raw_message)
             ocr_texts = []
-            
+
             if image_urls:
                 # 下载并处理图片
                 for url in image_urls:
@@ -105,23 +101,23 @@ class AIAssistant(Plugins):
                             ocr_texts.append(ocr_result)
                     except Exception as e:
                         log.error(f"图片处理失败: {str(e)}")
-                        #ocr_texts.append(f"[图片识别失败: {str(e)}]")
-                
+                        # ocr_texts.append(f"[图片识别失败: {str(e)}]")
+
                 # 将OCR结果添加到问题中
                 if ocr_texts:
                     question += "\n[图片识别内容]:\n" + "\n".join(ocr_texts)
-            
+
             log.debug(f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}", debug)
 
             # 获取大模型回复
             response = self.get_coze_response(question)
-            
+
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-            
+
             log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
-            
+
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
@@ -140,7 +136,7 @@ class AIAssistant(Plugins):
         """下载图片到临时目录"""
         response = requests.get(url, stream=True)
         response.raise_for_status()
-        
+
         filename = os.path.join(self.image_temp_dir, os.path.basename(url.split('?')[0]))
         with open(filename, 'wb') as f:
             for chunk in response.iter_content(1024):
@@ -185,7 +181,7 @@ class AIAssistant(Plugins):
             "Content-Type": "application/json",
             "Accept": "application/json"
         }
-        
+
         # 构造请求体
         payload = {
             "bot_id": bot_id,
@@ -198,10 +194,10 @@ class AIAssistant(Plugins):
             # 发送请求
             response = requests.post(url, headers=headers, json=payload)
             response.raise_for_status()
-            
+
             # 解析响应
             data = response.json()
-            
+
             # 提取回复内容
             if "messages" in data:
                 for message in data["messages"]:

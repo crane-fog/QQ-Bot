@@ -32,6 +32,10 @@ class EmojiLike(Plugins):
         if group_id not in effected_group_id:
             return
 
+        ignored_ids: list = self.config.get("ignored_ids")
+        if event.user_id in ignored_ids:
+            return
+
         frequency = int(self.config.get("frequency"))
 
         emoji_ids = [

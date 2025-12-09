@@ -3,6 +3,7 @@ from Logging.PrintLog import Log
 from Plugins import Plugins
 from CQMessage.CQType import At, Face
 from random import randint
+import time
 
 log = Log()
 
@@ -22,6 +23,7 @@ class DontPoke(Plugins):
         self.introduction = """
                                 回复戳一戳（收发戳一戳测试）
                             """
+        self.user_cooldown = {}  # 用户冷却时间记录字典
         self.init_status()
 
     async def main(self, event: GroupPokeEvent, debug):
@@ -43,7 +45,24 @@ class DontPoke(Plugins):
         if (target_id != self_id):
             return
 
+        current_time = time.time()
+        last_ask_time = self.user_cooldown.get(event.user_id, 0)
+        if current_time - last_ask_time < int(self.config.get("cooldown_time")):
+            # if event.role in ["admin", "owner"]:
+            #     return
+            # self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=event.user_id)} 还戳，挨ban了吧")
+            # ban_time = self.config.get("ban_time")
+            # ban_time_cuts = ban_time.split("-")
+            # min_ban_time = ban_time_cuts[0].split(":")
+            # max_ban_time = ban_time_cuts[1].split(":")
+            # duration = randint(int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 +
+            #                 int(min_ban_time[2]), int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 +
+            #                 int(max_ban_time[2]))
+            # self.api.groupService.set_group_ban(group_id=group_id, user_id=event.user_id, duration=duration)
+            return
+
         user_id = event.user_id
+        self.user_cooldown[user_id] = current_time
 
         if user_id == 2046889405:
             message = f"{At(qq=user_id)} {Face(id=319)}"

@@ -45,6 +45,9 @@ class Repeater(Plugins):
         if not self.message_latest.get(group_id):
             self.message_latest[group_id] = ""
         
+        if event.message == "Theresa 晚安" or event.message == "Theresa 早安":
+            return
+
         message_newest = event.message
         if message_newest != self.message_latest[group_id]:
             self.message_latest[group_id] = message_newest
@@ -71,7 +74,7 @@ class Repeater(Plugins):
                         reply_message = self.config.get("special_message")
                     else:
                         return
-            if event.user_id in ignored_ids:
+            if (event.user_id in ignored_ids) or (event.role in ["admin", "owner"]):
                 return
             if recall:
                 try:
