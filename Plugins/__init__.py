@@ -74,6 +74,7 @@ class Plugins:
 
         config_dict = {}
 
+        # 读取插件自身的基础配置
         plugins_config_path = os.path.join(plugins_path, "plugins.ini")
         if os.path.exists(plugins_config_path):
             u_config = configparser.ConfigParser()
@@ -83,4 +84,26 @@ class Plugins:
                 for key, value in u_config.items(self.name):
                     config_dict[key] = convert_value(value)
 
+        # 读取群组配置，构建 effected_group 列表
+        groups_config_path = os.path.join(plugins_path, "groups.ini")
+        if os.path.exists(groups_config_path):
+            g_config = configparser.ConfigParser()
+            g_config.read(groups_config_path, encoding="utf-8")
+
+            effected_group = []
+            for section in g_config.sections():
+                # 检查 section 是否为纯数字（即群号）
+                if section.isdigit():
+                    # 检查该插件在此群是否启用
+                    if g_config.has_option(section, self.name):
+                        if g_config.getboolean(section, self.name):
+                            # 提取群号
+                            try:
+                                group_id = int(section)
+                                effected_group.append(group_id)
+                            except ValueError:
+                                pass
+
+        # 将构建好的 effected_group 放入配置中
+        config_dict["effected_group"] = effected_group
         self.config = config_dict
