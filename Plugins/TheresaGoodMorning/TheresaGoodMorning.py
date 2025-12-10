@@ -23,7 +23,7 @@ class TheresaGoodMorning(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 早安/晚安小特
-                                usage: Theresa <早安/晚安>
+                                usage: Theresa 早安/晚安
                             """
         self.init_status()
 

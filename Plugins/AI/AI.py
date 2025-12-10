@@ -11,19 +11,13 @@ log = Log()
 
 
 class AI(Plugins):
-    """
-    插件名：AI \n
-    插件类型：群聊插件 \n
-    插件功能：用户可以通过"<bot name> ask <问题内容>"的形式向远程大模型提问，支持文本提问\n
-    """
-
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
         self.name = "AI"
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                deepseek
+                                无提示词 deepseek
                                 usage: monika ask <提问内容>
                             """
         self.init_status()
