@@ -34,13 +34,9 @@ class TheresaGoodMorning(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1   # 冷却时间（秒）
 
-    @plugin_main(check_group=True)
+    @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
-
-        # 检查是否是晚安命令
-        if not (message.startswith(f"Theresa 晚安") or message.startswith(f"Theresa 早安")):
-            return
 
         # 冷却检查
         current_time = time.time()

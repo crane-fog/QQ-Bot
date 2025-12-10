@@ -35,7 +35,7 @@ class AI(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
 
-    @plugin_main(check_group=True)
+    @plugin_main(call_word=["monika ask"])
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
 
@@ -43,10 +43,6 @@ class AI(Plugins):
         if message.strip() == f"monika ask":
             self.api.groupService.send_group_msg(group_id=event.group_id, message="请输入你的问题哦")
             log.debug(f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复", debug)
-            return
-
-        # 检查是否是ask命令
-        if not message.startswith(f"monika ask"):
             return
 
         # 冷却检查

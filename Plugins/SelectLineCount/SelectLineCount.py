@@ -24,7 +24,7 @@ class SelectLineCount(Plugins):
         self.init_status()
         self.all_line_count = None
 
-    @plugin_main(check_group=True, require_db=True)
+    @plugin_main(call_word=[], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         if self.all_line_count is None:
             while True:

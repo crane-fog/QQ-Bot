@@ -25,7 +25,7 @@ class GroupApprove(Plugins):
         self.all_inform = None
         self.spacer = ""
 
-    @plugin_main(check_group=True, require_db=True)
+    @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupRequestEvent, debug):
         if self.all_inform is None:
             while True:

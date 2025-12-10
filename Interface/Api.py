@@ -55,6 +55,11 @@ class Api:
             response = requests.post(self.api.bot_api_address + "get_group_member_list", params=params)
             return response.json()
 
+        def get_group_member_info(self, group_id, user_id, no_cache=True):
+            params = {"group_id": group_id, "user_id": user_id, "no_cache": no_cache}
+            response = requests.post(self.api.bot_api_address + "get_group_member_info", params=params)
+            return response.json()
+
         def send_group_msg(self, group_id, message):
             params = {
                 "group_id": group_id,

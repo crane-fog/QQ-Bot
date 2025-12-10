@@ -19,7 +19,7 @@ class TestPlugins(Plugins):
                             """
         self.init_status()
 
-    @plugin_main(check_group=False)
+    @plugin_main(check_call_word=False, check_group=False)
     async def main(self, event, debug):
         """
         函数的入口，每个插件都必须有一个主入口 \n

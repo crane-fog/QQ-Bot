@@ -25,7 +25,7 @@ class Repeater(Plugins):
         self.message_latest = {}
         self.counts = {}
 
-    @plugin_main(check_group=True)
+    @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
         threshold = int(self.config.get("threshold"))

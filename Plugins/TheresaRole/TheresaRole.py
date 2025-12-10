@@ -35,7 +35,7 @@ class TheresaRole(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
 
-    @plugin_main(check_group=True)
+    @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEventHandler, debug):
         roles: list = ["oldzhang", "nikki"]
         message = event.message

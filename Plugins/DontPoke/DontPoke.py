@@ -27,7 +27,7 @@ class DontPoke(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(check_call_word=False, check_group=True)
     async def main(self, event: GroupPokeEvent, debug):
         group_id = event.group_id
         target_id = event.target_id

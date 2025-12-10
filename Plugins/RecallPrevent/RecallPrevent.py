@@ -28,7 +28,7 @@ class RecallPrevent(Plugins):
         self.redis_client = None
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(check_call_word=False)
     async def main(self, event, debug):
         # 初始化同步 Redis 连接
         if not self.redis_client:

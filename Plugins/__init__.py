@@ -9,9 +9,11 @@ from Interface.Api import Api
 plugins_path = os.path.dirname(__file__)
 
 
-def plugin_main(check_group=False, require_db=False):
+def plugin_main(check_call_word=True, call_word: list = None, check_group=True, require_db=False):
     """
-    :param check_group: 是否检查群权限 (默认 False)
+    :param check_call_word: 是否检查触发词 (默认 True)
+    :param call_word: 插件的触发词列表
+    :param check_group: 是否检查群权限 (默认 True)
     :param require_db: 是否需要数据库 (默认 False)
     """
 
@@ -28,6 +30,14 @@ def plugin_main(check_group=False, require_db=False):
                 group_id = event.group_id
                 effected_group_id: list = self.config.get("effected_group")
                 if group_id not in effected_group_id:
+                    return
+
+            # 检查触发词
+            if check_call_word and call_word is not None:
+                if not hasattr(event, "message"):
+                    return
+                message = event.message
+                if not any(message.startswith(word) for word in call_word):
                     return
 
             # 更新运行状态

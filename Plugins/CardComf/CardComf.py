@@ -37,7 +37,7 @@ class CardComf(Plugins):
         self.check_not_present: bool = self.config.get('check_not_present')
         self.check_major: bool = self.config.get('check_major')
 
-    @plugin_main(check_group=True, require_db=True)
+    @plugin_main(call_word=[], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         check_with_stu_list = self.config.get("check_with_stu_list")
         check_assistants = self.config.get("check_assistants")

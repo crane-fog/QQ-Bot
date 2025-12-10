@@ -136,12 +136,10 @@ class TheresaDora(Plugins):
                             """
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(call_word=["Dora"])
     async def main(self, event: GroupMessageEventHandler, debug):
         group_id = event.group_id
         message = event.message
-        if not message.startswith("Dora"):
-            return
 
         cmd = " ".join(message.split(" ")[1:])
         if not cmd:

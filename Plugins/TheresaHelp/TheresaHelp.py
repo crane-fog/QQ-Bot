@@ -23,13 +23,8 @@ class TheresaHelp(Plugins):
                             """
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(call_word=["Theresa help"])
     async def main(self, event: GroupMessageEventHandler, debug):
-        message = event.message
-
-        if message.strip() != "Theresa help":
-            return
-
         group_id = event.group_id
         response = "当前群聊启用的插件如下：\n"
 

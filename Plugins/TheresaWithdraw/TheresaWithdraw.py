@@ -13,12 +13,12 @@ class TheresaWithdraw(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                防止防撤回的撤回
+                                防止防撤回的撤回，仅限群管理员使用
                                 usage: <回复消息>Twithdraw
                             """
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
         pattern = re.compile(r'(\[CQ:reply,id=.+\])(.+)')

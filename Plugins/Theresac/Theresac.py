@@ -14,11 +14,9 @@ class Theresac(Plugins):
                             """
         self.init_status()
 
-    @plugin_main(check_group=True)
+    @plugin_main(call_word=["Theresac"])
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
-        if not message.startswith("Theresac"):
-            return
 
         if not event.user_id == 2046889405:
             return
