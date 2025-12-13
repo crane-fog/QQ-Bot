@@ -73,6 +73,14 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
+        def send_group_msg_with_img(self, group_id, message, image_path):
+            params = {
+                "group_id": group_id,
+                "message": [{"type": "text", "data": {"text": message}}, {"type": "image", "data": {"file": f"file://{image_path}"}}],
+            }
+            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            return response.json()
+
         def send_group_file(self, group_id, file_path, name, folder_id=None):
             if folder_id:
                 params = json.dumps({"group_id": group_id, "file": f"file://{file_path}", "name": name, "folder_id": folder_id})
