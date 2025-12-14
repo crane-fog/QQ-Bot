@@ -56,6 +56,8 @@ class DontPoke(Plugins):
 
         if user_id == 2046889405:
             message = f"{At(qq=user_id)} {Face(id=319)}"
+        elif user_id == 3500519807:
+            message = f"{At(qq=user_id)} {Face(id=318)}"
         else:
             message_list = [
                 "戳什么戳！",
