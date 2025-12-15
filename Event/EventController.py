@@ -66,7 +66,7 @@ def create_event_app(event_controller):
             else:
                 ...
 
-        return 'OK', 200
+        return {}, 200
 
     app.logger.setLevel(logging.ERROR)
     return app
