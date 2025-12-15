@@ -24,7 +24,7 @@ class TheresaCard(Plugins):
 
     @plugin_main(call_word=["Theresa card"])
     async def main(self, event, debug):
-        permissionList = [2046889405]
+        permissionList = [self.bot.owner_id]
         if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
             return
 

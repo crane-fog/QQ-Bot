@@ -31,7 +31,7 @@ class TheresaBan(Plugins):
 
         try:
             # 检查用户权限
-            permissionList = [2046889405]
+            permissionList = [self.bot.owner_id]
             if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
                 return
             else:
