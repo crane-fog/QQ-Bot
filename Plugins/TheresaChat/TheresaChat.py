@@ -68,6 +68,12 @@ class TheresaChat(Plugins):
             {"role": "user", "content": f"{event.nickname}(群名片：{event.card}，id：{event.user_id})说：{clean_message}"}
         )
 
+        if clean_message == "Theresa chat clear" and event.user_id == self.bot.owner_id:
+            self.group_context[group_id].clear()
+            log.debug(f"插件：{self.name}在群{group_id}被清除上下文", debug)
+            self.api.groupService.send_group_msg(group_id=group_id, message="上下文已清除")
+            return
+
         # 冷却检查
         current_time = time.time()
         last_reply_time = self.group_cooldown.get(group_id, 0)

@@ -63,6 +63,8 @@ class Bot:
                 "database_address": self.configLoader.get_init_config("database_address", "str"),
                 "database_passwd": self.configLoader.get_init_config("database_passwd", "str"),
                 "database_name": self.configLoader.get_init_config("database_name", "str"),
+                "owner_id": self.configLoader.get_init_config("owner_id", "int"),
+                "assistant_group": self.configLoader.get_init_config("assistant_group", "int"),
             }
 
             # 检查哪些关键配置项是空的
@@ -81,6 +83,8 @@ class Bot:
             self.database_address = required_configs["database_address"]
             self.database_passwd = required_configs["database_passwd"]
             self.database_name = required_configs["database_name"]
+            self.owner_id = required_configs["owner_id"]
+            self.assistant_group = required_configs["assistant_group"]
 
             log.info(f"成功加载配置文件")
             log.info(f"加载的bot初始化配置信息如下：")

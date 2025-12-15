@@ -18,7 +18,7 @@ class Theresac(Plugins):
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
 
-        if not event.user_id == 2046889405:
+        if not event.user_id == self.bot.owner_id:
             return
 
         cmd = message.split(" ")[1:]

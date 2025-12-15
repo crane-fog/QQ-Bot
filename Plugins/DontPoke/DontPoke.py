@@ -54,7 +54,7 @@ class DontPoke(Plugins):
         user_id = event.user_id
         self.user_cooldown[user_id] = current_time
 
-        if user_id == 2046889405:
+        if user_id == self.bot.owner_id:
             message = f"{At(qq=user_id)} {Face(id=319)}"
         elif user_id == 3500519807:
             message = f"{At(qq=user_id)} {Face(id=318)}"
