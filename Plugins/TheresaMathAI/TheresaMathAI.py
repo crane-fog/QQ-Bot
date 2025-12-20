@@ -73,7 +73,7 @@ class TheresaMathAI(Plugins):
 
             asker_qq = event.user_id
             ask_time = time.strftime("%Y%m%d%H%M%S", time.localtime(current_time))
-            filepath = f"C:/monika/Plugins/TheresaMathAI/temp/{asker_qq}_{ask_time}.md"
+            filepath = f"{os.path.dirname(os.path.abspath(__file__))}/temp/{asker_qq}_{ask_time}.md"
             with open(filepath, "w", encoding="utf-8") as f:
                 f.write(response)
 

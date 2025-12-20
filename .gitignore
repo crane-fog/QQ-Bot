@@ -1,6 +1,5 @@
-# Ignore log files
-
-log.out
+log*
 __pycache__/
+temp/
 num_backup.txt
 Plugins/TheresaLuck/
