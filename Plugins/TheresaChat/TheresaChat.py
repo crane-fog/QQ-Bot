@@ -49,9 +49,9 @@ class TheresaChat(Plugins):
         group_id = event.group_id
 
         face_files = {
-            1: "C:/monika/Plugins/TheresaChat/faces/1.png",
-            2: "C:/monika/Plugins/TheresaChat/faces/2.png",
-            3: "C:/monika/Plugins/TheresaChat/faces/3.png",
+            1: f"{os.path.dirname(os.path.abspath(__file__))}/faces/1.png",
+            2: f"{os.path.dirname(os.path.abspath(__file__))}/faces/2.png",
+            3: f"{os.path.dirname(os.path.abspath(__file__))}/faces/3.png",
         }
 
         # 初始化群上下文
