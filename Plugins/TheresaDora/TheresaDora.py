@@ -44,10 +44,9 @@ def generate_img(text: str, output_path: str, base_image_path: str = f"{os.path.
     # 字体
     def get_font(size):
         font_paths = [
-            "msyh.ttc",  # 中文微软雅黑
-            "seguiemj.ttf",  # Windows Emoji 字体
-            "C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/unifont-17.0.01.otf",
-            "C:/Users/Administrator/AppData/Local/Microsoft/Windows/Fonts/unifont_upper-17.0.01.otf"
+            "/usr/share/fonts/truetype/noto/NotoColorEmoji.ttf",
+            "/usr/share/fonts/opentype/noto/NotoSansCJK-Regular.ttc",
+            "/usr/share/fonts/opentype/noto/NotoSerifCJK-Regular.ttc",
         ]
         for path in font_paths:
             try:
