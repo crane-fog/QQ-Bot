@@ -20,8 +20,5 @@ class GroupRequestEvent:
 
     def post_event(self, debug):
         if self.sub_type == "add":
-            log.debug(
-                f"在群 {self.group_id} 中，收到入群申请。"
-                f"事件发生时间：{self.time}，申请内容为{self.comment}",
-                debug
-            )
+            c = self.comment.replace("\n", "  ")
+            log.debug(f"群聊 {self.group_id} 收到入群申请，申请内容为{c}", debug)

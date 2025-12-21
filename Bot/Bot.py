@@ -122,8 +122,9 @@ class Bot:
             return
         log.info("开始创建与数据库之间的连接")
         try:
-            self.database = create_async_engine(f'mysql+aiomysql://'
-                                                f'{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}')
+            self.database = create_async_engine(
+                f"postgresql+asyncpg://" f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}"
+            )
             log.info("成功连接到bot数据库")
         except Exception as e:
             log.error(f"连接到数据库时失败：{e}")
