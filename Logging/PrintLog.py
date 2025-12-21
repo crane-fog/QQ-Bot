@@ -4,8 +4,6 @@ from logging.handlers import RotatingFileHandler
 
 from colorama import Fore, Style, init
 
-init(autoreset=True)  # 初始化colorama并设置自动重置
-
 # 初始化colorama以支持控制台彩色输出
 init(autoreset=True)
 
@@ -100,5 +98,3 @@ class Log:
 if __name__ == "__main__":
     console_logger.info("这是一个彩色的控制台信息")
     file_logger.info("这是一个纯文本文件信息")
-
-
