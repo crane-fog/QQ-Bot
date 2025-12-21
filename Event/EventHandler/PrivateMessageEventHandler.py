@@ -12,4 +12,5 @@ class PrivateMessageEvent:
         ...
 
     def post_event(self, debug):
-        log.debug(f"收到来自好友 {self.nickname}({self.user_id}) 的私聊消息：{self.message}", debug)
+        log_message = self.message.replace("&amp;", "&")
+        log.debug(f"好友 {self.nickname}({self.user_id}) 私聊消息：{log_message}", debug)

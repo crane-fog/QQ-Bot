@@ -23,7 +23,5 @@ class GroupMessageEvent:
         ...
 
     def post_event(self, debug):
-        log.debug(
-            f"收到来自群聊 {self.group_id} 的消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{self.message}",
-            debug
-        )
+        log_message = self.message.replace("&amp;", "&")
+        log.debug(f"群聊 {self.group_id} 消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{log_message}", debug)
