@@ -80,9 +80,13 @@ class TheresaChat(Plugins):
         if current_time - last_reply_time < self.cooldown_time:
             return
 
+        if (("牢普" in clean_message) or ("普瑞塞斯" in clean_message)) and random.random() > 0.3:
+            self.api.groupService.send_group_msg(group_id=group_id, message="我一直都看着你…永远…………👁️")
+            return
+
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if ((not ("小特" in message)) and random.random() > 0.02) or ("Theresa" in message):
+        if ((not ("小特" in clean_message)) and random.random() > 0.02) or ("Theresa" in clean_message):
             return
 
         log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
