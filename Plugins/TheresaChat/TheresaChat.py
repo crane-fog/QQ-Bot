@@ -80,13 +80,24 @@ class TheresaChat(Plugins):
         if current_time - last_reply_time < self.cooldown_time:
             return
 
-        if (("牢普" in clean_message) or ("普瑞塞斯" in clean_message)) and random.random() > 0.3:
-            self.api.groupService.send_group_msg(group_id=group_id, message="我一直都看着你…永远…………👁️")
+        r = random.random()
+        if (("牢普" in clean_message) or ("普瑞赛斯" in clean_message)) and r > 0.6:
+            msg_list = [
+                "我一直都看着你…永远…………👁️",
+                "这里万籁俱寂……太安静了……别留下我……",
+                "…博士，不准忘记我。",
+                "深陷长梦的混沌之时，你会想起——",
+                "我们的呼吸▮▮▮温暖▮▮▮▮▮▮▮▮双手",
+                "PRTS Runtime Error 0x5343: Debug Assertion Failed at File: /src/arknights/battle/scene/scene_main.cpp, Line: 2432",
+            ]
+            msg = random.choice(msg_list)
+            self.api.groupService.send_group_msg(group_id=group_id, message=msg)
+            log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复', debug)
             return
 
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if ((not ("小特" in clean_message)) and random.random() > 0.02) or ("Theresa" in clean_message):
+        if ((not ("小特" in clean_message)) and r > 0.02) or ("Theresa" in clean_message):
             return
 
         log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
