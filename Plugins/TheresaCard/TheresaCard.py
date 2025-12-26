@@ -28,6 +28,8 @@ class TheresaCard(Plugins):
         if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
             return
 
+        kick_flag = event.message == "Theresa card kick"
+
         group_member_list = self.api.GroupService.get_group_member_list(self, group_id=event.group_id).get("data")
         ignored_ids: list = self.config.get("ignored_ids")
 
@@ -51,5 +53,10 @@ class TheresaCard(Plugins):
                 message = "\n".join([f"[CQ:at,qq={user_id}] 名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)])
         else:
             message = "所有群成员名片格式均符合要求"
+        if kick_flag:
+            message += "\n已将不符合要求的成员踢出群聊"
         self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
+        if kick_flag:
+            for user_id in not_allowed_ids:
+                self.api.GroupService.set_group_kick(self, group_id=event.group_id, user_id=user_id)
         return
