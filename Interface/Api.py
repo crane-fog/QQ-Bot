@@ -68,6 +68,11 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", params=params)
             return response.json()
 
+        def send_group_record_msg(self, group_id, file_path):
+            params = {"group_id": group_id, "message": [{"type": "record", "data": {"file": f"file://{file_path}"}}]}
+            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            return response.json()
+
         def send_group_img(self, group_id, image_path):
             params = {"group_id": group_id, "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]}
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
