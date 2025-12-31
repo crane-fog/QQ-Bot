@@ -33,6 +33,9 @@ class MoeGoe(Plugins):
         if lang not in ["ZH", "JA"]:
             self.api.groupService.send_group_msg(group_id=event.group_id, message="usage: ema zh/ja <文本>")
             return
+        if len(prompt) > 100:
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="文本过长，请限制在100字以内")
+            return
 
         filename = f"{os.path.dirname(os.path.abspath(__file__))}/temp/{int(time.time())}{event.user_id}.wav"
         self.get_api_response(prompt, filename, lang)
