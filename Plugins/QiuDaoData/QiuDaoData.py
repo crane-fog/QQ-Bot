@@ -4,11 +4,7 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
-from Logging.PrintLog import Log
 from Plugins import plugin_main, Plugins
-
-log = Log()
-
 
 class QiuDaoData(Plugins):
     def __init__(self, server_address, bot):

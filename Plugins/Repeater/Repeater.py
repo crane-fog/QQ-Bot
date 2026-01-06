@@ -36,7 +36,12 @@ class Repeater(Plugins):
         if not self.message_latest.get(group_id):
             self.message_latest[group_id] = ""
 
-        if event.message == "Theresa 晚安" or event.message == "Theresa 早安" or event.message == "Theresa luck":
+        if (
+            event.message == "Theresa 晚安"
+            or event.message == "Theresa 早安"
+            or event.message == "Theresa luck"
+            or event.message == "Theresa 求刀"
+        ):
             return
 
         message_newest = event.message
