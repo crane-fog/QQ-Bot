@@ -4,7 +4,6 @@ from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-from Logging.PrintLog import Log
 
 
 class GetStuId(Plugins):
