@@ -3,4 +3,5 @@ __pycache__/
 temp/
 num_backup.txt
 Plugins/TheresaLuck/
+Plugins/QiuDaoData/data/
 .venv/
