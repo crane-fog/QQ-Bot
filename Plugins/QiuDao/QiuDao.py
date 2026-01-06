@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, select, BigInteger
+from sqlalchemy import Column, Integer, select, String
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -14,77 +14,50 @@ log = Log()
 class QiuDao(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
-        self.name = "QiuDao"  # 插件的名字（一定要和类的名字完全一致（主要是我能力有限，否则会报错））
-        self.type = "Group"  # 插件的类型（这个插件是在哪种消息类型中触发的）
-        self.author = "just monika"  # 插件开发作者（不用留真名，但是当插件报错的时候需要根据这个名字找到对应的人来修）
+        self.name = "QiuDao"
+        self.type = "Group"
+        self.author = "just monika / Heai"
         self.introduction = """
                                 根据高程期末考试成绩发送对应的表情
-                                usage: （未知）
+                                usage: Theresa 求刀
                             """
         self.init_status()
         self.all_line_count = None
 
-    @plugin_main(call_word=[], require_db=True)
+    @plugin_main(call_word=["Theresa 求刀"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
-        if self.all_line_count is None:
-            while True:
-                try:
-                    self.all_line_count = await self.select_all_info()
-                    log.debug("初始化scores信息成功", debug)
-                    break
-                except Exception as e:
-                    log.debug(e, debug=debug)
-                    continue
-
-        message: str = event.message
-        command_list = message.split(" ")
-        len_of_command = len(command_list)
-        if command_list[0] != self.bot.bot_name:
+        group_id = event.group_id
+        user_id = event.user_id
+        sender_card = event.card.split("-")
+        if len(sender_card) != 3:
+            self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询")
             return
-        if len_of_command < 2:
-            return
+        else:
+            stu_id = int(sender_card[0])
+            select_result = None
+            try:
+                select_result = await self.query_by_stu_id(stu_id)
+            except Exception as e:
+                raise e
 
-        command = self.config.get("command")
-        valid_commands = [command, f"{command}1", f"{command}2"]
-        if command_list[1] not in valid_commands:
-            return
-        else:  # 正式进入插件运行部分
-            group_id = event.group_id
-            user_id = event.user_id
-            sender_card = event.card.split("-")
-            if len(sender_card) != 3:
-                self.api.groupService.send_group_msg(group_id=group_id,
-                                                           message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询")
-                return
-            else:
-                stu_id = int(sender_card[0])
-                select_result = None
-                try:
-                    select_result = self.query_by_stu_id(stu_id)
-                except Exception as e:
-                    raise e
-
-                log.debug(f"查询到的信息是：{select_result}", debug)
-                if select_result is not None:
-                    score = select_result.get("score")
-                    query_user_id = select_result.get("user_id")
-                    if int(query_user_id) != user_id:
-                        self.api.groupService.send_group_msg(group_id=group_id,
-                                                             message=f"{At(qq=user_id)} "
-                                                                     f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！")
-                        return
-                    else:
-                        is_mode2 = command_list[1] == f"{command}2"
-                        self.api.groupService.send_group_msg(group_id=group_id,
-                                                             message=f"{At(qq=user_id)} "
-                                                                     f"{self.trans_score(score, is_mode2)}")
+            log.debug(f"查询到的信息是：{select_result}", debug)
+            if select_result is not None:
+                score = select_result.get("score")
+                query_user_id = select_result.get("user_id")
+                if int(query_user_id) != user_id:
+                    self.api.groupService.send_group_msg(
+                        group_id=group_id,
+                        message=f"{At(qq=user_id)} " f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
+                    )
+                    return
                 else:
-                    self.api.groupService.send_group_msg(group_id=group_id,
-                                                         message=f"{At(qq=user_id)} 未查询到学号{stu_id}的信息！")
+                    self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} " f"{self.trans_score(score)}")
+            else:
+                self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}的信息！")
 
     @classmethod
-    def trans_score(cls, score, is_mode2=False):
-        max_knives = score if is_mode2 else min(score, 4)
+    def trans_score(cls, score):
+        max_knives = min(score, 4)
         if max_knives == 0:
             return Face(id=63)  # 这个是花的id
         elif max_knives == 1:
@@ -102,38 +75,29 @@ class QiuDao(Plugins):
         else:
             return f"你的分数是-114514，超越了全同济-100%的同学！你无敌啦孩子！"  # 虽然理论上不可能有低于0分的，但是还是做了这个的情况, 59是便便表情
 
-    def query_by_stu_id(self, stu_id):
-        data = self.all_line_count.get("data")
-        if stu_id not in data:
-            return None
-        else:
-            result = data.get(stu_id)
-            return result
+    async def query_by_stu_id(self, stu_id):
+        async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+        async with async_sessions() as session:
+            async with session.begin():
+                stmt = (
+                    select(self.Scores.score, self.StuId.qq_id)
+                    .join(self.StuId, self.Scores.stu_id == self.StuId.stu_id)
+                    .where(self.Scores.stu_id == stu_id)
+                )
+                result = await session.execute(stmt)
+                data = result.first()
+                if data:
+                    return {"score": data.score, "user_id": data.qq_id}
+                return None
 
-    async def select_all_info(self):
-        async_session = sessionmaker(
-            bind=self.bot.database,
-            class_=AsyncSession,
-            expire_on_commit=False
-        )
+    Basement = declarative_base()
 
-        async with async_session() as session:
-            # 查询所有记录
-            stmt = select(self.Scores)
-            result = await session.execute(stmt)
-
-            # 将结果转换为字典
-            scores = result.scalars().all()
-            scores_dict = {lc.stu_id: {'score': lc.score, 'user_id': lc.user_id} for lc in scores}
-
-            # 返回包含所有信息的字典以及最后一行数据的index值
-            return {'data': scores_dict}
-
-    Base = declarative_base()
-
-    class Scores(Base):
+    class Scores(Basement):
         __tablename__ = 'score'
         stu_id = Column(Integer, primary_key=True)
-        class_id = Column(Integer)
-        user_id = Column(BigInteger, unique=True)
         score = Column(Integer)
+
+    class StuId(Basement):
+        __tablename__ = "stu_id"
+        stu_id = Column(Integer, primary_key=True)
+        qq_id = Column(String)

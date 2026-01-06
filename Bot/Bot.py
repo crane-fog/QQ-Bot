@@ -3,6 +3,7 @@ from importlib import import_module
 import os
 from pkgutil import iter_modules
 from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.pool import NullPool
 from gevent import spawn, joinall
 
 from ConfigLoader.ConfigLoader import ConfigLoader
@@ -123,7 +124,8 @@ class Bot:
         log.info("开始创建与数据库之间的连接")
         try:
             self.database = create_async_engine(
-                f"postgresql+asyncpg://" f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}"
+                f"postgresql+asyncpg://" f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
+                poolclass=NullPool,
             )
             log.info("成功连接到bot数据库")
         except Exception as e:
