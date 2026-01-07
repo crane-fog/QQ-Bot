@@ -14,10 +14,24 @@ class QiuDaoData(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 导入求刀数据
-                                usage: QiuDaoData <文件名>
+                                usage: QiuDaoData <文件名> <表名>
                             """
         self.init_status()
         self.all_line_count = None
+        self._score_models = {}
+
+    def get_scores_model(self, table_name):
+        if table_name in self._score_models:
+            return self._score_models[table_name]
+
+        class DynamicScores(self.Basement):
+            __tablename__ = table_name
+            __table_args__ = {"extend_existing": True}
+            stu_id = Column(Integer, primary_key=True)
+            score = Column(Integer)
+
+        self._score_models[table_name] = DynamicScores
+        return DynamicScores
 
     @plugin_main(call_word=["QiuDaoData"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
@@ -27,24 +41,22 @@ class QiuDaoData(Plugins):
             return
 
         filename = f"{os.path.dirname(os.path.abspath(__file__))}/data/" + message.split(" ")[1]
+        table_name = message.split(" ")[2]
 
         with open(filename, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        self.api.groupService.send_group_msg(group_id=event.group_id, message=f"共导入{len(lines)}条数据")
+        self.api.groupService.send_group_msg(group_id=event.group_id, message=f"正在向表 {table_name} 导入{len(lines)}条数据")
+
+        ScoresModel = self.get_scores_model(table_name)
 
         async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
         async with async_sessions() as session:
             async with session.begin():
                 for line in lines:
-                    stu_id, score = line.strip().split(" ")
-                    score_info = self.Scores(stu_id=int(stu_id), score=int(score))
+                    _, stu_id, score = line.strip().split(" ")
+                    score_info = ScoresModel(stu_id=int(stu_id), score=int(score))
                     await session.merge(score_info)
         return
 
     Basement = declarative_base()
-
-    class Scores(Basement):
-        __tablename__ = "score"
-        stu_id = Column(Integer, primary_key=True)
-        score = Column(Integer)
