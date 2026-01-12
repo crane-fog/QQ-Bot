@@ -10,26 +10,24 @@ from Plugins import plugin_main, Plugins
 log = Log()
 
 
-class QiuDao(Plugins):
+class QiuDao1(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
-        self.name = "QiuDao"
+        self.name = "QiuDao1"
         self.type = "Group"
         self.author = "just monika / Heai"
         self.introduction = """
                                 根据高程期末考试成绩发送对应的表情
-                                usage: Theresa 求刀
+                                usage: Theresa 我自愿求刀，知晓相关成绩会被群里同学看到
                             """
         self.init_status()
         self.table_dict = {
             893688452: "score_252610",  # bot测试群
-            783564589: "score_252611",  # 25261OOP
-            927504458: "score_252610",  # 25261嘉定高程
-            110275974: "score_252610",  # 25261AI拔高程
+            861871927: "score_252610",  # 25261卓班高程
         }
         self._score_models = {}
 
-    @plugin_main(call_word=["Theresa 求刀"], require_db=True)
+    @plugin_main(call_word=["Theresa 我自愿求刀，知晓相关成绩会被群里同学看到"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
         user_id = event.user_id
