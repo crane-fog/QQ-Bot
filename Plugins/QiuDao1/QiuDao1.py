@@ -18,16 +18,17 @@ class QiuDao1(Plugins):
         self.author = "just monika / Heai"
         self.introduction = """
                                 根据高程期末考试成绩发送对应的表情
-                                usage: Theresa 我自愿求刀，知晓相关成绩会被群里同学看到
+                                usage: Theresa 公开我的期末成绩吧
                             """
         self.init_status()
         self.table_dict = {
             893688452: "score_252610",  # bot测试群
             861871927: "score_252610",  # 25261卓班高程
+            110275974: "score_252610",  # 25261AI拔高程
         }
         self._score_models = {}
 
-    @plugin_main(call_word=["Theresa 我自愿求刀，知晓相关成绩会被群里同学看到"], require_db=True)
+    @plugin_main(call_word=["Theresa 公开我的期末成绩吧"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
         user_id = event.user_id

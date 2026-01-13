@@ -41,6 +41,7 @@ class Repeater(Plugins):
             or event.message == "Theresa 早安"
             or event.message == "Theresa luck"
             or event.message == "Theresa 求刀"
+            or event.message == "Theresa 公开我的期末成绩吧"
         ):
             return
 

@@ -25,7 +25,6 @@ class QiuDao(Plugins):
             893688452: "score_252610",  # bot测试群
             783564589: "score_252611",  # 25261OOP
             927504458: "score_252610",  # 25261嘉定高程
-            110275974: "score_252610",  # 25261AI拔高程
         }
         self._score_models = {}
 
