@@ -24,13 +24,21 @@ class QiuDao(Plugins):
         self.table_dict = {
             893688452: "score_252610",  # bot测试群
             783564589: "score_252611",  # 25261OOP
+            861871927: "score_252610",  # 25261卓班高程
+            110275974: "score_252610",  # 25261AI拔高程
             927504458: "score_252610",  # 25261嘉定高程
         }
         self._score_models = {}
 
-    @plugin_main(call_word=["Theresa 求刀"], require_db=True)
+    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
+
+        old_callword = "Theresa 求刀"
+        old_group_list = [783564589]
+        if (event.message == old_callword) and (group_id not in old_group_list):
+            return
+
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
@@ -58,7 +66,9 @@ class QiuDao(Plugins):
                 else:
                     self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} " f"{self.trans_score(score)}")
             else:
-                self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}的信息！")
+                self.api.groupService.send_group_msg(
+                    group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！"
+                )
 
     @classmethod
     def trans_score(cls, score):
@@ -78,7 +88,7 @@ class QiuDao(Plugins):
         elif max_knives == 6:
             return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"
         else:
-            return f"你的分数是-114514，超越了全同济-100%的同学！你无敌啦孩子！"  # 虽然理论上不可能有低于0分的，但是还是做了这个的情况, 59是便便表情
+            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"  # 虽然理论上不可能有低于0分的，但是还是做了这个的情况, 59是便便表情
 
     def get_scores_model(self, table_name):
         if table_name in self._score_models:
