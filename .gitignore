@@ -4,4 +4,5 @@ temp/
 num_backup.txt
 Plugins/TheresaLuck/
 Plugins/QiuDaoData/data/
+Plugins/LineCountData/data/
 .venv/

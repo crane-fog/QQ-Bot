@@ -10,35 +10,34 @@ from Plugins import plugin_main, Plugins
 log = Log()
 
 
-class QiuDao(Plugins):
+class LineCount(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
-        self.name = "QiuDao"
+        self.name = "LineCount"
         self.type = "Group"
         self.author = "just monika / Heai"
         self.introduction = """
-                                根据高程期末考试成绩发送对应的表情
-                                usage: Theresa 求刀/公开我的期末成绩吧
+                                获取自己本学期一共在高程作业网提交了多少行代码
+                                usage: Theresa linecount
                             """
         self.init_status()
         self.table_dict = {
-            893688452: "score_252610",  # bot测试群
-            783564589: "score_252611",  # 25261OOP
-            861871927: "score_252610",  # 25261卓班高程
-            110275974: "score_252610",  # 25261AI拔高程
-            927504458: "score_252610",  # 25261嘉定高程
+            893688452: "linecount_252610",  # bot测试群
+            861871927: "linecount_252610",  # 25261卓班高程
+            110275974: "linecount_252610",  # 25261AI拔高程
+            927504458: "linecount_252610",  # 25261嘉定高程
         }
-        self._score_models = {}
+        self.total_people = {
+            893688452: 904,  # bot测试群
+            861871927: 904,  # 25261卓班高程
+            110275974: 904,  # 25261AI拔高程
+            927504458: 904,  # 25261嘉定高程
+        }
+        self._count_models = {}
 
-    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
+    @plugin_main(call_word=["Theresa linecount"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
-
-        old_callword = "Theresa 求刀"
-        old_group_list = [783564589]
-        if (event.message == old_callword) and (group_id not in old_group_list):
-            return
-
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
@@ -47,7 +46,7 @@ class QiuDao(Plugins):
         else:
             stu_id = int(sender_card[0])
             select_result = None
-            table_name = self.table_dict.get(group_id, "score")
+            table_name = self.table_dict.get(group_id)
             try:
                 select_result = await self.query_by_stu_id(stu_id, table_name)
             except Exception as e:
@@ -55,8 +54,10 @@ class QiuDao(Plugins):
 
             log.debug(f"查询到的信息是：{select_result}", debug)
             if select_result is not None:
-                score = select_result.get("score")
+                rank = select_result.get("rank")
+                count = select_result.get("count")
                 query_user_id = select_result.get("user_id")
+                total = self.total_people.get(group_id)
                 if int(query_user_id) != user_id:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,
@@ -64,59 +65,43 @@ class QiuDao(Plugins):
                     )
                     return
                 else:
-                    self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} " f"{self.trans_score(score)}")
+                    self.api.groupService.send_group_msg(
+                        group_id=group_id,
+                        message=f"{At(qq=user_id)} 本学期你一共提交了 {count} 行代码，代码量超过了同期课程的 {(rank / total) * 100:.0f}% 的学生！",
+                    )
             else:
                 self.api.groupService.send_group_msg(
                     group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！"
                 )
 
-    @classmethod
-    def trans_score(cls, score):
-        max_knives = min(score, 4)
-        if max_knives == 0:
-            return Face(id=63)  # 这个是花的id
-        elif max_knives == 1:
-            return Face(id=112)  # 这个是刀的id
-        elif max_knives == 2:
-            return f"{Face(id=112)}{Face(id=112)}"
-        elif max_knives == 3:
-            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}"
-        elif max_knives == 4:
-            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"
-        elif max_knives == 5:
-            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"
-        elif max_knives == 6:
-            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"
-        else:
-            return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"  # 虽然理论上不可能有低于0分的，但是还是做了这个的情况, 59是便便表情
+    def get_counts_model(self, table_name):
+        if table_name in self._count_models:
+            return self._count_models[table_name]
 
-    def get_scores_model(self, table_name):
-        if table_name in self._score_models:
-            return self._score_models[table_name]
-
-        class DynamicScores(self.Basement):
+        class DynamicCounts(self.Basement):
             __tablename__ = table_name
             __table_args__ = {"extend_existing": True}
             stu_id = Column(Integer, primary_key=True)
-            score = Column(Integer)
+            count = Column(Integer)
+            rank = Column(Integer)
 
-        self._score_models[table_name] = DynamicScores
-        return DynamicScores
+        self._count_models[table_name] = DynamicCounts
+        return DynamicCounts
 
     async def query_by_stu_id(self, stu_id, table_name):
-        Scores = self.get_scores_model(table_name)
+        Counts = self.get_counts_model(table_name)
         async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
         async with async_sessions() as session:
             async with session.begin():
                 stmt = (
-                    select(Scores.score, self.StuId.qq_id)
-                    .join(self.StuId, Scores.stu_id == self.StuId.stu_id)
-                    .where(Scores.stu_id == stu_id)
+                    select(Counts.rank, Counts.count, self.StuId.qq_id)
+                    .join(self.StuId, Counts.stu_id == self.StuId.stu_id)
+                    .where(Counts.stu_id == stu_id)
                 )
                 result = await session.execute(stmt)
                 data = result.first()
                 if data:
-                    return {"score": data.score, "user_id": data.qq_id}
+                    return {"rank": data.rank, "count": data.count, "user_id": data.qq_id}
                 return None
 
     Basement = declarative_base()
