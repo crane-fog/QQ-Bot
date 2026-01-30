@@ -36,21 +36,22 @@ class Repeater(Plugins):
         if not self.message_latest.get(group_id):
             self.message_latest[group_id] = ""
 
-        if (
-            event.message == "Theresa 晚安"
-            or event.message == "Theresa 早安"
-            or event.message == "Theresa luck"
-            or event.message == "Theresa 求刀"
-            or event.message == "Theresa 公开我的期末成绩吧"
-            or event.message == "Theresa linecount"
-        ):
-            return
-
         message_newest = event.message
         if message_newest != self.message_latest[group_id]:
             self.message_latest[group_id] = message_newest
             self.counts[group_id] = 1
-        else:
+            return
+        if (
+            message_newest == "Theresa 晚安"
+            or message_newest == "Theresa 早安"
+            or message_newest == "Theresa luck"
+            or message_newest == "Theresa 求刀"
+            or message_newest == "Theresa 公开我的期末成绩吧"
+            or message_newest == "Theresa linecount"
+        ):
+            return
+
+        if message_newest == self.message_latest[group_id]:
             self.counts[group_id] += 1
 
         # 到达阈值时正式进行插件的运行
