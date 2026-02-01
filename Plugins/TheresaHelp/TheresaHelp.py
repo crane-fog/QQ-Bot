@@ -18,30 +18,50 @@ class TheresaHelp(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                查看当前群聊启用的插件及说明
-                                usage: Theresa help
+                                查看当前群聊启用的插件及说明，可选查询特定插件名
+                                usage: Theresa help (插件名)
                             """
         self.init_status()
 
     @plugin_main(call_word=["Theresa help"])
     async def main(self, event: GroupMessageEventHandler, debug):
         group_id = event.group_id
-        response = "当前群聊启用的插件如下：\n"
+        parts = event.message.split(" ")
+        if len(parts) > 2:
+            target_plugin_name = parts[2]
+            response = f"未找到名为 {target_plugin_name} 的插件"
+            for plugin in self.bot.plugins_list:
+                if plugin.name.lower() == target_plugin_name.lower():
+                    # 获取插件启用的群组列表
+                    effected_groups: list = plugin.config.get("effected_group")
 
-        # 遍历所有已加载的插件
-        for plugin in self.bot.plugins_list:
-            # 获取插件启用的群组列表
-            effected_groups: list = plugin.config.get("effected_group")
+                    # 如果当前群组在插件的启用列表中
+                    if group_id in effected_groups:
+                        # 获取插件介绍，去除首尾空白
+                        intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
+                        # 格式化输出，去除多余的缩进
+                        intro_lines = [line.strip() for line in intro.split("\n") if line.strip()]
+                        formatted_intro = "\n".join(intro_lines)
+                        response = f"[{plugin.name}]\n{formatted_intro}"
+                    else:
+                        response = f"插件 {target_plugin_name} 未在当前群聊启用"
+                    break
+        else:
+            response = "当前群聊启用的插件如下：\n"
+            # 遍历所有已加载的插件
+            for plugin in self.bot.plugins_list:
+                # 获取插件启用的群组列表
+                effected_groups: list = plugin.config.get("effected_group")
 
-            # 如果当前群组在插件的启用列表中
-            if group_id in effected_groups:
-                # 获取插件介绍，去除首尾空白
-                intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
-                # 格式化输出，去除多余的缩进
-                intro_lines = [line.strip() for line in intro.split("\n") if line.strip()]
-                formatted_intro = "\n".join(intro_lines)
+                # 如果当前群组在插件的启用列表中
+                if group_id in effected_groups:
+                    # 获取插件介绍，去除首尾空白
+                    intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
+                    # 格式化输出，去除多余的缩进
+                    intro_lines = [line.strip() for line in intro.split("\n") if line.strip()]
+                    formatted_intro = "\n".join(intro_lines)
 
-                response += f"[{plugin.name}]\n{formatted_intro}\n\n"
+                    response += f"[{plugin.name}]\n{formatted_intro}\n\n"
 
         # 发送消息
         self.api.groupService.send_group_msg(group_id=group_id, message=response.strip())
