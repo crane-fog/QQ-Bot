@@ -15,7 +15,7 @@ class MoeGoe(Plugins):
         self.type = "Group"
         self.author = "just monika & Heai"
         self.introduction = """
-                                艾玛语音合成
+                                樱羽艾玛语音合成
                                 usage: ema zh/ja <文本>
                             """
         self.base_url = "http://localhost:5000/tts"  # API基础URL
