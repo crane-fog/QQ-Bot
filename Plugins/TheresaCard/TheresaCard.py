@@ -50,11 +50,15 @@ class TheresaCard(Plugins):
             if event.message == "Theresa card debug":
                 message = "\n".join([f"{user_id} 名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)])
             else:
-                message = "\n".join([f"[CQ:at,qq={user_id}] 名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)])
+                message = "\n".join(
+                    [f"      [CQ:at,qq={user_id}] \n名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)]
+                )
+            if kick_flag:
+                message += "\n\n已将不符合要求的成员踢出群聊"
+            else:
+                message += "\n\n以上成员群名片格式不符合要求，请参照群公告修改"
         else:
             message = "所有群成员名片格式均符合要求"
-        if kick_flag:
-            message += "\n已将不符合要求的成员踢出群聊"
         self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
         if kick_flag:
             for user_id in not_allowed_ids:

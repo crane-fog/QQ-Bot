@@ -44,7 +44,7 @@ class TheresaHelp(Plugins):
                         formatted_intro = "\n".join(intro_lines)
                         response = f"[{plugin.name}]\n{formatted_intro}"
                     else:
-                        response = f"插件 {target_plugin_name} 未在当前群聊启用"
+                        response = f"插件 {plugin.name} 未在当前群聊启用"
                     break
         else:
             response = "当前群聊启用的插件如下：\n"
