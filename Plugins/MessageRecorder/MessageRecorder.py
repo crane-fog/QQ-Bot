@@ -9,12 +9,13 @@ Base = declarative_base()
 
 class Message(Base):
     __tablename__ = 'messages'
-    
+
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, nullable=False)
     group_id = Column(BigInteger, nullable=False)
-    msg = Column(Text)
+    msg = Column(Text, nullable=False)
     send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    msg_id = Column(BigInteger, nullable=False)
 
 class MessageRecorder(Plugins):
     def __init__(self, server_address, bot):
@@ -33,9 +34,5 @@ class MessageRecorder(Plugins):
         async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
         async with async_sessions() as session:
             async with session.begin():
-                new_msg = Message(
-                    user_id=event.user_id,
-                    group_id=event.group_id,
-                    msg=event.message
-                )
+                new_msg = Message(user_id=event.user_id, group_id=event.group_id, msg=event.message, msg_id=event.message_id)
                 session.add(new_msg)
