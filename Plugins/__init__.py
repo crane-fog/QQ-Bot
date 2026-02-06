@@ -1,7 +1,7 @@
 # Plugins/__init__.py
 import configparser
-import os
 import functools
+import os
 
 from Interface.Api import Api
 
@@ -9,7 +9,9 @@ from Interface.Api import Api
 plugins_path = os.path.dirname(__file__)
 
 
-def plugin_main(check_call_word=True, call_word: list = None, check_group=True, require_db=False):
+def plugin_main(
+    check_call_word=True, call_word: list = None, check_group=True, require_db=False
+):
     """
     :param check_call_word: 是否检查触发词 (默认 True)
     :param call_word: 插件的触发词列表

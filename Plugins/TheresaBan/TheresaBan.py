@@ -1,8 +1,9 @@
 import re
+
+from CQMessage.CQType import At
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -32,7 +33,9 @@ class TheresaBan(Plugins):
         try:
             # 检查用户权限
             permissionList = [self.bot.owner_id]
-            if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+            if (event.user_id not in permissionList) and (
+                event.role not in ["admin", "owner"]
+            ):
                 return
             else:
                 match = re.search(r"qq=(\d+)", command_list[2])
@@ -40,13 +43,20 @@ class TheresaBan(Plugins):
                     qq = match.group(1)
                     ban_seconds = int(command_list[3])
                     reply_message = ""
-                    self.api.groupService.set_group_ban(group_id=event.group_id, user_id=qq, duration=ban_seconds)
+                    self.api.groupService.set_group_ban(
+                        group_id=event.group_id, user_id=qq, duration=ban_seconds
+                    )
                 else:
                     reply_message = f"{At(qq=event.user_id)} 格式错误，@不存在"
 
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message=reply_message
+            )
             log.debug(f"插件：{self.name}运行正确，ban用户", debug)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}")
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
+            )

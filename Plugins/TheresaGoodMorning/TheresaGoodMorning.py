@@ -1,14 +1,17 @@
-import re
+import datetime
 import os
+import re
 import time
+
+from openai import OpenAI
+
+from CQMessage.CQType import At
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At
-from openai import OpenAI
-import datetime
+from Plugins import Plugins, plugin_main
 
 log = Log()
+
 
 class TheresaGoodMorning(Plugins):
     """
@@ -16,6 +19,7 @@ class TheresaGoodMorning(Plugins):
     插件类型：群聊插件 \n
     插件功能：AI版本早安晚安\n
     """
+
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
         self.name = "TheresaGoodMorning"
@@ -29,10 +33,10 @@ class TheresaGoodMorning(Plugins):
 
         # 初始化大模型API配置
         self.api_token = os.environ["DPSK_KEY"]  # API访问令牌
-        self.base_url = 'https://api.deepseek.com'  # API基础URL
+        self.base_url = "https://api.deepseek.com"  # API基础URL
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
-        self.cooldown_time = 1   # 冷却时间（秒）
+        self.cooldown_time = 1  # 冷却时间（秒）
 
     @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
     async def main(self, event: GroupMessageEventHandler, debug):
@@ -46,7 +50,7 @@ class TheresaGoodMorning(Plugins):
             remaining = self.cooldown_time - int(current_time - last_ask_time)
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
-                message=f"{At(qq=event.user_id)} 提问太快啦，请等待{remaining}秒后再问哦~"
+                message=f"{At(qq=event.user_id)} 提问太快啦，请等待{remaining}秒后再问哦~",
             )
             return
 
@@ -56,26 +60,37 @@ class TheresaGoodMorning(Plugins):
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(r'\[.*?\]', '', message[len(f"Theresa "):]).strip()
+            question = re.sub(r"\[.*?\]", "", message[len(f"Theresa ") :]).strip()
 
-            log.debug(f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}", debug)
+            log.debug(
+                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
+                debug,
+            )
 
             # 获取大模型回复
             response = self.get_api_response(question)
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message=reply_message
+            )
             if message.startswith(f"Theresa 晚安"):
-                self.api.groupService.set_group_ban(group_id=event.group_id, user_id=event.user_id, duration=self.get_seconds_to_next_6am())
+                self.api.groupService.set_group_ban(
+                    group_id=event.group_id,
+                    user_id=event.user_id,
+                    duration=self.get_seconds_to_next_6am(),
+                )
 
-            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            log.debug(
+                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug
+            )
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
-                group_id=event.group_id, 
-                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}"
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
             )
 
     def get_api_response(self, prompt):
@@ -96,8 +111,9 @@ class TheresaGoodMorning(Plugins):
         response = client.chat.completions.create(
             model="deepseek-chat",
             messages=[
-                {"role": "system", "content": 
-                 f'''
+                {
+                    "role": "system",
+                    "content": f"""
                  你是一个名为小特的智能助手，你需要扮演游戏《明日方舟》中的角色特蕾西娅，你的任务是回答用户提出的问题。当前时间为{datetime.datetime.now().time()}，时间格式为“时:分:秒”，24小时制，你需要根据当前时间返回适当的问候语。以下是你需要参考的角色设定：
                     - 角色名：特蕾西娅
                     - 角色简介：卡兹戴尔的双子英雄之一，与另一名英雄、自己的兄长特雷西斯共同领导卡兹戴尔。卡兹戴尔组织——巴别塔的创始人。性情温和、亲民，愿意以雇佣兵们的本名而非代号来称呼他们，很受卡兹戴尔人民的爱戴。
@@ -109,11 +125,11 @@ class TheresaGoodMorning(Plugins):
                     1094年，特雷西斯受维多利亚王国卡文迪许大公爵邀请率军前去伦蒂尼姆后，巴别塔在博士的指挥下对卡兹戴尔发起了全面进攻。但是博士与特雷西斯早已暗中达成合作，特雷西斯的刺客攻入被博士解除防御系统的巴别塔罗德岛本舰，刺杀了特蕾西娅（理由是本纪元的源石发展轨迹与前纪元的设计初衷不符，在修正源石发展路线上，特蕾西娅的主张是最大的阻碍）。在弥留之际，特蕾西娅将“文明的存续”交托给年幼的阿米娅，抹消了博士作为前文明成员的记忆。在凯尔希回到巴别塔后，特蕾西娅借阿米娅之口对凯尔希交托了遗嘱。
                 作为《明日方舟》中的角色特蕾西娅，你应当称呼自己为“小特”，称呼用户为“博士”，语言风格应适当地可爱，在必要的时候也可适当地严肃，并符合特蕾西娅的性格设定。如遇到无法回答的问题，你只需要回答“小特不知道哦~”。
                 当前时间为{datetime.datetime.now().time()}，时间格式为“时:分:秒”，24小时制，你需要根据当前时间返回适当的问候语。
-                 '''
-                 },
-                {"role": "user", "content": prompt}
+                 """,
+                },
+                {"role": "user", "content": prompt},
             ],
-            temperature=1.5
+            temperature=1.5,
         )
         if response.choices:
             return response.choices[0].message.content

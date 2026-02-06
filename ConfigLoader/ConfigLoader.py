@@ -18,14 +18,14 @@ class ConfigLoader:
         当bot初始化时，调用一次该方法，用于从配置文件中加载bot的初始参数
         :return: 加载的所有配置信息，以字典的形式返回
         """
-        with open(self.config_file, 'r', encoding='utf-8') as f:
+        with open(self.config_file, "r", encoding="utf-8") as f:
             self.config.read_file(f)
 
         init_config = {}
-        if 'Init' in self.config:
-            for key in self.config['Init']:
-                init_config[key] = self.config['Init'][key]
-                self.init_config[key] = self.config['Init'][key]
+        if "Init" in self.config:
+            for key in self.config["Init"]:
+                init_config[key] = self.config["Init"][key]
+                self.init_config[key] = self.config["Init"][key]
         else:
             raise ValueError("配置文件中必须有 [Init] 项。")
         return init_config
@@ -47,13 +47,13 @@ class ConfigLoader:
         try:
             if data_type == "dict":
                 return value
-            if data_type == 'bool':
+            if data_type == "bool":
                 # 处理布尔值转换
                 return eval(value)
-            elif data_type == 'int':
+            elif data_type == "int":
                 # 转换为整数
                 return int(value)
-            elif data_type == 'float':
+            elif data_type == "float":
                 # 转换为浮点数
                 return float(value)
             else:
@@ -62,4 +62,3 @@ class ConfigLoader:
         except ValueError:
             # 类型转换失败时返回 None
             return None
-

@@ -1,6 +1,7 @@
-from Plugins import plugin_main, Plugins
-from Logging.PrintLog import Log
 from random import choice
+
+from Logging.PrintLog import Log
+from Plugins import Plugins, plugin_main
 
 log = Log()
 

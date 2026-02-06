@@ -1,11 +1,12 @@
-from sqlalchemy import Column, Integer, select, String
+from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
 from CQMessage.CQType import At, Face
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -30,7 +31,9 @@ class QiuDao(Plugins):
         }
         self._score_models = {}
 
-    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
+    @plugin_main(
+        call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True
+    )
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
 
@@ -42,7 +45,10 @@ class QiuDao(Plugins):
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
-            self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询")
+            self.api.groupService.send_group_msg(
+                group_id=group_id,
+                message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询",
+            )
             return
         else:
             stu_id = int(sender_card[0])
@@ -60,14 +66,19 @@ class QiuDao(Plugins):
                 if int(query_user_id) != user_id:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,
-                        message=f"{At(qq=user_id)} " f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
+                        message=f"{At(qq=user_id)} "
+                        f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
                     )
                     return
                 else:
-                    self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} " f"{self.trans_score(score)}")
+                    self.api.groupService.send_group_msg(
+                        group_id=group_id,
+                        message=f"{At(qq=user_id)} " f"{self.trans_score(score)}",
+                    )
             else:
                 self.api.groupService.send_group_msg(
-                    group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！"
+                    group_id=group_id,
+                    message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！",
                 )
 
     @classmethod
@@ -105,7 +116,9 @@ class QiuDao(Plugins):
 
     async def query_by_stu_id(self, stu_id, table_name):
         Scores = self.get_scores_model(table_name)
-        async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
         async with async_sessions() as session:
             async with session.begin():
                 stmt = (

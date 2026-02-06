@@ -1,4 +1,5 @@
 from Logging.PrintLog import Log
+
 log = Log()
 
 
@@ -9,6 +10,7 @@ class GroupMessageEvent:
     'card': '2252321-信10-易铭骏', 'role': 'admin'}, 'raw_message': '123', 'font': 14, 'sub_type': 'normal',
     'message': '123', 'message_format': 'string', 'post_type': 'message', 'group_id': 824395694}
     """
+
     def __init__(self, data):
         sender = data.get("sender")
         self.user_id: int = sender.get("user_id")
@@ -24,4 +26,7 @@ class GroupMessageEvent:
 
     def post_event(self, debug):
         log_message = self.message.replace("&amp;", "&")
-        log.debug(f"群聊 {self.group_id} 消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{log_message}", debug)
+        log.debug(
+            f"群聊 {self.group_id} 消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{log_message}",
+            debug,
+        )

@@ -1,6 +1,8 @@
-from Plugins import plugin_main, Plugins
-from Event.EventHandler import GroupMessageEventHandler
 import subprocess
+
+from Event.EventHandler import GroupMessageEventHandler
+from Plugins import Plugins, plugin_main
+
 
 class Theresac(Plugins):
     def __init__(self, server_address, bot):
@@ -25,5 +27,7 @@ class Theresac(Plugins):
         result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
 
         msg = result.stdout.replace("[CQ:", "\\CQ:").strip()
-        self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=f"{msg}")
+        self.api.GroupService.send_group_msg(
+            self, group_id=event.group_id, message=f"{msg}"
+        )
         return

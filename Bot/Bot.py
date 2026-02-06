@@ -1,24 +1,24 @@
+import logging
+import os
 from configparser import ConfigParser
 from importlib import import_module
-import os
 from pkgutil import iter_modules
+
+from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
-from gevent import spawn, joinall
 
 from ConfigLoader.ConfigLoader import ConfigLoader
 from Event.EventController import Event
 from Interface.Api import Api
 from Logging.PrintLog import Log
-from Plugins import plugins_path, Plugins
+from Plugins import Plugins, plugins_path
 from WebController.WebController import WebController
 
-import logging
-
 # 设置 SQLAlchemy 相关的所有日志为 CRITICAL
-logging.getLogger('sqlalchemy').setLevel(logging.CRITICAL)
-logging.getLogger('sqlalchemy.engine').setLevel(logging.CRITICAL)
-logging.getLogger('sqlalchemy.orm').setLevel(logging.CRITICAL)
+logging.getLogger("sqlalchemy").setLevel(logging.CRITICAL)
+logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
+logging.getLogger("sqlalchemy.orm").setLevel(logging.CRITICAL)
 
 log = Log()
 
@@ -54,24 +54,46 @@ class Bot:
 
             # 需要检查的关键配置项
             required_configs = {
-                "server_address": self.configLoader.get_init_config("server_address", "str"),
-                "client_address": self.configLoader.get_init_config("client_address", "str"),
-                "web_controller": self.configLoader.get_init_config("web_controller", "str"),
+                "server_address": self.configLoader.get_init_config(
+                    "server_address", "str"
+                ),
+                "client_address": self.configLoader.get_init_config(
+                    "client_address", "str"
+                ),
+                "web_controller": self.configLoader.get_init_config(
+                    "web_controller", "str"
+                ),
                 "bot_name": self.configLoader.get_init_config("bot_name", "str"),
                 "debug": self.configLoader.get_init_config("debug", "bool"),
-                "database_enable": self.configLoader.get_init_config("database_enable", "bool"),
-                "database_username": self.configLoader.get_init_config("database_username", "str"),
-                "database_address": self.configLoader.get_init_config("database_address", "str"),
-                "database_passwd": self.configLoader.get_init_config("database_passwd", "str"),
-                "database_name": self.configLoader.get_init_config("database_name", "str"),
+                "database_enable": self.configLoader.get_init_config(
+                    "database_enable", "bool"
+                ),
+                "database_username": self.configLoader.get_init_config(
+                    "database_username", "str"
+                ),
+                "database_address": self.configLoader.get_init_config(
+                    "database_address", "str"
+                ),
+                "database_passwd": self.configLoader.get_init_config(
+                    "database_passwd", "str"
+                ),
+                "database_name": self.configLoader.get_init_config(
+                    "database_name", "str"
+                ),
                 "owner_id": self.configLoader.get_init_config("owner_id", "int"),
-                "assistant_group": self.configLoader.get_init_config("assistant_group", "int"),
+                "assistant_group": self.configLoader.get_init_config(
+                    "assistant_group", "int"
+                ),
             }
 
             # 检查哪些关键配置项是空的
-            missing_configs = [key for key, value in required_configs.items() if value is None]
+            missing_configs = [
+                key for key, value in required_configs.items() if value is None
+            ]
             if missing_configs:
-                raise ValueError(f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}")
+                raise ValueError(
+                    f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}"
+                )
 
             # 将配置值分配给实例变量
             self.server_address = required_configs["server_address"]
@@ -124,7 +146,8 @@ class Bot:
         log.info("开始创建与数据库之间的连接")
         try:
             self.database = create_async_engine(
-                f"postgresql+asyncpg://" f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
+                f"postgresql+asyncpg://"
+                f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
                 poolclass=NullPool,
             )
             log.info("成功连接到bot数据库")
@@ -164,7 +187,7 @@ class Bot:
 
             try:
                 # 从Plugins包动态导入子包
-                plugin_module = import_module(f".{name}", 'Plugins')
+                plugin_module = import_module(f".{name}", "Plugins")
                 # 获取子包中的插件类，假设类名与模块名相同
                 PluginClass = getattr(plugin_module, name)
                 # 实例化插件
@@ -173,7 +196,8 @@ class Bot:
                 # 添加到插件列表
                 self.plugins_list.append(plugin_instance)
                 log.info(
-                    f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}")
+                    f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
+                )
             except Exception as e:
                 log.error(f"加载插件{name}失败：{e}")
                 raise e

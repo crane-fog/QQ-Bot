@@ -1,6 +1,6 @@
 import re
 import types
-from typing import Optional, Any, List
+from typing import Any, List, Optional
 
 from CQMessage.CQType import At, Image
 
@@ -14,8 +14,8 @@ class CQHelper:
         :return: 一个实例化对象，可以直接取出其中的成员变量
         """
         # 匹配消息中的类型和属性
-        message = message.replace('&amp;', '&')
-        cq_pattern = re.compile(r'\[CQ:(\w+),([^\]]+)\]')
+        message = message.replace("&amp;", "&")
+        cq_pattern = re.compile(r"\[CQ:(\w+),([^\]]+)\]")
         match = cq_pattern.search(message)
 
         if not match:
@@ -30,10 +30,10 @@ class CQHelper:
 
         # 解析属性并设置到动态类实例上
         instance = dynamic_class()
-        setattr(instance, 'cq_type', cq_type)
+        setattr(instance, "cq_type", cq_type)
 
         # 改进的属性解析逻辑
-        for attr in re.finditer(r'(\w+)=([^,]+)', attrs):
+        for attr in re.finditer(r"(\w+)=([^,]+)", attrs):
             key = attr.group(1)
             value = attr.group(2)
             setattr(instance, key, value)
@@ -47,7 +47,7 @@ class CQHelper:
         :param message:
         :return:
         """
-        cq_pattern = re.compile(r'\[CQ:(\w+),([\w=,\/.]+)\]')
+        cq_pattern = re.compile(r"\[CQ:(\w+),([\w=,\/.]+)\]")
         matches = cq_pattern.findall(message)
 
         cq_objects = []

@@ -1,5 +1,6 @@
-import aiohttp
 import json
+
+import aiohttp
 import requests
 
 
@@ -37,11 +38,10 @@ class Api:
             self.api = api_instance  # 保存对Api类实例的引用
 
         def send_private_msg(self, user_id, message):
-            params = {
-                "user_id": user_id,
-                "message": message
-            }
-            response = requests.post(self.api.bot_api_address + "send_private_msg", params=params)
+            params = {"user_id": user_id, "message": message}
+            response = requests.post(
+                self.api.bot_api_address + "send_private_msg", params=params
+            )
             return response.json()
 
     class GroupService:
@@ -49,59 +49,94 @@ class Api:
             self.api = api_instance  # 保存对Api类实例的引用
 
         def get_group_member_list(self, group_id):
-            params = {
-                "group_id": group_id
-            }
-            response = requests.post(self.api.bot_api_address + "get_group_member_list", params=params)
+            params = {"group_id": group_id}
+            response = requests.post(
+                self.api.bot_api_address + "get_group_member_list", params=params
+            )
             return response.json()
 
         def get_group_member_info(self, group_id, user_id, no_cache=True):
             params = {"group_id": group_id, "user_id": user_id, "no_cache": no_cache}
-            response = requests.post(self.api.bot_api_address + "get_group_member_info", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "get_group_member_info", params=params
+            )
             return response.json()
 
         def send_group_msg(self, group_id, message):
-            params = {
-                "group_id": group_id,
-                "message": message
-            }
-            response = requests.post(self.api.bot_api_address + "send_group_msg", params=params)
+            params = {"group_id": group_id, "message": message}
+            response = requests.post(
+                self.api.bot_api_address + "send_group_msg", params=params
+            )
             return response.json()
 
         def send_group_record_msg(self, group_id, file_path):
-            params = {"group_id": group_id, "message": [{"type": "record", "data": {"file": f"file://{file_path}"}}]}
-            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            params = {
+                "group_id": group_id,
+                "message": [
+                    {"type": "record", "data": {"file": f"file://{file_path}"}}
+                ],
+            }
+            response = requests.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
         def send_group_img(self, group_id, image_path):
-            params = {"group_id": group_id, "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}]}
-            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            params = {
+                "group_id": group_id,
+                "message": [
+                    {"type": "image", "data": {"file": f"file://{image_path}"}}
+                ],
+            }
+            response = requests.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
         def send_group_msg_with_img(self, group_id, message, image_path):
             params = {
                 "group_id": group_id,
-                "message": [{"type": "text", "data": {"text": message}}, {"type": "image", "data": {"file": f"file://{image_path}"}}],
+                "message": [
+                    {"type": "text", "data": {"text": message}},
+                    {"type": "image", "data": {"file": f"file://{image_path}"}},
+                ],
             }
-            response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
+            response = requests.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
         def send_group_file(self, group_id, file_path, name, folder_id=None):
             if folder_id:
-                params = json.dumps({"group_id": group_id, "file": f"file://{file_path}", "name": name, "folder_id": folder_id})
+                params = json.dumps(
+                    {
+                        "group_id": group_id,
+                        "file": f"file://{file_path}",
+                        "name": name,
+                        "folder_id": folder_id,
+                    }
+                )
             else:
-                params = json.dumps({"group_id": group_id, "file": f"file://{file_path}", "name": name})
+                params = json.dumps(
+                    {"group_id": group_id, "file": f"file://{file_path}", "name": name}
+                )
             headers = {"Content-Type": "application/json"}
-            response = requests.post(self.api.bot_api_address + "upload_group_file", data=params, headers=headers)
+            response = requests.post(
+                self.api.bot_api_address + "upload_group_file",
+                data=params,
+                headers=headers,
+            )
             return response.json()
 
         def set_group_ban(self, group_id, user_id, duration):
             params = {
                 "group_id": group_id,
                 "user_id": user_id,
-                "duration": duration  # 禁言时长，单位为秒
+                "duration": duration,  # 禁言时长，单位为秒
             }
-            response = requests.post(self.api.bot_api_address + "set_group_ban", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "set_group_ban", params=params
+            )
             return response.json()
 
         def set_group_kick(self, group_id, user_id):
@@ -109,14 +144,18 @@ class Api:
                 "group_id": group_id,
                 "user_id": user_id,
             }
-            response = requests.post(self.api.bot_api_address + "set_group_kick", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "set_group_kick", params=params
+            )
             return response.json()
 
         def delete_msg(self, message_id):
             params = {
                 "message_id": message_id,
             }
-            response = requests.post(self.api.bot_api_address + "delete_msg", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "delete_msg", params=params
+            )
             return response.json()
 
         def set_group_add_request(self, flag, approve="true", reason=""):
@@ -124,32 +163,32 @@ class Api:
                 "flag": flag,
                 "sub_type": "add",
                 "approve": approve,
-                "reason": reason
+                "reason": reason,
             }
-            response = requests.post(self.api.bot_api_address + "set_group_add_request", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "set_group_add_request", params=params
+            )
             return response.json()
 
         def get_group_info(self, group_id):
-            params = {
-                "group_id": group_id
-            }
-            response = requests.post(self.api.bot_api_address + "get_group_info", params=params)
+            params = {"group_id": group_id}
+            response = requests.post(
+                self.api.bot_api_address + "get_group_info", params=params
+            )
             return response.json()
 
         def set_msg_emoji_like(self, message_id, emoji_id):
-            params = {
-                "message_id": message_id,
-                "emoji_id": emoji_id
-            }
-            response = requests.post(self.api.bot_api_address + "set_msg_emoji_like", params=params)
+            params = {"message_id": message_id, "emoji_id": emoji_id}
+            response = requests.post(
+                self.api.bot_api_address + "set_msg_emoji_like", params=params
+            )
             return response.json()
 
         def send_group_poke(self, group_id, user_id):
-            params = {
-                "group_id": group_id,
-                "user_id": user_id
-            }
-            response = requests.post(self.api.bot_api_address + "group_poke", params=params)
+            params = {"group_id": group_id, "user_id": user_id}
+            response = requests.post(
+                self.api.bot_api_address + "group_poke", params=params
+            )
             return response.json()
 
     class MessageService:
@@ -160,5 +199,7 @@ class Api:
             params = {
                 "message_id": message_id,
             }
-            response = requests.post(self.api.bot_api_address + "get_msg", params=params)
+            response = requests.post(
+                self.api.bot_api_address + "get_msg", params=params
+            )
             return response.json()
