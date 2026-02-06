@@ -17,8 +17,8 @@ class TheresaCard(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                检查高程群名片格式，仅限群管理员使用
-                                usage: Theresa card
+                                检查高程群名片格式，将不符合要求的踢出，仅限群管理员使用
+                                usage: Theresa card (kick/debug)
                             """
         self.init_status()
 

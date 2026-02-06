@@ -81,7 +81,7 @@ class TheresaChat(Plugins):
             return
 
         r = random.random()
-        if (("牢普" in clean_message) or ("普瑞赛斯" in clean_message)) and r > 0.8:
+        if (("牢普" in clean_message) or ("普瑞赛斯" in clean_message)) and r > 0.9:
             msg_list = [
                 "我一直都看着你…永远…………👁️",
                 "这里万籁俱寂……太安静了……别留下我……",
