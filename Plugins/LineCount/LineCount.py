@@ -1,11 +1,12 @@
-from sqlalchemy import Column, Integer, select, String
+from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
+
 from CQMessage.CQType import At, Face
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -41,7 +42,10 @@ class LineCount(Plugins):
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
-            self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询")
+            self.api.groupService.send_group_msg(
+                group_id=group_id,
+                message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询",
+            )
             return
         else:
             stu_id = int(sender_card[0])
@@ -61,7 +65,8 @@ class LineCount(Plugins):
                 if int(query_user_id) != user_id:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,
-                        message=f"{At(qq=user_id)} " f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
+                        message=f"{At(qq=user_id)} "
+                        f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
                     )
                     return
                 else:
@@ -71,7 +76,8 @@ class LineCount(Plugins):
                     )
             else:
                 self.api.groupService.send_group_msg(
-                    group_id=group_id, message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！"
+                    group_id=group_id,
+                    message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！",
                 )
 
     def get_counts_model(self, table_name):
@@ -90,7 +96,9 @@ class LineCount(Plugins):
 
     async def query_by_stu_id(self, stu_id, table_name):
         Counts = self.get_counts_model(table_name)
-        async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
         async with async_sessions() as session:
             async with session.begin():
                 stmt = (
@@ -101,7 +109,11 @@ class LineCount(Plugins):
                 result = await session.execute(stmt)
                 data = result.first()
                 if data:
-                    return {"rank": data.rank, "count": data.count, "user_id": data.qq_id}
+                    return {
+                        "rank": data.rank,
+                        "count": data.count,
+                        "user_id": data.qq_id,
+                    }
                 return None
 
     Basement = declarative_base()

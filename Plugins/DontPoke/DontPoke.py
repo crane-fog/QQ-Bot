@@ -1,9 +1,10 @@
+import time
+from random import randint
+
+from CQMessage.CQType import At, Face
 from Event.EventHandler.NoticeEventHandler import GroupPokeEvent
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At, Face
-from random import randint
-import time
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -32,7 +33,7 @@ class DontPoke(Plugins):
         group_id = event.group_id
         target_id = event.target_id
         self_id = event.self_id
-        if (target_id != self_id):
+        if target_id != self_id:
             return
 
         current_time = time.time()
@@ -70,9 +71,11 @@ class DontPoke(Plugins):
                 "扑棱我干哈？",
                 "把你种进土里，你重新长吧",
                 "哼~",
-                "哎呦疼——"
+                "哎呦疼——",
             ]
-            message = f"{At(qq=user_id)} " + message_list[randint(0, len(message_list) - 1)]
+            message = (
+                f"{At(qq=user_id)} " + message_list[randint(0, len(message_list) - 1)]
+            )
         self.api.groupService.send_group_msg(group_id=group_id, message=message)
 
         repoke_frequency = self.config.get("repoke_frequency")

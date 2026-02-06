@@ -1,10 +1,12 @@
-from sqlalchemy import Column, Integer, select, String
+import os
+
+from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
-import os
+
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
-from Plugins import plugin_main, Plugins
+from Plugins import Plugins, plugin_main
 
 
 class LineCountData(Plugins):
@@ -42,13 +44,19 @@ class LineCountData(Plugins):
         if not event.user_id == self.bot.owner_id:
             return
 
-        filename = f"{os.path.dirname(os.path.abspath(__file__))}/data/" + message.split(" ")[1]
+        filename = (
+            f"{os.path.dirname(os.path.abspath(__file__))}/data/"
+            + message.split(" ")[1]
+        )
         table_name = message.split(" ")[2]
 
         with open(filename, "r", encoding="utf-8") as f:
             lines = f.readlines()
 
-        self.api.groupService.send_group_msg(group_id=event.group_id, message=f"正在向表 {table_name} 导入{len(lines)}条数据")
+        self.api.groupService.send_group_msg(
+            group_id=event.group_id,
+            message=f"正在向表 {table_name} 导入{len(lines)}条数据",
+        )
 
         CountsModel = self.get_counts_model(table_name)
 
@@ -59,11 +67,15 @@ class LineCountData(Plugins):
 
         data_list.sort(key=lambda x: x["count"])
 
-        async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
         async with async_sessions() as session:
             async with session.begin():
                 for index, data in enumerate(data_list):
-                    count_info = CountsModel(stu_id=data["stu_id"], count=data["count"], rank=index)
+                    count_info = CountsModel(
+                        stu_id=data["stu_id"], count=data["count"], rank=index
+                    )
                     await session.merge(count_info)
         return
 

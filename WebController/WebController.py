@@ -1,10 +1,18 @@
 import configparser
-
-import requests
-from gevent.pywsgi import WSGIServer
-from flask import Flask, render_template, send_from_directory, Response, jsonify, session, request
 import logging
 import os
+
+import requests
+from flask import (
+    Flask,
+    Response,
+    jsonify,
+    render_template,
+    request,
+    send_from_directory,
+    session,
+)
+from gevent.pywsgi import WSGIServer
 
 from Plugins import Plugins
 
@@ -15,68 +23,77 @@ last_cleared_line = 0
 def create_web_app(web_controller):
     basedir = os.path.abspath(os.path.dirname(__file__))
     # 设置模板文件夹路径
-    template_dir = os.path.join(basedir, 'templates')
+    template_dir = os.path.join(basedir, "templates")
     # 静态文件目录路径
-    static_dir = os.path.join(basedir, 'static')
+    static_dir = os.path.join(basedir, "static")
 
-    app = Flask("Web Controller", template_folder=template_dir, static_folder=static_dir)
-    app.secret_key = 'just monika'
+    app = Flask(
+        "Web Controller", template_folder=template_dir, static_folder=static_dir
+    )
+    app.secret_key = "just monika"
 
-    @app.route('/')
+    @app.route("/")
     def index():
-        return render_template('index.html')
+        return render_template("index.html")
 
-    @app.route('/baseInfo.html')
+    @app.route("/baseInfo.html")
     def base_info():
         bot_info = WebController.get_bot_info(web_controller)
         plugins_info = WebController.get_plugins_init_info(web_controller)
 
-        return render_template('baseInfo.html', bot_info=bot_info, plugins_info=plugins_info)
+        return render_template(
+            "baseInfo.html", bot_info=bot_info, plugins_info=plugins_info
+        )
 
-    @app.route('/log.html')
+    @app.route("/log.html")
     def log():
-        return render_template('log.html')
+        return render_template("log.html")
 
-    @app.route('/leave-log.html')
+    @app.route("/leave-log.html")
     def leave_log():
         global total_lines_read, last_cleared_line
         total_lines_read = last_cleared_line
         return jsonify(success=True)
 
-    @app.route('/plugins.html')
+    @app.route("/plugins.html")
     def plugins():
-        plugins_info = WebController.get_all_plugins_info(web_controller)  # 假设这是从数据库获取信息的函数
-        return render_template('plugins.html', plugins=plugins_info)
+        plugins_info = WebController.get_all_plugins_info(
+            web_controller
+        )  # 假设这是从数据库获取信息的函数
+        return render_template("plugins.html", plugins=plugins_info)
 
-    @app.route('/log.out')
+    @app.route("/log.out")
     def log_file():
         global total_lines_read, last_cleared_line
 
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-        log_file_path = os.path.join(parent_dir, 'log.out')
+        log_file_path = os.path.join(parent_dir, "log.out")
 
         lines_to_send = []
-        with open(log_file_path, 'r', encoding="utf-8") as file:  # 以读模式打开文件
+        with open(log_file_path, "r", encoding="utf-8") as file:  # 以读模式打开文件
             all_lines = file.readlines()
             lines_to_send = all_lines[total_lines_read:]  # 提取新的日志行
             total_lines_read = len(all_lines)  # 更新读取的总行数
 
         # 处理错误标记并准备写回文件
-        new_lines = [line.replace('[ERROR]', '[error]') if '[ERROR]' in line else line for line in all_lines]
+        new_lines = [
+            line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line
+            for line in all_lines
+        ]
 
         # 将更新后的内容写回文件
-        with open(log_file_path, 'w', encoding="utf-8") as file:
+        with open(log_file_path, "w", encoding="utf-8") as file:
             file.writelines(new_lines)
 
-        return Response(''.join(lines_to_send), mimetype='text/plain')
+        return Response("".join(lines_to_send), mimetype="text/plain")
 
-    @app.route('/clear-log', methods=["POST"])
+    @app.route("/clear-log", methods=["POST"])
     def clear_log():
         global total_lines_read, last_cleared_line
         last_cleared_line = total_lines_read
         return jsonify(success=True)
 
-    @app.route('/save_config', methods=['POST'])
+    @app.route("/save_config", methods=["POST"])
     def save_config():
         config_data = request.json
         print(config_data)
@@ -90,7 +107,7 @@ def create_web_app(web_controller):
 
 
 class WebController:
-    flask_log = logging.getLogger('werkzeug')
+    flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.ERROR)
 
     def __init__(self, bot):
@@ -106,15 +123,15 @@ class WebController:
         basedir = os.path.abspath(os.path.dirname(__file__))
 
         save_path = os.path.join(basedir, save_path)
-        with open(save_path, 'wb') as f:
+        with open(save_path, "wb") as f:
             f.write(response.content)
 
         bot_name = self.bot.bot_name
         return {
-            'avatar': 'bot-avatar.png',
-            'qq': user_id,
-            'nickname': nickname,
-            "name": bot_name
+            "avatar": "bot-avatar.png",
+            "qq": user_id,
+            "nickname": nickname,
+            "name": bot_name,
         }
 
     def get_plugins_init_info(self):
@@ -127,7 +144,10 @@ class WebController:
             plugins_name = plugins.name
             plugins_type = plugins.type
             plugins_author = plugins.author
-            plugins_info = {"name": plugins_name, "info": f"{plugins_name}——类型：{plugins_type}, 作者：{plugins_author}"}
+            plugins_info = {
+                "name": plugins_name,
+                "info": f"{plugins_name}——类型：{plugins_type}, 作者：{plugins_author}",
+            }
             if plugins_status == "running":
                 active_plugins.append(plugins_info)
             elif plugins_status == "disable":
@@ -177,7 +197,7 @@ class WebController:
             plugins_info[plugins_name]["other_info"] = {
                 "author": plugins_author,
                 "introduction": plugins_introduction,
-                "error_info": plugins_error_info
+                "error_info": plugins_error_info,
             }
             plugins_info[plugins_name]["config"] = plugins.config
 
@@ -235,7 +255,11 @@ class WebController:
                     plugins_info[item] = {
                         "type": "Unknown (Disabled)",
                         "status": "disable",
-                        "other_info": {"author": "Unknown", "introduction": "插件未加载，请启用并重启 Bot 以加载。", "error_info": ""},
+                        "other_info": {
+                            "author": "Unknown",
+                            "introduction": "插件未加载，请启用并重启 Bot 以加载。",
+                            "error_info": "",
+                        },
                         "config": plugin_config,
                     }
 
@@ -252,7 +276,7 @@ class WebController:
 
         enable = "True" if new_status == "running" else "False"
         try:
-            config.read(config_path, encoding='utf-8')
+            config.read(config_path, encoding="utf-8")
             if not config.has_section(plugin_name):
                 config.add_section(plugin_name)
 
@@ -273,7 +297,7 @@ class WebController:
     def save_config(self, config_data):
         plugin_name = config_data.get("plugin_name")
         if not plugin_name:
-            return {'success': False, "message": "缺少插件名称"}
+            return {"success": False, "message": "缺少插件名称"}
 
         try:
             from Plugins import plugins_path
@@ -300,7 +324,9 @@ class WebController:
                     new_groups = set(map(str, raw_groups))
                 elif isinstance(raw_groups, str):
                     if raw_groups.strip():
-                        new_groups = set(x.strip() for x in raw_groups.split(",") if x.strip())
+                        new_groups = set(
+                            x.strip() for x in raw_groups.split(",") if x.strip()
+                        )
 
                 for section in g_config.sections():
                     if g_config.has_option(section, plugin_name):
@@ -340,10 +366,10 @@ class WebController:
             return {"success": True}
 
         except Exception as e:
-            return {'success': False, "message": f"后端执行操作时出错：{e}"}
+            return {"success": False, "message": f"后端执行操作时出错：{e}"}
 
 
 if __name__ == "__main__":
     bot = None  # 创建或获取你的bot对象
     web_controller = WebController(bot)
-    web_controller.run('127.0.0.1', 3000)
+    web_controller.run("127.0.0.1", 3000)

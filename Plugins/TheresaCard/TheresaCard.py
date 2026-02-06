@@ -1,6 +1,7 @@
 import re
-from Plugins import plugin_main, Plugins
+
 from Logging.PrintLog import Log
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -25,12 +26,16 @@ class TheresaCard(Plugins):
     @plugin_main(call_word=["Theresa card"])
     async def main(self, event, debug):
         permissionList = [self.bot.owner_id]
-        if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+        if (event.user_id not in permissionList) and (
+            event.role not in ["admin", "owner"]
+        ):
             return
 
         kick_flag = event.message == "Theresa card kick"
 
-        group_member_list = self.api.GroupService.get_group_member_list(self, group_id=event.group_id).get("data")
+        group_member_list = self.api.GroupService.get_group_member_list(
+            self, group_id=event.group_id
+        ).get("data")
         ignored_ids: list = self.config.get("ignored_ids")
 
         not_allowed_ids = []
@@ -48,10 +53,18 @@ class TheresaCard(Plugins):
                 log.info(f"用户 {user_id} 的名片格式不符合要求: {card}")
         if not_allowed_ids:
             if event.message == "Theresa card debug":
-                message = "\n".join([f"{user_id} 名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)])
+                message = "\n".join(
+                    [
+                        f"{user_id} 名片: {card}"
+                        for user_id, card in zip(not_allowed_ids, not_allowed_cards)
+                    ]
+                )
             else:
                 message = "\n".join(
-                    [f"      [CQ:at,qq={user_id}] \n名片: {card}" for user_id, card in zip(not_allowed_ids, not_allowed_cards)]
+                    [
+                        f"      [CQ:at,qq={user_id}] \n名片: {card}"
+                        for user_id, card in zip(not_allowed_ids, not_allowed_cards)
+                    ]
                 )
             if kick_flag:
                 message += "\n\n已将不符合要求的成员踢出群聊"
@@ -59,8 +72,12 @@ class TheresaCard(Plugins):
                 message += "\n\n以上成员群名片格式不符合要求，请参照群公告修改"
         else:
             message = "所有群成员名片格式均符合要求"
-        self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
+        self.api.GroupService.send_group_msg(
+            self, group_id=event.group_id, message=message
+        )
         if kick_flag:
             for user_id in not_allowed_ids:
-                self.api.GroupService.set_group_kick(self, group_id=event.group_id, user_id=user_id)
+                self.api.GroupService.set_group_kick(
+                    self, group_id=event.group_id, user_id=user_id
+                )
         return

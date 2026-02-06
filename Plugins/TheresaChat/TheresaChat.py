@@ -1,14 +1,16 @@
-import re
-import os
-import time
-import random
-from collections import deque
-from Event.EventHandler import GroupMessageEventHandler
-from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from openai import OpenAI
 import datetime
 import json
+import os
+import random
+import re
+import time
+from collections import deque
+
+from openai import OpenAI
+
+from Event.EventHandler import GroupMessageEventHandler
+from Logging.PrintLog import Log
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -65,13 +67,18 @@ class TheresaChat(Plugins):
             return  # 忽略空消息
 
         self.group_context[group_id].append(
-            {"role": "user", "content": f"{event.nickname}(群名片：{event.card}，id：{event.user_id})说：{clean_message}"}
+            {
+                "role": "user",
+                "content": f"{event.nickname}(群名片：{event.card}，id：{event.user_id})说：{clean_message}",
+            }
         )
 
         if clean_message == "Theresa chat clear" and event.user_id == self.bot.owner_id:
             self.group_context[group_id].clear()
             log.debug(f"插件：{self.name}在群{group_id}被清除上下文", debug)
-            self.api.groupService.send_group_msg(group_id=group_id, message="上下文已清除")
+            self.api.groupService.send_group_msg(
+                group_id=group_id, message="上下文已清除"
+            )
             return
 
         # 冷却检查
@@ -92,21 +99,30 @@ class TheresaChat(Plugins):
             ]
             msg = random.choice(msg_list)
             self.api.groupService.send_group_msg(group_id=group_id, message=msg)
-            log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复', debug)
+            log.debug(
+                f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
+                debug,
+            )
             return
 
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if ((not ("小特" in clean_message)) and r > 0.01) or ("Theresa" in clean_message):
+        if ((not ("小特" in clean_message)) and r > 0.01) or (
+            "Theresa" in clean_message
+        ):
             return
 
-        log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
+        log.debug(
+            f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug
+        )
 
         try:
             # 获取大模型回复
             response = self.get_api_response(list(self.group_context[group_id]))
             if response:
-                self.group_context[group_id].append({"role": "assistant", "content": response})
+                self.group_context[group_id].append(
+                    {"role": "assistant", "content": response}
+                )
                 if "[NO REPLY]" not in response:
                     # 更新冷却时间
                     self.group_cooldown[group_id] = time.time()
@@ -119,7 +135,9 @@ class TheresaChat(Plugins):
                     #     self.api.groupService.send_group_msg(group_id=group_id, message=response)
                     # else:
                     #     self.api.groupService.send_group_msg_with_img(group_id=group_id, message=response, image_path=face_files.get(image_id))
-                    self.api.groupService.send_group_msg(group_id=group_id, message=response)
+                    self.api.groupService.send_group_msg(
+                        group_id=group_id, message=response
+                    )
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
@@ -152,7 +170,7 @@ class TheresaChat(Plugins):
                     特蕾西娅在W等萨卡兹雇佣兵护送罗德岛号的过程中带领巴别塔成员协助了W等人，并将受伤的W、伊内丝和赫德雷接到了罗德岛号上面。之后，W出于对特蕾西娅的尊敬而加入巴别塔为特蕾西娅服务，而赫德雷和伊内丝则继续作为雇佣兵与巴别塔保持合作。
                     1094年，特雷西斯受维多利亚王国卡文迪许大公爵邀请率军前去伦蒂尼姆后，巴别塔在博士的指挥下对卡兹戴尔发起了全面进攻。但是博士与特雷西斯早已暗中达成合作，特雷西斯的刺客攻入被博士解除防御系统的巴别塔罗德岛本舰，刺杀了特蕾西娅（理由是本纪元的源石发展轨迹与前纪元的设计初衷不符，在修正源石发展路线上，特蕾西娅的主张是最大的阻碍）。在弥留之际，特蕾西娅将“文明的存续”交托给年幼的阿米娅，抹消了博士作为前文明成员的记忆。在凯尔希回到巴别塔后，特蕾西娅借阿米娅之口对凯尔希交托了遗嘱。
                 作为《明日方舟》中的角色特蕾西娅，你应当称呼自己为“小特”，以昵称/群名片+“博士”的方式称呼用户，语言风格应适当地可爱，在必要的时候也可适当地严肃，并符合特蕾西娅的性格设定。
-                
+
                 你现在在一个群聊中。请根据以下的上下文判断是否需要回复。
                 如果用户在与你对话，或者讨论的话题与你相关，请回复符合你人设的内容。
 
@@ -183,7 +201,9 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = client.chat.completions.create(model="deepseek-chat", messages=messages, temperature=1.5)
+        response = client.chat.completions.create(
+            model="deepseek-chat", messages=messages, temperature=1.5
+        )
         if response.choices:
             return response.choices[0].message.content
         else:
@@ -207,7 +227,7 @@ class TheresaChat(Plugins):
                     特蕾西娅在W等萨卡兹雇佣兵护送罗德岛号的过程中带领巴别塔成员协助了W等人，并将受伤的W、伊内丝和赫德雷接到了罗德岛号上面。之后，W出于对特蕾西娅的尊敬而加入巴别塔为特蕾西娅服务，而赫德雷和伊内丝则继续作为雇佣兵与巴别塔保持合作。
                     1094年，特雷西斯受维多利亚王国卡文迪许大公爵邀请率军前去伦蒂尼姆后，巴别塔在博士的指挥下对卡兹戴尔发起了全面进攻。但是博士与特雷西斯早已暗中达成合作，特雷西斯的刺客攻入被博士解除防御系统的巴别塔罗德岛本舰，刺杀了特蕾西娅（理由是本纪元的源石发展轨迹与前纪元的设计初衷不符，在修正源石发展路线上，特蕾西娅的主张是最大的阻碍）。在弥留之际，特蕾西娅将“文明的存续”交托给年幼的阿米娅，抹消了博士作为前文明成员的记忆。在凯尔希回到巴别塔后，特蕾西娅借阿米娅之口对凯尔希交托了遗嘱。
                 作为《明日方舟》中的角色特蕾西娅，你应当称呼自己为“小特”，以昵称/群名片+“博士”的方式称呼用户，语言风格应适当地可爱，在必要的时候也可适当地严肃，并符合特蕾西娅的性格设定。
-                
+
                 你现在在一个群聊中，你根据以下的上下文准备回复一条消息，这条消息的内容是
                 \"\"\"
                 {msg_to_send}
@@ -227,7 +247,10 @@ class TheresaChat(Plugins):
         messages.extend(context_messages)
 
         response = client.chat.completions.create(
-            model="deepseek-chat", messages=messages, temperature=0.0, response_format={"type": "json_object"}
+            model="deepseek-chat",
+            messages=messages,
+            temperature=0.0,
+            response_format={"type": "json_object"},
         )
         if response.choices:
             return json.loads(response.choices[0].message.content).get("image_id")

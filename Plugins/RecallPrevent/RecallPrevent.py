@@ -1,10 +1,12 @@
+import json
+import random
+
+import redis
+
+from CQMessage.CQType import At
 from Event.EventHandler.NoticeEventHandler import GroupRecallEvent
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At
-import redis
-import random
-import json
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -35,7 +37,9 @@ class RecallPrevent(Plugins):
             host = self.config.get("host", "localhost")
             port = int(self.config.get("port", 6379))
             db = int(self.config.get("db", 0))
-            self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
+            self.redis_client = redis.Redis(
+                host=host, port=port, db=db, decode_responses=True
+            )
         group_id = event.group_id
 
         for_administer = bool(self.config.get("for_administer"))
@@ -44,11 +48,8 @@ class RecallPrevent(Plugins):
             # 获取消息和消息ID
             message = event.message
             sender = event.card
-            data = {
-                "message": message,
-                "card": sender
-            }
-            if not for_administer and event.role in ['admin','owner']:
+            data = {"message": message, "card": sender}
+            if not for_administer and event.role in ["admin", "owner"]:
                 return
 
             message_id = event.message_id
@@ -73,8 +74,8 @@ class RecallPrevent(Plugins):
 
         try:
             response_data = json.loads(response)
-            card_cuts = response_data['card'].split("-")
-            recalled_message = response_data['message']
+            card_cuts = response_data["card"].split("-")
+            recalled_message = response_data["message"]
         except Exception as e:
             log.error(f"解析 Redis 数据时出错：{e}")
             return
@@ -86,9 +87,14 @@ class RecallPrevent(Plugins):
         min_ban_time = ban_time_cuts[0].split(":")
         max_ban_time = ban_time_cuts[1].split(":")
         ignored_ids: list = self.config.get("ignored_ids")
-        duration = random.randint(int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 +
-                                  int(min_ban_time[2]), int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 +
-                                  int(max_ban_time[2]))
+        duration = random.randint(
+            int(min_ban_time[0]) * 3600
+            + int(min_ban_time[1]) * 60
+            + int(min_ban_time[2]),
+            int(max_ban_time[0]) * 3600
+            + int(max_ban_time[1]) * 60
+            + int(max_ban_time[2]),
+        )
 
         if len(card_cuts) == 3:
             if card_cuts[1] == "助教":
@@ -100,19 +106,29 @@ class RecallPrevent(Plugins):
         if user_id == operator_id:  # 正式进入插件运行部分
             reply_message = f"{At(qq=user_id)} 撤回的消息是：{recalled_message}"
             try:
-                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
+                self.api.groupService.send_group_msg(
+                    group_id=group_id, message=reply_message
+                )
             except Exception as e:
                 log.error(f"插件：{self.name}运行时出错：{e}")
             else:
-                log.debug(f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}", debug)
+                log.debug(
+                    f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
+                    debug,
+                )
 
             if ban:
                 try:
-                    self.api.groupService.set_group_ban(group_id=group_id, user_id=event.user_id, duration=duration)
+                    self.api.groupService.set_group_ban(
+                        group_id=group_id, user_id=event.user_id, duration=duration
+                    )
                 except Exception as e:
                     log.error(f"插件：{self.name}运行时出错：{e}")
                 else:
-                    log.debug(f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒", debug)
+                    log.debug(
+                        f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
+                        debug,
+                    )
         return
 
     def get_message(self, message_id):

@@ -1,4 +1,5 @@
 import asyncio
+
 from Bot.Bot import Bot
 
 
@@ -9,7 +10,8 @@ async def main():
         config_file=config_file,
     )
     await bot.initialize()
-    #bot.runWebCtrler()
+    # bot.runWebCtrler()
     bot.run()
+
 
 asyncio.run(main())

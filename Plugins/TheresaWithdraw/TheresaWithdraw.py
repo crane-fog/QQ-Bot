@@ -1,10 +1,12 @@
-from Event.EventHandler import GroupMessageEventHandler
-from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At
 import re
 
+from CQMessage.CQType import At
+from Event.EventHandler import GroupMessageEventHandler
+from Logging.PrintLog import Log
+from Plugins import Plugins, plugin_main
+
 log = Log()
+
 
 class TheresaWithdraw(Plugins):
     def __init__(self, server_address, bot):
@@ -21,7 +23,7 @@ class TheresaWithdraw(Plugins):
     @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
-        pattern = re.compile(r'(\[CQ:reply,id=.+\])(.+)')
+        pattern = re.compile(r"(\[CQ:reply,id=.+\])(.+)")
         p = pattern.match(message)
         if p is None:
             return
@@ -33,20 +35,24 @@ class TheresaWithdraw(Plugins):
         try:
             # 检查用户权限
             permissionList = [self.bot.owner_id]
-            if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+            if (event.user_id not in permissionList) and (
+                event.role not in ["admin", "owner"]
+            ):
                 return
             else:
-                target_message_id = message[13:message.find("]")]
+                target_message_id = message[13 : message.find("]")]
                 reply_message = ""
                 self.api.groupService.delete_msg(message_id=target_message_id)
                 self.api.groupService.delete_msg(message_id=event.message_id)
 
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message=reply_message
+            )
             log.debug(f"插件：{self.name}运行正确，撤回用户", debug)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
-                group_id=event.group_id, 
-                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}"
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
             )

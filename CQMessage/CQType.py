@@ -3,7 +3,11 @@ class CQMessage:
         self.cq_type = self.__class__.__name__.lower()
 
     def __str__(self):
-        attrs = [f'{key}={value}' for key, value in self.__dict__.items() if not (key == 'cq_type' or value is None)]
+        attrs = [
+            f"{key}={value}"
+            for key, value in self.__dict__.items()
+            if not (key == "cq_type" or value is None)
+        ]
         return f'[CQ:{self.cq_type},{",".join(attrs)}]'
 
 
@@ -40,7 +44,9 @@ class Image(CQMessage):
 
 
 class Record(CQMessage):
-    def __init__(self, file, magic=None, url=None, cache=None, proxy=None, timeout=None):
+    def __init__(
+        self, file, magic=None, url=None, cache=None, proxy=None, timeout=None
+    ):
         """
         CQ:record 语音
         :param file: 语音文件名

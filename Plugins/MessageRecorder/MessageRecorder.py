@@ -1,21 +1,26 @@
-from sqlalchemy import Column, BigInteger, Text, DateTime, func
+from sqlalchemy import BigInteger, Column, DateTime, Text, func
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import sessionmaker
 from sqlalchemy.ext.declarative import declarative_base
-from Plugins import plugin_main, Plugins
+from sqlalchemy.orm import sessionmaker
+
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
+from Plugins import Plugins, plugin_main
 
 Base = declarative_base()
 
+
 class Message(Base):
-    __tablename__ = 'messages'
+    __tablename__ = "messages"
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     user_id = Column(BigInteger, nullable=False)
     group_id = Column(BigInteger, nullable=False)
     msg = Column(Text, nullable=False)
-    send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    send_time = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now()
+    )
     msg_id = Column(BigInteger, nullable=False)
+
 
 class MessageRecorder(Plugins):
     def __init__(self, server_address, bot):
@@ -31,8 +36,15 @@ class MessageRecorder(Plugins):
 
     @plugin_main(check_call_word=False, check_group=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
-        async_sessions = sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
         async with async_sessions() as session:
             async with session.begin():
-                new_msg = Message(user_id=event.user_id, group_id=event.group_id, msg=event.message, msg_id=event.message_id)
+                new_msg = Message(
+                    user_id=event.user_id,
+                    group_id=event.group_id,
+                    msg=event.message,
+                    msg_id=event.message_id,
+                )
                 session.add(new_msg)

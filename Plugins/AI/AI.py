@@ -1,11 +1,13 @@
-import re
 import os
+import re
 import time
+
+from openai import OpenAI
+
+from CQMessage.CQType import At
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
-from Plugins import plugin_main, Plugins
-from CQMessage.CQType import At
-from openai import OpenAI
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -35,8 +37,13 @@ class AI(Plugins):
 
         # 检查是否是纯ask命令
         if message.strip() == f"monika ask":
-            self.api.groupService.send_group_msg(group_id=event.group_id, message="请输入你的问题哦")
-            log.debug(f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复", debug)
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message="请输入你的问题哦"
+            )
+            log.debug(
+                f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复",
+                debug,
+            )
             return
 
         # 冷却检查
@@ -46,7 +53,8 @@ class AI(Plugins):
         if current_time - last_ask_time < self.cooldown_time:
             remaining = self.cooldown_time - int(current_time - last_ask_time)
             self.api.groupService.send_group_msg(
-                group_id=event.group_id, message=f"{At(qq=event.user_id)} 提问太快啦，请等待{remaining}秒后再问哦~"
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 提问太快啦，请等待{remaining}秒后再问哦~",
             )
             return
 
@@ -54,26 +62,40 @@ class AI(Plugins):
             # 更新用户最后提问时间
             self.user_cooldown[event.user_id] = current_time
 
-            self.api.groupService.send_group_msg(group_id=event.group_id, message="小莫正在思考中~")
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message="小莫正在思考中~"
+            )
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
+            question = re.sub(
+                r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]
+            ).strip()
 
-            log.debug(f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}", debug)
+            log.debug(
+                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
+                debug,
+            )
 
             # 获取大模型回复
             response = self.get_api_response(question)
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id, message=reply_message
+            )
 
-            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            log.debug(
+                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug
+            )
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
-            self.api.groupService.send_group_msg(group_id=event.group_id, message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}")
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
+            )
 
     def get_api_response(self, prompt):
         """
@@ -90,7 +112,11 @@ class AI(Plugins):
         base_url = self.config.get("base_url", self.base_url)
         client = OpenAI(api_key=api_token, base_url=base_url)
 
-        response = client.chat.completions.create(model="deepseek-chat", messages=[{"role": "user", "content": prompt}], temperature=1.5)
+        response = client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[{"role": "user", "content": prompt}],
+            temperature=1.5,
+        )
         if response.choices:
             return response.choices[0].message.content
         else:

@@ -1,5 +1,5 @@
-from Plugins import plugin_main, Plugins
 from Logging.PrintLog import Log
+from Plugins import Plugins, plugin_main
 
 log = Log()
 
@@ -8,6 +8,7 @@ class TestPlugins(Plugins):
     """
     这是一个插件的模板，开发一个新的插件至少应该包含以下部分
     """
+
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
         self.name = "TestPlugins"  # 插件的名字（一定要和类的名字完全一致（主要是我能力有限，否则会报错））

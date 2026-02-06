@@ -35,26 +35,31 @@ class SpecificLoggerFilter(logging.Filter):
 
 # 创建控制台logger
 def setup_console_logger():
-    console_logger = logging.getLogger('ConsoleLogger')
+    console_logger = logging.getLogger("ConsoleLogger")
     console_logger.setLevel(logging.DEBUG)
     console_handler = logging.StreamHandler()
-    console_formatter = ColoredConsoleFormatter('%(asctime)s - [%(levelname)s] - %(message)s',
-                                                datefmt='%Y.%m.%d-%H:%M:%S')
+    console_formatter = ColoredConsoleFormatter(
+        "%(asctime)s - [%(levelname)s] - %(message)s", datefmt="%Y.%m.%d-%H:%M:%S"
+    )
     console_handler.setFormatter(console_formatter)
     console_logger.addHandler(console_handler)
     return console_logger
 
 
 log_directory = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
-log_file_path = os.path.join(log_directory, 'log.out')
+log_file_path = os.path.join(log_directory, "log.out")
 
 
 # 创建文件logger
 def setup_file_logger():
-    file_logger = logging.getLogger('FileLogger')
+    file_logger = logging.getLogger("FileLogger")
     file_logger.setLevel(logging.DEBUG)
-    file_handler = RotatingFileHandler(log_file_path, maxBytes=1024 * 1024 * 5, backupCount=5, encoding='utf-8')
-    file_formatter = logging.Formatter('%(asctime)s - [%(levelname)s] - %(message)s', datefmt='%Y.%m.%d-%H:%M:%S')
+    file_handler = RotatingFileHandler(
+        log_file_path, maxBytes=1024 * 1024 * 5, backupCount=5, encoding="utf-8"
+    )
+    file_formatter = logging.Formatter(
+        "%(asctime)s - [%(levelname)s] - %(message)s", datefmt="%Y.%m.%d-%H:%M:%S"
+    )
     file_handler.setFormatter(file_formatter)
     file_logger.addHandler(file_handler)
     return file_logger
@@ -64,8 +69,8 @@ def setup_file_logger():
 console_logger = setup_console_logger()
 file_logger = setup_file_logger()
 
-flask_logger = logging.getLogger('werkzeug')
-flask_logger.addFilter(SpecificLoggerFilter(['ConsoleLogger', 'FileLogger']))
+flask_logger = logging.getLogger("werkzeug")
+flask_logger.addFilter(SpecificLoggerFilter(["ConsoleLogger", "FileLogger"]))
 
 
 class Log:
@@ -93,6 +98,7 @@ class Log:
     def start_logging(self):
         with open(log_file_path, "w") as f:
             ...
+
 
 # 使用
 if __name__ == "__main__":

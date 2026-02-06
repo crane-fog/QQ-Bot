@@ -1,18 +1,19 @@
-import logging
-from multiprocessing import Process
-import traceback
-from flask import Flask, request
 import asyncio
+import logging
+import traceback
+from multiprocessing import Process
 from threading import Thread
+
+from flask import Flask, request
 from gevent.pywsgi import WSGIServer
 
+from ConfigLoader.ConfigLoader import ConfigLoader
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
+from Event.EventHandler.NoticeEventHandler import GroupPokeEvent, GroupRecallEvent
 from Event.EventHandler.PrivateMessageEventHandler import PrivateMessageEvent
-from Event.EventHandler.NoticeEventHandler import GroupRecallEvent, GroupPokeEvent
 from Event.EventHandler.RequestEventHandler import GroupRequestEvent
 from Logging.PrintLog import Log
 from Plugins import Plugins
-from ConfigLoader.ConfigLoader import ConfigLoader
 
 log = Log()
 
@@ -31,37 +32,47 @@ def create_event_app(event_controller):
             if message_type == "private":
                 event = PrivateMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_private_message, args=(event,))
+                thread = Thread(
+                    target=event_controller.handle_private_message, args=(event,)
+                )
                 thread.start()
             elif message_type == "group":
                 event = GroupMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_message, args=(event,))
+                thread = Thread(
+                    target=event_controller.handle_group_message, args=(event,)
+                )
                 thread.start()
         elif post_type == "notice":
             notice_type = data.get("notice_type")
             if notice_type == "group_recall":
                 event = GroupRecallEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_recall, args=(event,))
+                thread = Thread(
+                    target=event_controller.handle_group_recall, args=(event,)
+                )
                 thread.start()
             elif notice_type == "notify":
                 sub_type = data.get("sub_type")
                 if sub_type == "poke":
                     event = GroupPokeEvent(data)
                     event.poke_event(event_controller.debug)
-                    thread = Thread(target=event_controller.handle_group_poke, args=(event,))
+                    thread = Thread(
+                        target=event_controller.handle_group_poke, args=(event,)
+                    )
                     thread.start()
                 else:
                     ...
             else:
                 ...
         elif post_type == "request":
-            request_type = data.get('request_type')
+            request_type = data.get("request_type")
             if request_type == "group":
                 event = GroupRequestEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_request, args=(event,))
+                thread = Thread(
+                    target=event_controller.handle_group_request, args=(event,)
+                )
                 thread.start()
             else:
                 ...
@@ -73,10 +84,12 @@ def create_event_app(event_controller):
 
 
 class Event:
-    flask_log = logging.getLogger('werkzeug')
+    flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.ERROR)
 
-    def __init__(self, plugins_list: list[Plugins], config_loader: ConfigLoader, debug: bool):
+    def __init__(
+        self, plugins_list: list[Plugins], config_loader: ConfigLoader, debug: bool
+    ):
         try:
             self.debug = debug
             self.plugins_list = plugins_list
@@ -90,9 +103,9 @@ class Event:
     # 创建一个不记录任何内容的日志器
     class SilentLogger(object):
         def __init__(self):
-            self.allowed_loggers = ['ConsoleLogger', 'FileLogger']
-            self.console_logger = logging.getLogger('ConsoleLogger')
-            self.file_logger = logging.getLogger('FileLogger')
+            self.allowed_loggers = ["ConsoleLogger", "FileLogger"]
+            self.console_logger = logging.getLogger("ConsoleLogger")
+            self.file_logger = logging.getLogger("FileLogger")
 
         def write(self, message):
             # 过滤并只记录来自自定义日志记录器的消息
@@ -107,7 +120,9 @@ class Event:
     def run(self, ip, port):
         # 启动新进程运行 Flask 应用
         app = create_event_app(self)
-        server = WSGIServer((ip, port), app, log=self.SilentLogger(), error_log=self.SilentLogger())
+        server = WSGIServer(
+            (ip, port), app, log=self.SilentLogger(), error_log=self.SilentLogger()
+        )
         # server = WSGIServer((ip, port), app)
         server.serve_forever()
 
@@ -146,7 +161,7 @@ class Event:
                     error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
                     plugins.set_status("error", error_info)
                     log.error(error_info)
-    
+
     def handle_group_recall(self, event):
         asyncio.run(self.run_group_recall(event))
 
@@ -182,10 +197,10 @@ class Event:
                     error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
                     plugins.set_status("error", error_info)
                     log.error(error_info)
-    
+
     def handle_group_poke(self, event):
         asyncio.run(self.run_group_poke(event))
-    
+
     async def run_group_poke(self, event):
         for plugins in self.plugins_list:
             plugins_type = plugins.type
@@ -201,9 +216,10 @@ class Event:
                     plugins.set_status("error", error_info)
                     log.error(error_info)
 
+
 # 示例用法
 if __name__ == "__main__":
     plugins_list = []  # 假设的插件列表
     config_loader = None  # 假设的配置加载器
     event = Event(plugins_list, config_loader, debug=True)
-    event.run('127.0.0.1', 5000, False)
+    event.run("127.0.0.1", 5000, False)
