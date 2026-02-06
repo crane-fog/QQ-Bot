@@ -56,7 +56,7 @@ class GroupApprove(Plugins):
                 log.debug(f"{self.name}:{group_id}错误入群申请{flag}挂起", debug)
             return
 
-        stu_id = int(self.real_answer.split(self.spacer_type)[0])
+        stu_id = int(self.real_answer[:7])
         if not self.stu_id_conform(stu_id):
             if reject_flag2:
                 reject_reason = "学号错误"
@@ -80,14 +80,21 @@ class GroupApprove(Plugins):
 
         if not answer_cuts[0].isdigit():
             flag = False
-
-        return flag
+        else:
+            if len(answer_cuts[0]) != 7:
+                flag = False
+        if not flag:
+            return answer_cuts[0][:7].isdigit() and (not answer_cuts[0][7].isdigit())
+        else:
+            return True
 
     def stu_id_conform(self, stu_id):
-        data = self.all_inform.get("data")
-        select_result = data.get(stu_id)
-        if select_result:
+        if stu_id > 2550000 and stu_id < 2557000:
             return True
+        # data = self.all_inform.get("data")
+        # select_result = data.get(stu_id)
+        # if select_result:
+        #     return True
 
     async def select_all_infom(self):
         async_sessions = sessionmaker(
