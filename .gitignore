@@ -1,8 +1,6 @@
-log*
+/log.out*
 __pycache__/
 temp/
-num_backup.txt
-Plugins/TheresaLuck/
-Plugins/QiuDaoData/data/
-Plugins/LineCountData/data/
+/Plugins/TheresaLuck/
+/Plugins/*/data/
 .venv/
