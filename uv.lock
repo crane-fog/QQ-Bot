@@ -485,6 +485,11 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/2a/39/e50c7c3a983047577ee07d2a9e53faf5a69493943ec3f6a384bdc792deb2/httpx-0.28.1-py3-none-any.whl", hash = "sha256:d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad", size = 73517, upload-time = "2024-12-06T15:37:21.509Z" },
 ]
 
+[package.optional-dependencies]
+socks = [
+    { name = "socksio" },
+]
+
 [[package]]
 name = "identify"
 version = "2.6.16"
@@ -1061,6 +1066,15 @@ wheels = [
 ]
 
 [[package]]
+name = "socksio"
+version = "1.0.0"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/f8/5c/48a7d9495be3d1c651198fd99dbb6ce190e2274d0f28b9051307bdec6b85/socksio-1.0.0.tar.gz", hash = "sha256:f88beb3da5b5c38b9890469de67d0cb0f9d494b78b106ca1845f96c10b91c4ac", size = 19055, upload-time = "2020-04-17T15:50:34.664Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/37/c3/6eeb6034408dac0fa653d126c9204ade96b819c936e136c5e8a6897eee9c/socksio-1.0.0-py3-none-any.whl", hash = "sha256:95dc1f15f9b34e8d7b16f06d74b8ccf48f609af32ab33c608d08761c5dcbb1f3", size = 12763, upload-time = "2020-04-17T15:50:31.878Z" },
+]
+
+[[package]]
 name = "sqlalchemy"
 version = "2.0.46"
 source = { registry = "https://pypi.org/simple" }
@@ -1106,6 +1120,7 @@ dependencies = [
     { name = "emoji" },
     { name = "flask" },
     { name = "gevent" },
+    { name = "httpx", extra = ["socks"] },
     { name = "openai" },
     { name = "pillow" },
     { name = "pilmoji" },
@@ -1128,6 +1143,7 @@ requires-dist = [
     { name = "emoji", specifier = "<2.0.0" },
     { name = "flask", specifier = "==2.3.2" },
     { name = "gevent", specifier = ">=25.9.1" },
+    { name = "httpx", extras = ["socks"], specifier = ">=0.28.1" },
     { name = "openai", specifier = "==2.11.0" },
     { name = "pillow", specifier = "==12.0.0" },
     { name = "pilmoji", specifier = "==2.0.4" },
