@@ -25,3 +25,6 @@ dev = [
     "pre-commit>=4.5.1",
     "pre-commit-uv>=4.1.5",
 ]
+
+[tool.isort]
+profile = "black"
