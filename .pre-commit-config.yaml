@@ -13,7 +13,6 @@ repos:
     hooks:
       - id: isort
         name: isort (python)
-        args: ["--profile", "black"]
 
   # 代码格式化
   - repo: https://github.com/psf/black

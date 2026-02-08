@@ -22,7 +22,12 @@ class Api:
             获取bot服务端是否在线
             :return: bot服务端返回的信息
             """
-            response = requests.get(self.api.bot_api_address)
+            try:
+                response = requests.get(self.api.bot_api_address)
+            except Exception as e:
+                raise ConnectionError(
+                    f"无法连接到Bot服务端，请确认监听端配置：{e}"
+                ) from None
             return response.text
 
         def get_login_info(self):
@@ -48,8 +53,8 @@ class Api:
         def __init__(self, api_instance):
             self.api = api_instance  # 保存对Api类实例的引用
 
-        def get_group_member_list(self, group_id):
-            params = {"group_id": group_id}
+        def get_group_member_list(self, group_id, no_cache=True):
+            params = {"group_id": group_id, "no_cache": no_cache}
             response = requests.post(
                 self.api.bot_api_address + "get_group_member_list", params=params
             )
