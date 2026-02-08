@@ -44,9 +44,7 @@ class Image(CQMessage):
 
 
 class Record(CQMessage):
-    def __init__(
-        self, file, magic=None, url=None, cache=None, proxy=None, timeout=None
-    ):
+    def __init__(self, file, magic=None, url=None, cache=None, proxy=None, timeout=None):
         """
         CQ:record 语音
         :param file: 语音文件名

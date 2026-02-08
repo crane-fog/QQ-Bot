@@ -69,9 +69,7 @@ class TheresaMathAI(Plugins):
             # 更新用户最后提问时间
             self.user_cooldown[event.user_id] = current_time
 
-            self.api.groupService.send_group_msg(
-                group_id=event.group_id, message="思考中~"
-            )
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="思考中~")
 
             # 提取问题内容
             # 删除CQ码
@@ -102,9 +100,7 @@ class TheresaMathAI(Plugins):
                 name=f"{asker_qq}_{ask_time}.md",
                 folder_id=folder_ids.get(group_id),
             )
-            log.debug(
-                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug
-            )
+            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")

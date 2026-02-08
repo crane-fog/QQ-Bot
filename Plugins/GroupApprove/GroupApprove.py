@@ -13,7 +13,9 @@ log = Log()
 class GroupApprove(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
-        self.name = "GroupApprove"  # 插件的名字（一定要和类的名字完全一致（主要是我能力有限，否则会报错））
+        self.name = (
+            "GroupApprove"  # 插件的名字（一定要和类的名字完全一致（主要是我能力有限，否则会报错））
+        )
         self.type = "GroupRequest"  # 插件的类型（这个插件是在哪种消息类型中触发的）
         self.author = "kiriko"  # 插件开发作者（不用留真名，但是当插件报错的时候需要根据这个名字找到对应的人来修）
         self.introduction = """
@@ -118,8 +120,7 @@ class GroupApprove(Plugins):
 
             indexs = results.scalars().all()
             indexs_dict = {
-                lc.stu_id: {"name": lc.name, "major_short": lc.major_short}
-                for lc in indexs
+                lc.stu_id: {"name": lc.name, "major_short": lc.major_short} for lc in indexs
             }
 
             return {"data": indexs_dict}

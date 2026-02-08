@@ -72,9 +72,7 @@ class TheresaGoodMorning(Plugins):
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
-            self.api.groupService.send_group_msg(
-                group_id=event.group_id, message=reply_message
-            )
+            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
             if message.startswith(f"Theresa 晚安"):
                 self.api.groupService.set_group_ban(
                     group_id=event.group_id,
@@ -82,9 +80,7 @@ class TheresaGoodMorning(Plugins):
                     duration=self.get_seconds_to_next_6am(),
                 )
 
-            log.debug(
-                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug
-            )
+            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")

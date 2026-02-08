@@ -31,9 +31,7 @@ class QiuDao(Plugins):
         }
         self._score_models = {}
 
-    @plugin_main(
-        call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True
-    )
+    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
 

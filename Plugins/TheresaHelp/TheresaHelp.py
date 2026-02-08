@@ -38,15 +38,9 @@ class TheresaHelp(Plugins):
                     # 如果当前群组在插件的启用列表中
                     if group_id in effected_groups:
                         # 获取插件介绍，去除首尾空白
-                        intro = (
-                            plugin.introduction.strip()
-                            if plugin.introduction
-                            else "暂无介绍"
-                        )
+                        intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
                         # 格式化输出，去除多余的缩进
-                        intro_lines = [
-                            line.strip() for line in intro.split("\n") if line.strip()
-                        ]
+                        intro_lines = [line.strip() for line in intro.split("\n") if line.strip()]
                         formatted_intro = "\n".join(intro_lines)
                         response = f"[{plugin.name}]\n{formatted_intro}"
                     else:
@@ -62,21 +56,13 @@ class TheresaHelp(Plugins):
                 # 如果当前群组在插件的启用列表中
                 if group_id in effected_groups:
                     # 获取插件介绍，去除首尾空白
-                    intro = (
-                        plugin.introduction.strip()
-                        if plugin.introduction
-                        else "暂无介绍"
-                    )
+                    intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
                     # 格式化输出，去除多余的缩进
-                    intro_lines = [
-                        line.strip() for line in intro.split("\n") if line.strip()
-                    ]
+                    intro_lines = [line.strip() for line in intro.split("\n") if line.strip()]
                     formatted_intro = "\n".join(intro_lines)
 
                     response += f"[{plugin.name}]\n{formatted_intro}\n\n"
 
         # 发送消息
-        self.api.groupService.send_group_msg(
-            group_id=group_id, message=response.strip()
-        )
+        self.api.groupService.send_group_msg(group_id=group_id, message=response.strip())
         log.debug(f"插件：{self.name}运行正确，已发送帮助信息", debug)

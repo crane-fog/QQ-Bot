@@ -26,9 +26,7 @@ class TheresaCard(Plugins):
     @plugin_main(call_word=["Theresa card"])
     async def main(self, event, debug):
         permissionList = [self.bot.owner_id]
-        if (event.user_id not in permissionList) and (
-            event.role not in ["admin", "owner"]
-        ):
+        if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
             return
 
         kick_flag = event.message == "Theresa card kick"
@@ -72,12 +70,8 @@ class TheresaCard(Plugins):
                 message += "\n\n以上成员群名片格式不符合要求，请参照群公告修改"
         else:
             message = "所有群成员名片格式均符合要求"
-        self.api.GroupService.send_group_msg(
-            self, group_id=event.group_id, message=message
-        )
+        self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
         if kick_flag:
             for user_id in not_allowed_ids:
-                self.api.GroupService.set_group_kick(
-                    self, group_id=event.group_id, user_id=user_id
-                )
+                self.api.GroupService.set_group_kick(self, group_id=event.group_id, user_id=user_id)
         return

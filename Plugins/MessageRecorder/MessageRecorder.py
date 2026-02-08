@@ -16,9 +16,7 @@ class Message(Base):
     user_id = Column(BigInteger, nullable=False)
     group_id = Column(BigInteger, nullable=False)
     msg = Column(Text, nullable=False)
-    send_time = Column(
-        DateTime(timezone=True), nullable=False, server_default=func.now()
-    )
+    send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
     msg_id = Column(BigInteger, nullable=False, default=0)
     user_nickname = Column(Text, nullable=False, default=" ")
     user_card = Column(Text, nullable=False, default=" ")

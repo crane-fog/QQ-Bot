@@ -37,9 +37,7 @@ class RecallPrevent(Plugins):
             host = self.config.get("host", "localhost")
             port = int(self.config.get("port", 6379))
             db = int(self.config.get("db", 0))
-            self.redis_client = redis.Redis(
-                host=host, port=port, db=db, decode_responses=True
-            )
+            self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
         group_id = event.group_id
 
         for_administer = bool(self.config.get("for_administer"))
@@ -88,12 +86,8 @@ class RecallPrevent(Plugins):
         max_ban_time = ban_time_cuts[1].split(":")
         ignored_ids: list = self.config.get("ignored_ids")
         duration = random.randint(
-            int(min_ban_time[0]) * 3600
-            + int(min_ban_time[1]) * 60
-            + int(min_ban_time[2]),
-            int(max_ban_time[0]) * 3600
-            + int(max_ban_time[1]) * 60
-            + int(max_ban_time[2]),
+            int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 + int(min_ban_time[2]),
+            int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 + int(max_ban_time[2]),
         )
 
         if len(card_cuts) == 3:
@@ -106,9 +100,7 @@ class RecallPrevent(Plugins):
         if user_id == operator_id:  # 正式进入插件运行部分
             reply_message = f"{At(qq=user_id)} 撤回的消息是：{recalled_message}"
             try:
-                self.api.groupService.send_group_msg(
-                    group_id=group_id, message=reply_message
-                )
+                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
             except Exception as e:
                 log.error(f"插件：{self.name}运行时出错：{e}")
             else:
