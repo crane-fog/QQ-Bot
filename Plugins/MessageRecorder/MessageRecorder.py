@@ -19,7 +19,9 @@ class Message(Base):
     send_time = Column(
         DateTime(timezone=True), nullable=False, server_default=func.now()
     )
-    msg_id = Column(BigInteger, nullable=False)
+    msg_id = Column(BigInteger, nullable=False, default=0)
+    user_nickname = Column(Text, nullable=False, default=" ")
+    user_card = Column(Text, nullable=False, default=" ")
 
 
 class MessageRecorder(Plugins):
@@ -46,5 +48,7 @@ class MessageRecorder(Plugins):
                     group_id=event.group_id,
                     msg=event.message,
                     msg_id=event.message_id,
+                    user_nickname=event.nickname,
+                    user_card=event.card,
                 )
                 session.add(new_msg)
