@@ -43,10 +43,7 @@ class QiuDaoData(Plugins):
         if not event.user_id == self.bot.owner_id:
             return
 
-        filename = (
-            f"{os.path.dirname(os.path.abspath(__file__))}/data/"
-            + message.split(" ")[1]
-        )
+        filename = f"{os.path.dirname(os.path.abspath(__file__))}/data/" + message.split(" ")[1]
         table_name = message.split(" ")[2]
 
         with open(filename, "r", encoding="utf-8") as f:

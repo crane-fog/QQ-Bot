@@ -35,9 +35,7 @@ class TheresaWithdraw(Plugins):
         try:
             # 检查用户权限
             permissionList = [self.bot.owner_id]
-            if (event.user_id not in permissionList) and (
-                event.role not in ["admin", "owner"]
-            ):
+            if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
                 return
             else:
                 target_message_id = message[13 : message.find("]")]
@@ -45,9 +43,7 @@ class TheresaWithdraw(Plugins):
                 self.api.groupService.delete_msg(message_id=target_message_id)
                 self.api.groupService.delete_msg(message_id=event.message_id)
 
-            self.api.groupService.send_group_msg(
-                group_id=event.group_id, message=reply_message
-            )
+            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
             log.debug(f"插件：{self.name}运行正确，撤回用户", debug)
 
         except Exception as e:

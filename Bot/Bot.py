@@ -54,46 +54,24 @@ class Bot:
 
             # 需要检查的关键配置项
             required_configs = {
-                "server_address": self.configLoader.get_init_config(
-                    "server_address", "str"
-                ),
-                "client_address": self.configLoader.get_init_config(
-                    "client_address", "str"
-                ),
-                "web_controller": self.configLoader.get_init_config(
-                    "web_controller", "str"
-                ),
+                "server_address": self.configLoader.get_init_config("server_address", "str"),
+                "client_address": self.configLoader.get_init_config("client_address", "str"),
+                "web_controller": self.configLoader.get_init_config("web_controller", "str"),
                 "bot_name": self.configLoader.get_init_config("bot_name", "str"),
                 "debug": self.configLoader.get_init_config("debug", "bool"),
-                "database_enable": self.configLoader.get_init_config(
-                    "database_enable", "bool"
-                ),
-                "database_username": self.configLoader.get_init_config(
-                    "database_username", "str"
-                ),
-                "database_address": self.configLoader.get_init_config(
-                    "database_address", "str"
-                ),
-                "database_passwd": self.configLoader.get_init_config(
-                    "database_passwd", "str"
-                ),
-                "database_name": self.configLoader.get_init_config(
-                    "database_name", "str"
-                ),
+                "database_enable": self.configLoader.get_init_config("database_enable", "bool"),
+                "database_username": self.configLoader.get_init_config("database_username", "str"),
+                "database_address": self.configLoader.get_init_config("database_address", "str"),
+                "database_passwd": self.configLoader.get_init_config("database_passwd", "str"),
+                "database_name": self.configLoader.get_init_config("database_name", "str"),
                 "owner_id": self.configLoader.get_init_config("owner_id", "int"),
-                "assistant_group": self.configLoader.get_init_config(
-                    "assistant_group", "int"
-                ),
+                "assistant_group": self.configLoader.get_init_config("assistant_group", "int"),
             }
 
             # 检查哪些关键配置项是空的
-            missing_configs = [
-                key for key, value in required_configs.items() if value is None
-            ]
+            missing_configs = [key for key, value in required_configs.items() if value is None]
             if missing_configs:
-                raise ValueError(
-                    f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}"
-                )
+                raise ValueError(f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}")
 
             # 将配置值分配给实例变量
             self.server_address = required_configs["server_address"]

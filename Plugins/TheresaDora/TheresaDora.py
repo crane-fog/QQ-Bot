@@ -271,9 +271,7 @@ class TheresaDora(Plugins):
 
         cmd = " ".join(message.split(" ")[1:])
         if not cmd:
-            self.api.GroupService.send_group_msg(
-                self, group_id=group_id, message="请输入内容"
-            )
+            self.api.GroupService.send_group_msg(self, group_id=group_id, message="请输入内容")
             return
         cmd += "！"
 

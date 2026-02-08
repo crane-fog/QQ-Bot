@@ -73,9 +73,7 @@ class DontPoke(Plugins):
                 "哼~",
                 "哎呦疼——",
             ]
-            message = (
-                f"{At(qq=user_id)} " + message_list[randint(0, len(message_list) - 1)]
-            )
+            message = f"{At(qq=user_id)} " + message_list[randint(0, len(message_list) - 1)]
         self.api.groupService.send_group_msg(group_id=group_id, message=message)
 
         repoke_frequency = self.config.get("repoke_frequency")

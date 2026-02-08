@@ -27,7 +27,5 @@ class Theresac(Plugins):
         result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
 
         msg = result.stdout.replace("[CQ:", "\\CQ:").strip()
-        self.api.GroupService.send_group_msg(
-            self, group_id=event.group_id, message=f"{msg}"
-        )
+        self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=f"{msg}")
         return

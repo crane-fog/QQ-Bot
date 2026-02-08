@@ -48,9 +48,7 @@ class MoeGoe(Plugins):
 
         filename = f"{os.path.dirname(os.path.abspath(__file__))}/temp/{int(time.time())}{event.user_id}.wav"
         self.get_api_response(prompt, filename, lang, chara)
-        self.api.groupService.send_group_record_msg(
-            group_id=event.group_id, file_path=filename
-        )
+        self.api.groupService.send_group_record_msg(group_id=event.group_id, file_path=filename)
 
         return
 

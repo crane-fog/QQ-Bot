@@ -62,15 +62,11 @@ class AI(Plugins):
             # 更新用户最后提问时间
             self.user_cooldown[event.user_id] = current_time
 
-            self.api.groupService.send_group_msg(
-                group_id=event.group_id, message="小莫正在思考中~"
-            )
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="小莫正在思考中~")
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(
-                r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]
-            ).strip()
+            question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
             log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
@@ -82,13 +78,9 @@ class AI(Plugins):
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
-            self.api.groupService.send_group_msg(
-                group_id=event.group_id, message=reply_message
-            )
+            self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
 
-            log.debug(
-                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug
-            )
+            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")

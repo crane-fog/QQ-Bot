@@ -32,34 +32,26 @@ def create_event_app(event_controller):
             if message_type == "private":
                 event = PrivateMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(
-                    target=event_controller.handle_private_message, args=(event,)
-                )
+                thread = Thread(target=event_controller.handle_private_message, args=(event,))
                 thread.start()
             elif message_type == "group":
                 event = GroupMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(
-                    target=event_controller.handle_group_message, args=(event,)
-                )
+                thread = Thread(target=event_controller.handle_group_message, args=(event,))
                 thread.start()
         elif post_type == "notice":
             notice_type = data.get("notice_type")
             if notice_type == "group_recall":
                 event = GroupRecallEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(
-                    target=event_controller.handle_group_recall, args=(event,)
-                )
+                thread = Thread(target=event_controller.handle_group_recall, args=(event,))
                 thread.start()
             elif notice_type == "notify":
                 sub_type = data.get("sub_type")
                 if sub_type == "poke":
                     event = GroupPokeEvent(data)
                     event.poke_event(event_controller.debug)
-                    thread = Thread(
-                        target=event_controller.handle_group_poke, args=(event,)
-                    )
+                    thread = Thread(target=event_controller.handle_group_poke, args=(event,))
                     thread.start()
                 else:
                     ...
@@ -70,9 +62,7 @@ def create_event_app(event_controller):
             if request_type == "group":
                 event = GroupRequestEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(
-                    target=event_controller.handle_group_request, args=(event,)
-                )
+                thread = Thread(target=event_controller.handle_group_request, args=(event,))
                 thread.start()
             else:
                 ...
@@ -87,9 +77,7 @@ class Event:
     flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.ERROR)
 
-    def __init__(
-        self, plugins_list: list[Plugins], config_loader: ConfigLoader, debug: bool
-    ):
+    def __init__(self, plugins_list: list[Plugins], config_loader: ConfigLoader, debug: bool):
         try:
             self.debug = debug
             self.plugins_list = plugins_list
@@ -120,9 +108,7 @@ class Event:
     def run(self, ip, port):
         # 启动新进程运行 Flask 应用
         app = create_event_app(self)
-        server = WSGIServer(
-            (ip, port), app, log=self.SilentLogger(), error_log=self.SilentLogger()
-        )
+        server = WSGIServer((ip, port), app, log=self.SilentLogger(), error_log=self.SilentLogger())
         # server = WSGIServer((ip, port), app)
         server.serve_forever()
 

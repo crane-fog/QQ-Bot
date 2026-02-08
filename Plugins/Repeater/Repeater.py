@@ -67,12 +67,8 @@ class Repeater(Plugins):
             max_ban_time = ban_time_cuts[1].split(":")
             ignored_ids: list = self.config.get("ignored_ids")
             duration = random.randint(
-                int(min_ban_time[0]) * 3600
-                + int(min_ban_time[1]) * 60
-                + int(min_ban_time[2]),
-                int(max_ban_time[0]) * 3600
-                + int(max_ban_time[1]) * 60
-                + int(max_ban_time[2]),
+                int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 + int(min_ban_time[2]),
+                int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 + int(max_ban_time[2]),
             )
             if len(card_cuts) == 3:
                 if card_cuts[1] == "助教":
@@ -105,9 +101,7 @@ class Repeater(Plugins):
                         debug,
                     )
             try:
-                self.api.groupService.send_group_msg(
-                    group_id=group_id, message=reply_message
-                )
+                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
             except Exception as e:
                 log.error(f"插件：{self.name}运行时出错：{e}")
             else:

@@ -27,9 +27,7 @@ def create_web_app(web_controller):
     # 静态文件目录路径
     static_dir = os.path.join(basedir, "static")
 
-    app = Flask(
-        "Web Controller", template_folder=template_dir, static_folder=static_dir
-    )
+    app = Flask("Web Controller", template_folder=template_dir, static_folder=static_dir)
     app.secret_key = "just monika"
 
     @app.route("/")
@@ -41,9 +39,7 @@ def create_web_app(web_controller):
         bot_info = WebController.get_bot_info(web_controller)
         plugins_info = WebController.get_plugins_init_info(web_controller)
 
-        return render_template(
-            "baseInfo.html", bot_info=bot_info, plugins_info=plugins_info
-        )
+        return render_template("baseInfo.html", bot_info=bot_info, plugins_info=plugins_info)
 
     @app.route("/log.html")
     def log():
@@ -77,8 +73,7 @@ def create_web_app(web_controller):
 
         # 处理错误标记并准备写回文件
         new_lines = [
-            line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line
-            for line in all_lines
+            line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line for line in all_lines
         ]
 
         # 将更新后的内容写回文件
@@ -324,9 +319,7 @@ class WebController:
                     new_groups = set(map(str, raw_groups))
                 elif isinstance(raw_groups, str):
                     if raw_groups.strip():
-                        new_groups = set(
-                            x.strip() for x in raw_groups.split(",") if x.strip()
-                        )
+                        new_groups = set(x.strip() for x in raw_groups.split(",") if x.strip())
 
                 for section in g_config.sections():
                     if g_config.has_option(section, plugin_name):
