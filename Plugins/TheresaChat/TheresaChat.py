@@ -4,13 +4,32 @@ import os
 import random
 import re
 import time
-from collections import deque
 
 from openai import OpenAI
+from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.ext.declarative import declarative_base
+from sqlalchemy.orm import sessionmaker
 
 from Event.EventHandler import GroupMessageEventHandler
 from Logging.PrintLog import Log
 from Plugins import Plugins, plugin_main
+
+Base = declarative_base()
+
+
+class Message(Base):
+    __tablename__ = "messages"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, nullable=False)
+    group_id = Column(BigInteger, nullable=False)
+    msg = Column(Text, nullable=False)
+    send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
+    msg_id = Column(BigInteger, nullable=False, default=0)
+    user_nickname = Column(Text, nullable=False, default=" ")
+    user_card = Column(Text, nullable=False, default=" ")
+
 
 log = Log()
 
@@ -38,14 +57,14 @@ class TheresaChat(Plugins):
 
         self.base_url = "https://api.deepseek.com"  # API基础URL
 
-        self.group_context = {}  # {group_id: deque(maxlen=20)}
-        self.max_context_length = 100
+        # 从数据库读取的上下文消息条数
+        self.context_length = int(self.config.get("context_length"))
 
         # 冷却时间，防止刷屏
         self.group_cooldown = {}
         self.cooldown_time = 5
 
-    @plugin_main(check_call_word=False)
+    @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
         group_id = event.group_id
@@ -56,30 +75,9 @@ class TheresaChat(Plugins):
             3: f"{os.path.dirname(os.path.abspath(__file__))}/faces/3.png",
         }
 
-        # 初始化群上下文
-        if group_id not in self.group_context:
-            self.group_context[group_id] = deque(maxlen=self.max_context_length)
-
-        # 将用户消息添加到上下文
-        # 简单处理：去除CQ码，保留纯文本
-        clean_message = message  # re.sub(r"\[.*?\]", "", message).strip()
+        clean_message = message.strip()
         if not clean_message:
             return  # 忽略空消息
-
-        self.group_context[group_id].append(
-            {
-                "role": "user",
-                "content": f"{event.nickname}(群名片：{event.card}，id：{event.user_id})说：{clean_message}",
-            }
-        )
-
-        if clean_message == "Theresa chat clear" and event.user_id == self.bot.owner_id:
-            self.group_context[group_id].clear()
-            log.debug(f"插件：{self.name}在群{group_id}被清除上下文", debug)
-            self.api.groupService.send_group_msg(
-                group_id=group_id, message="上下文已清除"
-            )
-            return
 
         # 冷却检查
         current_time = time.time()
@@ -98,6 +96,7 @@ class TheresaChat(Plugins):
                 "PRTS Runtime Error 0x5343: Debug Assertion Failed at File: /src/arknights/battle/scene/scene_main.cpp, Line: 2432",
             ]
             msg = random.choice(msg_list)
+            await self.save_bot_reply_to_db(group_id, msg)
             self.api.groupService.send_group_msg(group_id=group_id, message=msg)
             log.debug(
                 f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
@@ -107,23 +106,21 @@ class TheresaChat(Plugins):
 
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if ((not ("小特" in clean_message)) and r > 0.01) or (
-            "Theresa" in clean_message
-        ):
+        if ((not ("小特" in clean_message)) and r > 0.01) or ("Theresa" in clean_message):
             return
 
-        log.debug(
-            f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug
-        )
+        log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
 
         try:
             # 获取大模型回复
-            response = self.get_api_response(list(self.group_context[group_id]))
+            # 从数据库读取该群最近 n 条消息作为上下文
+            context_messages = await self.load_context_from_db(group_id)
+            response = self.get_api_response(context_messages, debug)
             if response:
-                self.group_context[group_id].append(
-                    {"role": "assistant", "content": response}
-                )
                 if "[NO REPLY]" not in response:
+                    # 将bot自己的回复也存入数据库
+                    await self.save_bot_reply_to_db(group_id, response)
+
                     # 更新冷却时间
                     self.group_cooldown[group_id] = time.time()
 
@@ -135,14 +132,60 @@ class TheresaChat(Plugins):
                     #     self.api.groupService.send_group_msg(group_id=group_id, message=response)
                     # else:
                     #     self.api.groupService.send_group_msg_with_img(group_id=group_id, message=response, image_path=face_files.get(image_id))
-                    self.api.groupService.send_group_msg(
-                        group_id=group_id, message=response
-                    )
+                    self.api.groupService.send_group_msg(group_id=group_id, message=response)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
 
-    def get_api_response(self, context_messages):
+    async def load_context_from_db(self, group_id: int) -> list:
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
+        context = []
+        async with async_sessions() as session:
+            stmt = (
+                select(Message)
+                .where(Message.group_id == group_id)
+                .order_by(desc(Message.send_time))
+                .limit(self.context_length)
+            )
+            result = await session.execute(stmt)
+            rows = result.scalars().all()
+
+        for row in reversed(rows):
+            if row.user_id == 0:
+                context.append(
+                    {
+                        "role": "assistant",
+                        "content": row.msg,
+                    }
+                )
+            else:
+                context.append(
+                    {
+                        "role": "user",
+                        "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{row.msg}",
+                    }
+                )
+        return context
+
+    async def save_bot_reply_to_db(self, group_id: int, response: str):
+        async_sessions = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
+        async with async_sessions() as session:
+            async with session.begin():
+                bot_msg = Message(
+                    user_id=0,
+                    group_id=group_id,
+                    msg=response,
+                    msg_id=0,
+                    user_nickname="bot",
+                    user_card="bot",
+                )
+                session.add(bot_msg)
+
+    def get_api_response(self, context_messages, debug):
         """
         获取大模型的回复
 
@@ -204,6 +247,14 @@ class TheresaChat(Plugins):
         response = client.chat.completions.create(
             model="deepseek-chat", messages=messages, temperature=1.5
         )
+
+        # 打印 token 消耗量
+        if response.usage:
+            log.debug(
+                f"[TheresaChat] Token 用量: 提示{response.usage.prompt_tokens} 回复{response.usage.completion_tokens}",
+                debug,
+            )
+
         if response.choices:
             return response.choices[0].message.content
         else:
