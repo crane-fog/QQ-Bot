@@ -4,7 +4,7 @@ from src.Bot import Bot
 
 
 async def main():
-    config_file = "BotConfig.ini"
+    config_file = "configs/bot.ini"
 
     bot = Bot(
         config_file=config_file,
