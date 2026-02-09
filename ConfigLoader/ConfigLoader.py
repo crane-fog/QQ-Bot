@@ -18,7 +18,7 @@ class ConfigLoader:
         当bot初始化时，调用一次该方法，用于从配置文件中加载bot的初始参数
         :return: 加载的所有配置信息，以字典的形式返回
         """
-        with open(self.config_file, "r", encoding="utf-8") as f:
+        with open(self.config_file, encoding="utf-8") as f:
             self.config.read_file(f)
 
         init_config = {}

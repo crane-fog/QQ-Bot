@@ -29,7 +29,7 @@ class TheresaWithdraw(Plugins):
             return
 
         # 检查是否是ask命令
-        if not "Twithdraw" in message:
+        if "Twithdraw" not in message:
             return
 
         try:

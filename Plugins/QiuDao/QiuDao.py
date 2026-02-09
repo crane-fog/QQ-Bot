@@ -71,7 +71,7 @@ class QiuDao(Plugins):
                 else:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,
-                        message=f"{At(qq=user_id)} " f"{self.trans_score(score)}",
+                        message=f"{At(qq=user_id)} {self.trans_score(score)}",
                     )
             else:
                 self.api.groupService.send_group_msg(

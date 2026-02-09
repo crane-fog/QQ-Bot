@@ -1,13 +1,13 @@
 import re
 import types
-from typing import Any, List, Optional
+from typing import Any
 
 from CQMessage.CQType import At, Image
 
 
 class CQHelper:
     @classmethod
-    def load_cq(cls, message: str) -> Optional[Any]:
+    def load_cq(cls, message: str) -> Any | None:
         """
         动态的封装 一个 记载CQ消息段的所有参数的对象
         :param message: 要实例化的CQ消息段
@@ -30,7 +30,7 @@ class CQHelper:
 
         # 解析属性并设置到动态类实例上
         instance = dynamic_class()
-        setattr(instance, "cq_type", cq_type)
+        instance.cq_type = cq_type
 
         # 改进的属性解析逻辑
         for attr in re.finditer(r"(\w+)=([^,]+)", attrs):
@@ -41,7 +41,7 @@ class CQHelper:
         return instance
 
     @classmethod
-    def loads_cq(cls, message: str) -> List[Any]:
+    def loads_cq(cls, message: str) -> list[Any]:
         """
 
         :param message:

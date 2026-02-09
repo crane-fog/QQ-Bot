@@ -87,8 +87,8 @@ class Bot:
             self.owner_id = required_configs["owner_id"]
             self.assistant_group = required_configs["assistant_group"]
 
-            log.info(f"成功加载配置文件")
-            log.info(f"加载的bot初始化配置信息如下：")
+            log.info("成功加载配置文件")
+            log.info("加载的bot初始化配置信息如下：")
             for item in init_config.items():
                 log.info(str(item))
 

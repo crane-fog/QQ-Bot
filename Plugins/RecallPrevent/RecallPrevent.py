@@ -4,7 +4,6 @@ import random
 import redis
 
 from CQMessage.CQType import At
-from Event.EventHandler.NoticeEventHandler import GroupRecallEvent
 from Logging.PrintLog import Log
 from Plugins import Plugins, plugin_main
 

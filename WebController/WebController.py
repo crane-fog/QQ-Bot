@@ -9,12 +9,8 @@ from flask import (
     jsonify,
     render_template,
     request,
-    send_from_directory,
-    session,
 )
 from gevent.pywsgi import WSGIServer
-
-from Plugins import Plugins
 
 total_lines_read = 0
 last_cleared_line = 0
@@ -66,7 +62,7 @@ def create_web_app(web_controller):
         log_file_path = os.path.join(parent_dir, "log.out")
 
         lines_to_send = []
-        with open(log_file_path, "r", encoding="utf-8") as file:  # 以读模式打开文件
+        with open(log_file_path, encoding="utf-8") as file:  # 以读模式打开文件
             all_lines = file.readlines()
             lines_to_send = all_lines[total_lines_read:]  # 提取新的日志行
             total_lines_read = len(all_lines)  # 更新读取的总行数
@@ -160,7 +156,7 @@ class WebController:
         }
 
     # 创建一个不记录任何内容的日志器
-    class SilentLogger(object):
+    class SilentLogger:
         def write(self, *args, **kwargs):
             pass
 
@@ -226,7 +222,7 @@ class WebController:
                             elif "," in v:
                                 try:
                                     plugin_config[k] = [int(x) for x in v.split(",")]
-                                except:
+                                except Exception:
                                     plugin_config[k] = v.split(",")
                             else:
                                 plugin_config[k] = v

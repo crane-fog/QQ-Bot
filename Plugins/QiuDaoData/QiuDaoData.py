@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import Column, Integer, String, select
+from sqlalchemy import Column, Integer
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -46,7 +46,7 @@ class QiuDaoData(Plugins):
         filename = f"{os.path.dirname(os.path.abspath(__file__))}/data/" + message.split(" ")[1]
         table_name = message.split(" ")[2]
 
-        with open(filename, "r", encoding="utf-8") as f:
+        with open(filename, encoding="utf-8") as f:
             lines = f.readlines()
 
         self.api.groupService.send_group_msg(

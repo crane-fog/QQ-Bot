@@ -2,7 +2,6 @@ import datetime
 import json
 import os
 import random
-import re
 import time
 
 from openai import OpenAI
@@ -69,11 +68,11 @@ class TheresaChat(Plugins):
         message = event.message
         group_id = event.group_id
 
-        face_files = {
-            1: f"{os.path.dirname(os.path.abspath(__file__))}/faces/1.png",
-            2: f"{os.path.dirname(os.path.abspath(__file__))}/faces/2.png",
-            3: f"{os.path.dirname(os.path.abspath(__file__))}/faces/3.png",
-        }
+        # face_files = {
+        #     1: f"{os.path.dirname(os.path.abspath(__file__))}/faces/1.png",
+        #     2: f"{os.path.dirname(os.path.abspath(__file__))}/faces/2.png",
+        #     3: f"{os.path.dirname(os.path.abspath(__file__))}/faces/3.png",
+        # }
 
         clean_message = message.strip()
         if not clean_message:
@@ -106,7 +105,7 @@ class TheresaChat(Plugins):
 
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if ((not ("小特" in clean_message)) and r > 0.01) or ("Theresa" in clean_message):
+        if (("小特" not in clean_message) and r > 0.01) or ("Theresa" in clean_message):
             return
 
         log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)

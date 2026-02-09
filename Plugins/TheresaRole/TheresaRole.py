@@ -44,7 +44,7 @@ class TheresaRole(Plugins):
 
         role = None
         for i in roles:
-            if message.startswith(f"Theresa " + i):
+            if message.startswith("Theresa " + i):
                 role = i
                 break
         if not role:
@@ -72,7 +72,7 @@ class TheresaRole(Plugins):
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(r"\[.*?\]", "", message[len(f"Theresa " + role) :]).strip()
+            question = re.sub(r"\[.*?\]", "", message[len("Theresa " + role) :]).strip()
 
             log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",

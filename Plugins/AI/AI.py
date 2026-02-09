@@ -36,7 +36,7 @@ class AI(Plugins):
         message = event.message
 
         # 检查是否是纯ask命令
-        if message.strip() == f"monika ask":
+        if message.strip() == "monika ask":
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
             )
