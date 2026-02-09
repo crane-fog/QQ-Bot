@@ -1,6 +1,6 @@
 import asyncio
 
-from Bot.Bot import Bot
+from src.Bot import Bot
 
 
 async def main():

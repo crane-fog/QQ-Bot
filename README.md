@@ -45,9 +45,9 @@ uv run main.py
 
 `./BotConfig.ini` bot 基础信息配置
 
-`./Plugins/groups.ini` 群聊插件启用信息配置
+`./plugins/groups.ini` 群聊插件启用信息配置
 
-`./Plugins/plugins.ini` 插件启用信息及部分特殊配置
+`./plugins/plugins.ini` 插件启用信息及部分特殊配置
 
 （todo）
 

@@ -1,7 +1,7 @@
 /log.out*
 __pycache__/
 temp/
-/Plugins/TheresaLuck/
-/Plugins/*/data/
+/plugins/TheresaLuck/
+/plugins/*/data/
 .venv/
 .ruff_cache/
