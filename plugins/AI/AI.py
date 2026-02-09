@@ -1,12 +1,10 @@
-import os
 import re
 import time
-
-from openai import OpenAI
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
+from utils.AITools import get_api_response
 from utils.CQType import At
 
 log = Log()
@@ -23,10 +21,6 @@ class AI(Plugins):
                                 usage: monika ask <提问内容>
                             """
         self.init_status()
-
-        # 初始化大模型API配置
-        self.api_token = os.environ["DPSK_KEY"]  # API访问令牌
-        self.base_url = "https://api.deepseek.com"  # API基础URL
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
@@ -74,7 +68,7 @@ class AI(Plugins):
             )
 
             # 获取大模型回复
-            response = self.get_api_response(question)
+            response = get_api_response([{"role": "user", "content": question}])
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
@@ -88,28 +82,3 @@ class AI(Plugins):
                 group_id=event.group_id,
                 message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
             )
-
-    def get_api_response(self, prompt):
-        """
-        获取大模型的回复
-
-        参数:
-            prompt (str): 用户输入的提示词
-
-        返回:
-            str: 大模型的回复内容
-        """
-        # 从配置中获取API参数，如果配置中有则使用配置中的值
-        api_token = self.config.get("api_token", self.api_token)
-        base_url = self.config.get("base_url", self.base_url)
-        client = OpenAI(api_key=api_token, base_url=base_url)
-
-        response = client.chat.completions.create(
-            model="deepseek-chat",
-            messages=[{"role": "user", "content": prompt}],
-            temperature=1.5,
-        )
-        if response.choices:
-            return response.choices[0].message.content
-        else:
-            return "未收到有效回复"
