@@ -54,14 +54,14 @@ class TheresaCard(Plugins):
                 message = "\n".join(
                     [
                         f"{user_id} 名片: {card}"
-                        for user_id, card in zip(not_allowed_ids, not_allowed_cards)
+                        for user_id, card in zip(not_allowed_ids, not_allowed_cards, strict=True)
                     ]
                 )
             else:
                 message = "\n".join(
                     [
                         f"      [CQ:at,qq={user_id}] \n名片: {card}"
-                        for user_id, card in zip(not_allowed_ids, not_allowed_cards)
+                        for user_id, card in zip(not_allowed_ids, not_allowed_cards, strict=True)
                     ]
                 )
             if kick_flag:

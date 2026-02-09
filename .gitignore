@@ -4,3 +4,4 @@ temp/
 /Plugins/TheresaLuck/
 /Plugins/*/data/
 .venv/
+.ruff_cache/

@@ -247,7 +247,7 @@ def generate_img(
                 font=font,
                 emoji_position_offset=(0, font.size // 5),  # 👈 下移 1/5 字号
             )
-        y += line_heights[i] + line_spacing
+        y += h + line_spacing
 
     img.save(output_path)
 

@@ -4,7 +4,6 @@ log = Log()
 
 
 class GroupRecallEvent:
-
     def __init__(self, data):
         self.time: int = data.get("time")
         self.self_id: int = data.get("self_id")

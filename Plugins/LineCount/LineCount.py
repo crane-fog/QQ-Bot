@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
-from CQMessage.CQType import At, Face
+from CQMessage.CQType import At
 from Event.EventHandler.GroupMessageEventHandler import GroupMessageEvent
 from Logging.PrintLog import Log
 from Plugins import Plugins, plugin_main

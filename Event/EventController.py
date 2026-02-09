@@ -1,7 +1,6 @@
 import asyncio
 import logging
 import traceback
-from multiprocessing import Process
 from threading import Thread
 
 from flask import Flask, request
@@ -89,7 +88,7 @@ class Event:
             log.info("初始化事件处理器成功！")
 
     # 创建一个不记录任何内容的日志器
-    class SilentLogger(object):
+    class SilentLogger:
         def __init__(self):
             self.allowed_loggers = ["ConsoleLogger", "FileLogger"]
             self.console_logger = logging.getLogger("ConsoleLogger")

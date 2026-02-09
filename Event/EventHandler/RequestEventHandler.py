@@ -4,7 +4,6 @@ log = Log()
 
 
 class GroupRequestEvent:
-
     def __init__(self, data):
         self.data = data
         self.time: int = data.get("time")

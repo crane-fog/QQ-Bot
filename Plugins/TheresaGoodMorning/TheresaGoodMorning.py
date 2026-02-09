@@ -60,7 +60,7 @@ class TheresaGoodMorning(Plugins):
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(r"\[.*?\]", "", message[len(f"Theresa ") :]).strip()
+            question = re.sub(r"\[.*?\]", "", message[len("Theresa ") :]).strip()
 
             log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
@@ -73,7 +73,7 @@ class TheresaGoodMorning(Plugins):
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-            if message.startswith(f"Theresa 晚安"):
+            if message.startswith("Theresa 晚安"):
                 self.api.groupService.set_group_ban(
                     group_id=event.group_id,
                     user_id=event.user_id,

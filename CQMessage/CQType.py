@@ -8,7 +8,7 @@ class CQMessage:
             for key, value in self.__dict__.items()
             if not (key == "cq_type" or value is None)
         ]
-        return f'[CQ:{self.cq_type},{",".join(attrs)}]'
+        return f"[CQ:{self.cq_type},{','.join(attrs)}]"
 
 
 class Face(CQMessage):

@@ -43,7 +43,7 @@ class TheresaMathAI(Plugins):
         message = event.message
 
         # 检查是否是纯ask命令
-        if message.strip() == f"math ask":
+        if message.strip() == "math ask":
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
             )
@@ -73,7 +73,7 @@ class TheresaMathAI(Plugins):
 
             # 提取问题内容
             # 删除CQ码
-            question = re.sub(r"\[.*?\]", "", message[len(f"math ask") :]).strip()
+            question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
             log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
                 debug,
