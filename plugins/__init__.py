@@ -7,6 +7,7 @@ from src.Api import Api
 
 # 获取当前目录的路径
 plugins_path = os.path.dirname(__file__)
+configs_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs")
 
 
 def plugin_main(check_call_word=True, call_word: list = None, check_group=True, require_db=False):
@@ -117,7 +118,7 @@ class Plugins:
         config_dict = {}
 
         # 读取插件自身的基础配置
-        plugins_config_path = os.path.join(plugins_path, "plugins.ini")
+        plugins_config_path = os.path.join(configs_path, "plugins.ini")
         if os.path.exists(plugins_config_path):
             u_config = configparser.ConfigParser()
             u_config.read(plugins_config_path, encoding="utf-8")
@@ -127,7 +128,7 @@ class Plugins:
                     config_dict[key] = convert_value(value)
 
         # 读取群组配置，构建 effected_group 列表
-        groups_config_path = os.path.join(plugins_path, "groups.ini")
+        groups_config_path = os.path.join(configs_path, "groups.ini")
         if os.path.exists(groups_config_path):
             g_config = configparser.ConfigParser()
             g_config.read(groups_config_path, encoding="utf-8")
