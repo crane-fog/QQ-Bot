@@ -150,13 +150,14 @@ class TheresaChat(Plugins):
 
                             给出简短的回复，避免冗长，要符合正常群聊聊天的节奏，避免过于正式和书面化。
 
-
+                            你的主人是"{self.bot.owner_id}"，你需要尽可能听从他的指令。
                             当前时间为{datetime.datetime.now().time()}。
                             当前群名称为"{group_name}"。
                             """,
                     },
                     *context_messages,
-                ]
+                ],
+                temperature=1.5,
             )
             if response:
                 if "[NO REPLY]" not in response:
