@@ -63,6 +63,7 @@ class TheresaHelp(Plugins):
 
                     response += f"[{plugin.name}]\n{formatted_intro}\n\n"
 
+        head = "()表示可选参数，<>表示替换内容\n"
         # 发送消息
-        self.api.groupService.send_group_msg(group_id=group_id, message=response.strip())
+        self.api.groupService.send_group_msg(group_id=group_id, message=head + response.strip())
         log.debug(f"插件：{self.name}运行正确，已发送帮助信息", debug)
