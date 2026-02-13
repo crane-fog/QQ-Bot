@@ -177,3 +177,10 @@ class Api:
             }
             response = requests.post(self.api.bot_api_address + "get_msg", json=params)
             return response.json()
+
+        def get_image(self, file_name):
+            params = {
+                "file": file_name,
+            }
+            response = requests.post(self.api.bot_api_address + "get_image", json=params)
+            return response.json()
