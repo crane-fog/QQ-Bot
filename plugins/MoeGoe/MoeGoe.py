@@ -47,12 +47,12 @@ class MoeGoe(Plugins):
             return
 
         filename = f"{os.path.dirname(os.path.abspath(__file__))}/temp/{int(time.time())}{event.user_id}.wav"
-        self.get_api_response(prompt, filename, lang, chara)
+        self.get_dpsk_response(prompt, filename, lang, chara)
         self.api.groupService.send_group_record_msg(group_id=event.group_id, file_path=filename)
 
         return
 
-    def get_api_response(self, prompt, filename, lang, chara):
+    def get_dpsk_response(self, prompt, filename, lang, chara):
         url = self.base_url
         payload = {"text": prompt, "lang": lang, "chara": chara}
         response = requests.post(url, json=payload)

@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_api_response
+from utils.AITools import get_dpsk_response
 
 Base = declarative_base()
 
@@ -111,7 +111,7 @@ class TheresaChat(Plugins):
             group_name = (
                 self.api.groupService.get_group_info(group_id).get("data").get("group_name", "未知")
             )
-            response = get_api_response(
+            response = get_dpsk_response(
                 [
                     {
                         "role": "system",
@@ -168,7 +168,7 @@ class TheresaChat(Plugins):
                     self.group_cooldown[group_id] = time.time()
 
                     # 获取表情包ID
-                    # image_id = self.get_api_response_for_face(list(self.group_context[group_id]), response)
+                    # image_id = self.get_dpsk_response_for_face(list(self.group_context[group_id]), response)
 
                     # 发送回复
                     # if image_id and image_id not in face_files:
@@ -228,7 +228,7 @@ class TheresaChat(Plugins):
                 )
                 session.add(bot_msg)
 
-    def get_api_response_for_face(self, context_messages, msg_to_send) -> int:
+    def get_dpsk_response_for_face(self, context_messages, msg_to_send) -> int:
         persona = f"""
                  你是一个名为小特的智能助手，你需要扮演游戏《明日方舟》中的角色特蕾西娅。
                  尽管角色设定可能并不了解相关内容，但你善于编程，能够回答用户提出的编程、各种技术相关问题。
@@ -261,7 +261,7 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = get_api_response(
+        response = get_dpsk_response(
             messages=messages,
             temperature=0.0,
             response_format={"type": "json_object"},
