@@ -4,7 +4,7 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_api_response
+from utils.AITools import get_gemini_response
 from utils.CQType import At
 
 log = Log()
@@ -17,7 +17,7 @@ class AI(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                无提示词 deepseek
+                                gemini-3-flash
                                 usage: monika ask <提问内容>
                             """
         self.init_status()
@@ -68,7 +68,15 @@ class AI(Plugins):
             )
 
             # 获取大模型回复
-            response = get_api_response([{"role": "user", "content": question}])
+            response = get_gemini_response(
+                [
+                    {
+                        "role": "system",
+                        "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
+                    },
+                    {"role": "user", "content": question},
+                ]
+            )
 
             # 发送回复到群聊
             reply_message = f"[CQ:reply,id={event.message_id}]{response}"

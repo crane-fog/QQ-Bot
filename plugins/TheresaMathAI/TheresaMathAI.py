@@ -5,7 +5,7 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_api_response
+from utils.AITools import get_dpsk_response
 from utils.CQType import At
 
 log = Log()
@@ -75,7 +75,7 @@ class TheresaMathAI(Plugins):
             )
 
             # 获取大模型回复
-            response = get_api_response(
+            response = get_dpsk_response(
                 messages=[
                     {"role": "system", "content": "You are a professional math prover."},
                     {"role": "user", "content": question},
