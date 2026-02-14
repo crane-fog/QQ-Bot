@@ -19,7 +19,7 @@ class TheresaHelp(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 查看当前群聊启用的插件及说明，可选查询特定插件名
-                                usage: Theresa help (插件名)
+                                usage: Theresa help (<插件名>)
                             """
         self.init_status()
 
@@ -47,7 +47,7 @@ class TheresaHelp(Plugins):
                         response = f"插件 {plugin.name} 未在当前群聊启用"
                     break
         else:
-            response = "当前群聊启用的插件如下：\n"
+            response = "当前群聊启用的插件如下：\n\n"
             # 遍历所有已加载的插件
             for plugin in self.bot.plugins_list:
                 # 获取插件启用的群组列表
@@ -63,7 +63,7 @@ class TheresaHelp(Plugins):
 
                     response += f"[{plugin.name}]\n{formatted_intro}\n\n"
 
-        head = "()表示可选参数，<>表示替换内容\n"
+        head = "()表示可选参数，<>表示替换内容\n\n"
         # 发送消息
         self.api.groupService.send_group_msg(group_id=group_id, message=head + response.strip())
         log.debug(f"插件：{self.name}运行正确，已发送帮助信息", debug)
