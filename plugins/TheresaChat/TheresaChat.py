@@ -72,6 +72,11 @@ class TheresaChat(Plugins):
         if not clean_message:
             return  # 忽略空消息
 
+        if event.user_id == self.bot.owner_id and clean_message.startswith("chat stop"):
+            sleep_time = int(clean_message.split(" ")[2])
+            self.group_cooldown[group_id] = time.time() + sleep_time  # 停止回复指定时间
+            return
+
         # 冷却检查
         current_time = time.time()
         last_reply_time = self.group_cooldown.get(group_id, 0)
@@ -99,7 +104,7 @@ class TheresaChat(Plugins):
 
         # 降低回复率：非提及情况下仅有小概率回复
         # 只有在被提及，或者随机命中的情况下才请求API
-        if (("小特" not in clean_message) and r > 0.01) or ("Theresa" in clean_message):
+        if (("小特" not in clean_message) and r > 0) or ("Theresa" in clean_message):
             return
 
         log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
