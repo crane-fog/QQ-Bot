@@ -7,15 +7,9 @@ repos:
       - id: check-yaml               # 检查 YAML 格式
       - id: check-added-large-files  # 防止提交过大的文件
 
-  # 排序 import
-  - repo: https://github.com/pycqa/isort
-    rev: 7.0.0
+  - repo: https://github.com/astral-sh/ruff-pre-commit
+    rev: v0.15.0
     hooks:
-      - id: isort
-        name: isort (python)
-
-  # 代码格式化
-  - repo: https://github.com/psf/black
-    rev: 26.1.0
-    hooks:
-      - id: black
+      - id: ruff
+        args: [--fix]
+      - id: ruff-format

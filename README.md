@@ -29,11 +29,11 @@ uv run main.py
 ## 监听端配置教程
 启用HTTP服务
 
-设置“HTTP服务监听端口”，例：5700（对应 `BotConfig.ini` 中的 server_address 端口）（端口可任意指定）
+设置“HTTP服务监听端口”，例：5700（对应 `bot.ini` 中的 server_address 端口）（端口可任意指定）
 
 勾选“启用HTTP事件上报”
 
-设置上报地址，例：http://127.0.0.1:5701/onebot （其端口对应 `BotConfig.ini` 中的 client_address 端口）（端口可任意指定）
+设置上报地址，例：http://127.0.0.1:5701/onebot （其端口对应 `bot.ini` 中的 client_address 端口）（端口可任意指定）
 
 以CQ码格式接收消息
 
@@ -43,11 +43,11 @@ uv run main.py
 
 三份配置文件：
 
-`./BotConfig.ini` bot 基础信息配置
+`./configs/bot.ini` bot 基础信息配置
 
-`./Plugins/groups.ini` 群聊插件启用信息配置
+`./configs/groups.ini` 群聊插件启用信息配置
 
-`./Plugins/plugins.ini` 插件启用信息及部分特殊配置
+`./configs/plugins.ini` 插件启用信息及部分特殊配置
 
 （todo）
 
