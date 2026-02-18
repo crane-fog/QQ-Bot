@@ -6,7 +6,7 @@ from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.AITools import get_dpsk_response
-from utils.CQType import At
+from utils.CQType import At, Reply
 
 log = Log()
 
@@ -85,7 +85,7 @@ class TheresaGoodMorning(Plugins):
             )
 
             # 发送回复到群聊
-            reply_message = f"[CQ:reply,id={event.message_id}]{response}"
+            reply_message = Reply(id=event.message_id) + response
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
             if message.startswith("Theresa 晚安"):
                 self.api.groupService.set_group_ban(

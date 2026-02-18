@@ -10,6 +10,12 @@ class CQMessage:
         ]
         return f"[CQ:{self.cq_type},{','.join(attrs)}]"
 
+    def __add__(self, other):
+        return str(self) + str(other)
+
+    def __radd__(self, other):
+        return str(other) + str(self)
+
 
 class Face(CQMessage):
     def __init__(self, id):
@@ -76,13 +82,13 @@ class At(CQMessage):
 
 
 class Reply(CQMessage):
-    def __init__(self, message_id):
+    def __init__(self, id):
         """
         CQ:reply 回复某条消息
-        :param message_id: 消息的id
+        :param id: 消息的id
         """
         super().__init__()
-        self.id = message_id
+        self.id = id
 
 
 ...

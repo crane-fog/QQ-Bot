@@ -8,6 +8,8 @@ from sqlalchemy.orm import sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
+from utils.CQHelper import CQHelper
+from utils.CQType import CQMessage
 
 log = Log()
 Base = declarative_base()
@@ -41,17 +43,20 @@ class MessageRecorder(Plugins):
         self.init_status()
 
     async def resolve_replies(self, session: AsyncSession, message: str) -> str:
-        matches = list(PATTERN.finditer(message))
-        if not matches:
-            return message
-
-        for match in reversed(matches):
-            reply_id = int(match.group(1))
-            result = await session.execute(select(Message).where(Message.msg_id == reply_id))
-            row = result.scalars().one_or_none()
-            if row is not None:
-                replacement = f"[CQ:reply,id={reply_id},content={row.msg},from_nickname={row.user_nickname},from_card={row.user_card}]"
-                message = message[: match.start()] + replacement + message[match.end() :]
+        cqs = CQHelper.loads_cq(message)
+        for cq in cqs:
+            if cq.cq_type == "reply":
+                reply_id = int(cq.id)
+                result = await session.execute(select(Message).where(Message.msg_id == reply_id))
+                row = result.scalars().one_or_none()
+                if row is not None:
+                    replacement = CQMessage()
+                    replacement.cq_type = "reply"
+                    replacement.id = reply_id
+                    replacement.content = row.msg
+                    replacement.from_nickname = row.user_nickname
+                    replacement.from_card = row.user_card
+                    message = message.replace(str(cq), str(replacement))
 
         return message
 

@@ -2,6 +2,7 @@ import re
 
 from plugins import Plugins, plugin_main
 from src.PrintLog import Log
+from utils.CQType import At
 
 log = Log()
 
@@ -60,7 +61,7 @@ class TheresaCard(Plugins):
             else:
                 message = "\n".join(
                     [
-                        f"      [CQ:at,qq={user_id}] \n名片: {card}"
+                        f"      {At(qq=user_id)} \n名片: {card}"
                         for user_id, card in zip(not_allowed_ids, not_allowed_cards, strict=True)
                     ]
                 )
