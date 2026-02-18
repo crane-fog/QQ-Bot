@@ -1,5 +1,3 @@
-import re
-
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
@@ -20,15 +18,10 @@ class TheresaWithdraw(Plugins):
                             """
         self.init_status()
 
-    @plugin_main(check_call_word=False)
+    @plugin_main(call_word=["[CQ:reply,"])
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
-        pattern = re.compile(r"(\[CQ:reply,id=.+\])(.+)")
-        p = pattern.match(message)
-        if p is None:
-            return
 
-        # 检查是否是ask命令
         if "Twithdraw" not in message:
             return
 

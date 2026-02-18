@@ -5,6 +5,8 @@ import re
 from plugins import Plugins, plugin_main
 from src.PrintLog import Log
 from utils.AITools import get_gemini_response
+from utils.CQHelper import CQHelper
+from utils.CQType import Reply
 
 log = Log()
 
@@ -51,18 +53,17 @@ class TheresaImage(Plugins):
                         },
                     ]
                 )
-                reply_message = f"[CQ:reply,id={event.message_id}]{response}"
+                reply_message = Reply(id=event.message_id) + response
                 self.api.GroupService.send_group_msg(
                     self, group_id=event.group_id, message=reply_message
                 )
         return
 
     def get_image_filename_from_msg(self, msg: str) -> str | None:
-        pattern = re.compile(r"\[CQ:image,[^\]]*?file=([^,\]]+)[^\]]*\]")
-        match = pattern.search(msg)
-        if match:
+        result = CQHelper.load_cq(msg)
+        if result is not None:
             return (
-                self.api.MessageService.get_image(self, file_name=match.group(1))
+                self.api.MessageService.get_image(self, file_name=result.file)
                 .get("data")
                 .get("file")
             )

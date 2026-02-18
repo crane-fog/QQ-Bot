@@ -1,11 +1,11 @@
 import os
-import re
 
 from PIL import Image, ImageDraw, ImageFont
 from pilmoji import Pilmoji
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
+from utils.CQHelper import CQHelper
 
 
 def filter_cq_code(text: str) -> str:
@@ -127,27 +127,15 @@ def filter_cq_code(text: str) -> str:
         324: "[吃糖]",
         326: "[生气]",
     }
-
-    # 处理 at
-    text = re.sub(r"\[CQ:at,qq=[^,]+,name=([^\]]+)\]", r"\1", text)
-
-    # 处理 face
-    def face_replacer(match):
-        face_id_str = match.group(1)  # 正则捕获的 id
-        try:
-            face_id = int(face_id_str)
-        except ValueError:
-            face_id = face_id_str
-        return face_dict.get(face_id, face_id_str)
-
-    text = re.sub(r"\[CQ:face,id=(\d+)\]", face_replacer, text)
-
-    # 处理其他CQ码 -> xxx
-    def other_cq_replacer(match):
-        cq_type = "[" + match.group(1) + "]"
-        return cq_type
-
-    text = re.sub(r"\[CQ:([^,\]]+)[^\]]*\]", other_cq_replacer, text)
+    cqs = CQHelper.loads_cq(text)
+    for cq in cqs:
+        if cq.cq_type == "at":
+            text = text.replace(str(cq), f"@{cq.name}")
+        elif cq.cq_type == "face":
+            face_info = face_dict.get(int(cq.id), cq.id)
+            text = text.replace(str(cq), face_info)
+        else:
+            text = text.replace(str(cq), f"[{cq.cq_type}]")
 
     return text
 

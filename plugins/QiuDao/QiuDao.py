@@ -64,8 +64,7 @@ class QiuDao(Plugins):
                 if int(query_user_id) != user_id:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,
-                        message=f"{At(qq=user_id)} "
-                        f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
+                        message=f"{At(qq=user_id)} 该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
                     )
                     return
                 else:

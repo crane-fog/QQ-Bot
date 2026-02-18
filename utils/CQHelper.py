@@ -2,7 +2,7 @@ import re
 import types
 from typing import Any
 
-from CQType import At, Image
+from .CQType import *  # noqa: F403
 
 
 class CQHelper:
@@ -28,6 +28,8 @@ class CQHelper:
         class_name = f"{cq_type.capitalize()}"
         dynamic_class = types.new_class(class_name)
 
+        dynamic_class.__str__ = lambda self: match.group(0)
+
         # 解析属性并设置到动态类实例上
         instance = dynamic_class()
         instance.cq_type = cq_type
@@ -47,7 +49,7 @@ class CQHelper:
         :param message:
         :return:
         """
-        cq_pattern = re.compile(r"\[CQ:(\w+),([\w=,\/.]+)\]")
+        cq_pattern = re.compile(r"\[CQ:(\w+),([^\]]+)\]")
         matches = cq_pattern.findall(message)
 
         cq_objects = []
@@ -61,6 +63,8 @@ class CQHelper:
 
 
 if __name__ == "__main__":
+    from CQType import At, Image
+
     # 示例
     msg1 = "[CQ:at,qq=12345]"
     msg2 = "[CQ:image,file=000001464e61704361744f6e65426f747c4d736746696c657c327c3832343339353639347c373437343937323537313739383632393630317c373437343937323537313739383632393630307c4568526b454e78706232347050334e52697472675f317934726e38686778694b2d6763675f776f6f383479656d62486369774d794248427962325251674c326a41566f51794a3643355f54536d477a372d2d572d444e70516251.28AFC869F0CB651D610615D38EE5BA9D.jpg,sub_type=0,file_id=000001464e61704361744f6e65426f747c4d736746696c657c327c3832343339353639347c373437343937323537313739383632393630317c373437343937323537313739383632393630307c4568526b454e78706232347050334e52697472675f317934726e38686778694b2d6763675f776f6f383479656d62486369774d794248427962325251674c326a41566f51794a3643355f54536d477a372d2d572d444e70516251.28AFC869F0CB651D610615D38EE5BA9D.jpg,url=https://multimedia.nt.qq.com.cn/download?appid=1407&amp;fileid=EhRkENxpb24pP3NRitrg_1y4rn8hgxiK-gcg_woo84yembHciwMyBHByb2RQgL2jAVoQyJ6C5_TSmGz7--W-DNpQbQ&amp;rkey=CAMSKMa3OFokB_Tl0f1oi0l7bE5CbT9uUjCKKVc_Ds0itNrRC-k5vajv7V4,file_size=130314,file_unique=28afc869f0cb651d610615d38ee5ba9d]"
