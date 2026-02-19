@@ -13,6 +13,7 @@ from .event_handler.GroupMessageEventHandler import GroupMessageEvent
 from .event_handler.NoticeEventHandler import GroupPokeEvent, GroupRecallEvent
 from .event_handler.PrivateMessageEventHandler import PrivateMessageEvent
 from .event_handler.RequestEventHandler import GroupRequestEvent
+from .event_handler.SendEventHandler import SendEvent
 from .PrintLog import Log
 
 log = Log()
@@ -66,6 +67,11 @@ def create_event_app(event_controller):
                 thread.start()
             else:
                 ...
+        elif post_type == "message_sent":
+            event = SendEvent(data)
+            event.post_event(event_controller.debug)
+            thread = Thread(target=event_controller.handle_send_event, args=(event,))
+            thread.start()
 
         return {}, 200
 
@@ -138,7 +144,7 @@ class Event:
             plugins_type = plugins.type
             plugins_name = plugins.name
             plugins_author = plugins.author
-            if plugins_type == "Group" or plugins_type == "GroupRecall":
+            if plugins_type == "Group" or plugins_type == "GroupRecall" or plugins_type == "Record":
                 try:
                     plugins.load_config()
                     await plugins.main(event, self.debug)
@@ -193,6 +199,24 @@ class Event:
             plugins_name = plugins.name
             plugins_author = plugins.author
             if plugins_type == "Poke":
+                try:
+                    plugins.load_config()
+                    await plugins.main(event, self.debug)
+                except Exception as e:
+                    traceback_info = traceback.format_exc()
+                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
+                    plugins.set_status("error", error_info)
+                    log.error(error_info)
+
+    def handle_send_event(self, event):
+        asyncio.run(self.run_send_event(event))
+
+    async def run_send_event(self, event):
+        for plugins in self.plugins_list:
+            plugins_type = plugins.type
+            plugins_name = plugins.name
+            plugins_author = plugins.author
+            if plugins_type == "Send" or plugins_type == "Record":
                 try:
                     plugins.load_config()
                     await plugins.main(event, self.debug)
