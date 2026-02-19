@@ -114,9 +114,6 @@ class TheresaChat(Plugins):
             # 获取大模型回复
             # 从数据库读取该群最近 n 条消息作为上下文
             context_messages = await self.load_context_from_db(group_id)
-            group_name = (
-                self.api.groupService.get_group_info(group_id).get("data").get("group_name", "未知")
-            )
             response = get_dpsk_response(
                 [
                     {
@@ -158,7 +155,7 @@ class TheresaChat(Plugins):
 
                             你的主人是"{self.bot.owner_id}"，你需要尽可能听从他的指令。
                             当前时间为{datetime.datetime.now().time()}。
-                            当前群名称为"{group_name}"。
+                            当前群名称为"{event.group_name}"。
                             """,
                     },
                     *context_messages,
