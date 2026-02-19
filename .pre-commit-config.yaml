@@ -5,7 +5,8 @@ repos:
       - id: trailing-whitespace      # 去除行尾空格
       - id: end-of-file-fixer        # 确保文件以换行符结尾
       - id: check-yaml               # 检查 YAML 格式
-      - id: check-added-large-files  # 防止提交过大的文件
+      - id: check-added-large-files
+        args: ['--maxkb=2048']
 
   - repo: https://github.com/astral-sh/ruff-pre-commit
     rev: v0.15.0
