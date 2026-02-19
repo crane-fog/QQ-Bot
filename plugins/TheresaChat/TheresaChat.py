@@ -13,7 +13,6 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.AITools import get_dpsk_response
 from utils.CQHelper import CQHelper
-from utils.CQType import CQMessage
 
 Base = declarative_base()
 
@@ -195,13 +194,11 @@ class TheresaChat(Plugins):
                 result = await session.execute(select(Message).where(Message.msg_id == reply_id))
                 row = result.scalars().one_or_none()
                 if row is not None:
-                    replacement = CQMessage()
-                    replacement.cq_type = "reply"
-                    replacement.id = reply_id
-                    replacement.content = row.msg
-                    replacement.from_nickname = row.user_nickname
-                    replacement.from_card = row.user_card
-                    message = message.replace(str(cq), str(replacement))
+                    msg = str(cq)
+                    cq.content = row.msg
+                    cq.from_nickname = row.user_nickname
+                    cq.from_card = row.user_card
+                    message = message.replace(msg, str(cq))
         return message
 
     async def load_context_from_db(self, group_id: int) -> list:
