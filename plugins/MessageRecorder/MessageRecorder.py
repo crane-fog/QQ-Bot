@@ -42,7 +42,7 @@ class MessageRecorder(Plugins):
                             """
         self.init_status()
 
-    async def resolve_replies(self, session: AsyncSession, message: str) -> str:
+    async def resolve_msg(self, session: AsyncSession, message: str) -> str:
         cqs = CQHelper.loads_cq(message)
         for cq in cqs:
             if cq.cq_type == "reply":
@@ -57,6 +57,20 @@ class MessageRecorder(Plugins):
                     replacement.from_nickname = row.user_nickname
                     replacement.from_card = row.user_card
                     message = message.replace(str(cq), str(replacement))
+                    return message  # 避免对 reply content 中的 CQ 重复替换
+            elif cq.cq_type == "image":
+                replacement = CQMessage()
+                replacement.cq_type = "image"
+                replacement.file = cq.file
+                replacement.subType = cq.subType
+                replacement.url = (
+                    self.api.MessageService.get_image(self, cq.file)
+                    .get("data", {})
+                    .get("file", None)
+                )
+                replacement.file_size = cq.file_size
+                if replacement.url is not None:
+                    message = message.replace(str(cq), str(replacement))
 
         return message
 
@@ -67,7 +81,9 @@ class MessageRecorder(Plugins):
         )
         async with async_sessions() as session:
             async with session.begin():
-                resolved_message = await self.resolve_replies(session, event.message)
+                resolved_message = await self.resolve_msg(
+                    session, event.message.replace("&amp;", "&")
+                )
                 new_msg = Message(
                     user_id=event.user_id,
                     group_id=event.group_id,
