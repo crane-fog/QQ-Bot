@@ -14,7 +14,6 @@ class CQHelper:
         :return: 一个实例化对象，可以直接取出其中的成员变量
         """
         # 匹配消息中的类型和属性
-        message = message.replace("&amp;", "&")
         cq_pattern = re.compile(r"\[CQ:(\w+),([^\]]+)\]")
         match = cq_pattern.search(message)
 
