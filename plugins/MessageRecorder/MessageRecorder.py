@@ -1,6 +1,6 @@
 import re
 
-from sqlalchemy import BigInteger, Column, DateTime, Text, func, select
+from sqlalchemy import BigInteger, Column, DateTime, Text, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -42,28 +42,15 @@ class MessageRecorder(Plugins):
                             """
         self.init_status()
 
-    async def resolve_msg(self, session: AsyncSession, message: str) -> str:
+    def resolve_msg(self, message: str) -> str:
         cqs = CQHelper.loads_cq(message)
         for cq in cqs:
-            if cq.cq_type == "reply":
-                reply_id = int(cq.id)
-                result = await session.execute(select(Message).where(Message.msg_id == reply_id))
-                row = result.scalars().one_or_none()
-                if row is not None:
-                    replacement = CQMessage()
-                    replacement.cq_type = "reply"
-                    replacement.id = reply_id
-                    replacement.content = row.msg
-                    replacement.from_nickname = row.user_nickname
-                    replacement.from_card = row.user_card
-                    message = message.replace(str(cq), str(replacement))
-                    return message  # 避免对 reply content 中的 CQ 重复替换
-            elif cq.cq_type == "image":
+            if cq.cq_type == "image":
                 replacement = CQMessage()
                 replacement.cq_type = "image"
                 replacement.file = cq.file
                 replacement.subType = cq.subType
-                replacement.url = (
+                replacement.path = (
                     self.api.MessageService.get_image(self, cq.file)
                     .get("data", {})
                     .get("file", None)
@@ -81,9 +68,7 @@ class MessageRecorder(Plugins):
         )
         async with async_sessions() as session:
             async with session.begin():
-                resolved_message = await self.resolve_msg(
-                    session, event.message.replace("&amp;", "&")
-                )
+                resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))
                 new_msg = Message(
                     user_id=event.user_id,
                     group_id=event.group_id,
