@@ -7,6 +7,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.event_handler.SendEventHandler import SendEvent
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 
@@ -33,7 +34,7 @@ class MessageRecorder(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
         self.name = "MessageRecorder"
-        self.type = "Group"
+        self.type = "Record"
         self.author = "Heai"
         self.introduction = """
                                 记录群聊消息到数据库
@@ -58,10 +59,14 @@ class MessageRecorder(Plugins):
         return message
 
     @plugin_main(check_call_word=False, check_group=False, require_db=True)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent | SendEvent, debug):
         async_sessions = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
+
+        if isinstance(event, SendEvent) and event.message_type != "group":
+            return
+
         async with async_sessions() as session:
             async with session.begin():
                 resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))

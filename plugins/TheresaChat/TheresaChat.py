@@ -164,9 +164,6 @@ class TheresaChat(Plugins):
             )
             if response:
                 if "[NO REPLY]" not in response:
-                    # 将bot自己的回复也存入数据库
-                    await self.save_bot_reply_to_db(group_id, response)
-
                     # 更新冷却时间
                     self.group_cooldown[group_id] = time.time()
 
@@ -230,22 +227,6 @@ class TheresaChat(Plugins):
                         }
                     )
         return context
-
-    async def save_bot_reply_to_db(self, group_id: int, response: str):
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-        async with async_sessions() as session:
-            async with session.begin():
-                bot_msg = Message(
-                    user_id=0,
-                    group_id=group_id,
-                    msg=response,
-                    msg_id=0,
-                    user_nickname="bot",
-                    user_card="bot",
-                )
-                session.add(bot_msg)
 
     def get_dpsk_response_for_face(self, context_messages, msg_to_send) -> int:
         persona = f"""
