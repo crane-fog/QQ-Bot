@@ -22,6 +22,7 @@ class GroupMessageEvent:
         self.raw_message: str = data.get("raw_message")
         self.message_id: int = data.get("message_id")
         self.group_id: int = data.get("group_id")
+        self.group_name: str = data.get("group_name")
         ...
 
     def post_event(self, debug):
