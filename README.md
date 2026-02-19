@@ -39,6 +39,8 @@ uv run main.py
 
 （todo）
 
+如果你想为 `./src/Api.py` 添加尚未实现在该项目中的 [llbot api](https://llonebot.apifox.cn/)
+
 ---
 
 三份配置文件：
@@ -50,6 +52,11 @@ uv run main.py
 `./configs/plugins.ini` 插件启用信息及部分特殊配置
 
 （todo）
+
+---
+
+TODO:
+重写 log
 
 ---
 
