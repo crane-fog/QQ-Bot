@@ -9,7 +9,6 @@ from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
-from utils.CQType import CQMessage
 
 log = Log()
 Base = declarative_base()
@@ -46,18 +45,15 @@ class MessageRecorder(Plugins):
         cqs = CQHelper.loads_cq(message)
         for cq in cqs:
             if cq.cq_type == "image":
-                replacement = CQMessage()
-                replacement.cq_type = "image"
-                replacement.file = cq.file
-                replacement.subType = cq.subType
-                replacement.path = (
+                msg = str(cq)
+                cq.path = (
                     self.api.MessageService.get_image(self, cq.file)
                     .get("data", {})
                     .get("file", None)
                 )
-                replacement.file_size = cq.file_size
-                if replacement.url is not None:
-                    message = message.replace(str(cq), str(replacement))
+                del cq.url
+                if cq.path is not None:
+                    message = message.replace(msg, str(cq))
 
         return message
 

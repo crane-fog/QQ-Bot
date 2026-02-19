@@ -1,8 +1,7 @@
 import re
-import types
 from typing import Any
 
-from .CQType import *  # noqa: F403
+from .CQType import CQMessage
 
 
 class CQHelper:
@@ -23,14 +22,7 @@ class CQHelper:
         cq_type = match.group(1)
         attrs = match.group(2)
 
-        # 创建一个动态类
-        class_name = f"{cq_type.capitalize()}"
-        dynamic_class = types.new_class(class_name)
-
-        dynamic_class.__str__ = lambda self: match.group(0)
-
-        # 解析属性并设置到动态类实例上
-        instance = dynamic_class()
+        instance = CQMessage()
         instance.cq_type = cq_type
 
         # 改进的属性解析逻辑
