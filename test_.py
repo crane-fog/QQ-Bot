@@ -1,5 +1,4 @@
 import os
-from configparser import ConfigParser
 from importlib import import_module
 from pkgutil import iter_modules
 from unittest.mock import patch
@@ -33,8 +32,6 @@ class Test:
 
     def test_all_plugins_importable(self, bot):
         """所有插件包应能被正常导入和实例化"""
-        plugins_config = ConfigParser()
-        plugins_config.read(plugins_config_path, encoding="utf-8")
 
         imported = []
         failed = []
@@ -51,4 +48,5 @@ class Test:
             except Exception as e:
                 failed.append((name, str(e)))
 
+        assert imported, "未找到任何插件包"
         assert not failed, f"以下插件导入失败: {failed}"
