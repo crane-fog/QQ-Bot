@@ -31,4 +31,4 @@ jobs:
         run: uv run pre-commit run --all-files --show-diff-on-failure
 
       - name: Run tests
-        run: uv run test.py
+        run: uv run pytest test.py
