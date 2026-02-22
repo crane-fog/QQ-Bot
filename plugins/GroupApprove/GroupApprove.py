@@ -27,6 +27,9 @@ class GroupApprove(Plugins):
         self.all_inform = None
         self.spacer = [" ", "-"]
         self.spacer_type = ""
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupRequestEvent, debug):
@@ -110,11 +113,7 @@ class GroupApprove(Plugins):
         #     return True
 
     async def select_all_infom(self):
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-
-        async with async_sessions() as sessions:
+        async with self.session_factory() as sessions:
             raw_table = select(self.StuInformation)
             results = await sessions.execute(raw_table)
 

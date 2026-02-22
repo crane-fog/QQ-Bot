@@ -22,6 +22,9 @@ class LineCountData(Plugins):
         self.init_status()
         self.all_line_count = None
         self._count_models = {}
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     def get_counts_model(self, table_name):
         if table_name in self._count_models:
@@ -64,10 +67,7 @@ class LineCountData(Plugins):
 
         data_list.sort(key=lambda x: x["count"])
 
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 for index, data in enumerate(data_list):
                     count_info = CountsModel(stu_id=data["stu_id"], count=data["count"], rank=index)

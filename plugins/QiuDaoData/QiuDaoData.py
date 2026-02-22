@@ -22,6 +22,9 @@ class QiuDaoData(Plugins):
         self.init_status()
         self.all_line_count = None
         self._score_models = {}
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     def get_scores_model(self, table_name):
         if table_name in self._score_models:
@@ -56,10 +59,7 @@ class QiuDaoData(Plugins):
 
         ScoresModel = self.get_scores_model(table_name)
 
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 for line in lines:
                     _, stu_id, score = line.strip().split(" ")

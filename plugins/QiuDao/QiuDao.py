@@ -30,6 +30,9 @@ class QiuDao(Plugins):
             927504458: "score_252610",  # 25261嘉定高程
         }
         self._score_models = {}
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
@@ -113,10 +116,7 @@ class QiuDao(Plugins):
 
     async def query_by_stu_id(self, stu_id, table_name):
         Scores = self.get_scores_model(table_name)
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 stmt = (
                     select(Scores.score, self.StuId.qq_id)

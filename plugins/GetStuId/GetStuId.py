@@ -18,6 +18,9 @@ class GetStuId(Plugins):
                                 usage: GetStuId <群号>
                             """
         self.init_status()
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     @plugin_main(call_word=["GetStuId"], require_db=True)
     async def main(self, event: GroupMessageEventHandler, debug):
@@ -42,11 +45,7 @@ class GetStuId(Plugins):
             self, group_id=event.group_id, message=f"共获取到{len(info_list)}条数据"
         )
 
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 for user_id, stu_id in info_list:
                     stu_info = self.StuId(stu_id=int(stu_id), qq_id=str(user_id))

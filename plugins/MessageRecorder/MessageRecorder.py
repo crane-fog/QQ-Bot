@@ -41,6 +41,9 @@ class MessageRecorder(Plugins):
                                 usage: auto
                             """
         self.init_status()
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     def resolve_msg(self, message: str) -> str:
         cqs = CQHelper.loads_cq(message)
@@ -60,14 +63,11 @@ class MessageRecorder(Plugins):
 
     @plugin_main(check_call_word=False, check_group=False, require_db=True)
     async def main(self, event: GroupMessageEvent | SendEvent, debug):
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
 
         if isinstance(event, SendEvent) and event.message_type != "group":
             return
 
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))
                 new_msg = Message(
