@@ -24,6 +24,8 @@ dependencies = [
 dev = [
     "pre-commit>=4.5.1",
     "pre-commit-uv>=4.1.5",
+    "pytest>=9.0.2",
+    "pytest-asyncio>=1.3.0",
     "ruff>=0.15.0",
 ]
 
