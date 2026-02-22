@@ -2,7 +2,6 @@ import os
 from configparser import ConfigParser
 from importlib import import_module
 from pkgutil import iter_modules
-from sys import exit
 from unittest.mock import patch
 
 import pytest
@@ -53,7 +52,3 @@ class Test:
                 failed.append((name, str(e)))
 
         assert not failed, f"以下插件导入失败: {failed}"
-
-
-if __name__ == "__main__":
-    exit(pytest.main(["-v", "test.py"]))
