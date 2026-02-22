@@ -109,8 +109,8 @@ class Bot:
             login_info = self.api.botSelfInfo.get_login()
             log.info(f"获取到Bot的登录信息：{login_info}")
             log.info("Bot初始化成功！")
-            self.init_plugins()
             await self.init_database()
+            self.init_plugins()
         except Exception as e:
             log.error(f"初始化Bot时失败：{e}")
             raise e
