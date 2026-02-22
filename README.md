@@ -56,7 +56,9 @@ uv run main.py
 ---
 
 TODO:
-重写 log
+优化插件 log 使用
+重写 EventController
+配置文件读取优化
 
 ---
 
