@@ -3,6 +3,7 @@ import json
 import os
 import random
 import time
+from collections import deque
 
 from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -60,6 +61,13 @@ class TheresaChat(Plugins):
         # 冷却时间，防止刷屏
         self.group_cooldown = {}
         self.cooldown_time = 5
+
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
+
+        # 滑动窗口记录最近发送的表情id，用于降低重复度
+        self.recent_faces = deque(maxlen=10)
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEventHandler, debug):
@@ -202,11 +210,8 @@ class TheresaChat(Plugins):
         return message
 
     async def load_context_from_db(self, group_id: int, context_length: int) -> list:
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
         context = []
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             stmt = (
                 select(Message)
                 .where(Message.group_id == group_id)
@@ -235,7 +240,7 @@ class TheresaChat(Plugins):
         return context
 
     def get_dpsk_response_for_face(self, context_messages) -> int:
-        persona = """
+        persona = f"""
                  你是一个名为小特的智能助手，你需要扮演游戏《明日方舟》中的角色特蕾西娅。
                  尽管角色设定可能并不了解相关内容，但你善于编程，能够回答用户提出的编程、各种技术相关问题。
                  以下是你需要参考的角色设定：
@@ -350,9 +355,13 @@ class TheresaChat(Plugins):
                 96: 乖巧探头，用于表示观察或可爱地出现。
                 97: 暗中观察，静待下文。
                 如果你认为此时不应该回复表情，请选择id 0，表示不使用表情包。
+
+                你最近10次发送的表情id为：{list(self.recent_faces)}。
+                请避免重复选择这些表情，优先选用不同的表情以增加多样性。
+
                 你需要以json格式回复，格式如下：
-                {"image_id": <你选择的图片id>}
-                "image_id"的值必须是上述图片id中的一个，即必须为[1,97]之间的一个整数。
+                {{"image_id": <你选择的图片id>}}
+                "image_id"的值必须是上述图片id中的一个，即必须为[0,97]之间的一个整数。
                 你必须严格按照上述格式回复，不能有任何多余内容。
                  """
         # 你现在在一个群聊中，你根据以下的上下文准备回复一条消息，这条消息的内容是
@@ -370,6 +379,9 @@ class TheresaChat(Plugins):
             response_format={"type": "json_object"},
         )
         try:
-            return json.loads(response).get("image_id")
+            image_id = json.loads(response).get("image_id")
+            if image_id and image_id != 0:
+                self.recent_faces.append(image_id)
+            return image_id
         except Exception:
             return 0

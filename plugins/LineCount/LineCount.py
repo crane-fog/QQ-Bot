@@ -35,6 +35,9 @@ class LineCount(Plugins):
             927504458: 904,  # 25261嘉定高程
         }
         self._count_models = {}
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
 
     @plugin_main(call_word=["Theresa linecount"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug):
@@ -96,10 +99,7 @@ class LineCount(Plugins):
 
     async def query_by_stu_id(self, stu_id, table_name):
         Counts = self.get_counts_model(table_name)
-        async_sessions = sessionmaker(
-            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
-        )
-        async with async_sessions() as session:
+        async with self.session_factory() as session:
             async with session.begin():
                 stmt = (
                     select(Counts.rank, Counts.count, self.StuId.qq_id)
