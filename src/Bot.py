@@ -8,7 +8,7 @@ from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-from plugins import Plugins, configs_path, plugins_path
+from plugins import Plugins, plugins_config_path, plugins_path
 from web.WebController import WebController
 
 from .Api import Api
@@ -144,7 +144,6 @@ class Bot:
         log.info("开始加载插件")
 
         # 读取统一的插件配置文件
-        plugins_config_path = os.path.join(configs_path, "plugins.ini")
         plugins_config = ConfigParser()
         if os.path.exists(plugins_config_path):
             plugins_config.read(plugins_config_path, encoding="utf-8")
