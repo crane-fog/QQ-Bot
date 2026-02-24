@@ -1,0 +1,91 @@
+<msg
+  serviceID="35"
+  templateID="1"
+  action="viewMultiMsg"
+  brief="[聊天记录]"
+  m_fileName="01CBEE81-C4A9-4EE9-8286-EC743AADB5D5"
+  m_resid="9ayIqA+EElZuzynih58DY060uY8H2Z5O3pdOsUSycWmuC4XJEuxMW8M2rfC9kPqw"
+  tSum="2"
+  flag="3"
+>
+  <item layout="1">
+    <title color="#000000" size="34">群聊的聊天记录</title>
+    <title color="#777777" size="26">Vδο:JM388141</title>
+    <title color="#777777" size="26">Eye:尝试下载388141,请稍等...</title>
+    <title color="#777777" size="26">Eye:[文件]388141.zip</title>
+    <title color="#777777" size="26">Eye:388141下载已完成</title>
+    <hr></hr>
+    <summary color="#808080">查看转发消息</summary>
+  </item>
+  <source name="群聊的聊天记录"></source>
+</msg>
+
+
+<?xml version='1.0' encoding='UTF-8' standalone="yes"?>
+<msg
+  serviceID="35"
+  templateID="1"
+  action="viewMultiMsg"
+  brief="[聊天记录]"
+  m_fileName="37FFF105-BE5A-46A7-B6EB-4A330ED8B9C6"
+  m_resid="mFbqUbnx6YIIW6xTNqhitFJwNu3UawN24QFvarFxqPJG8TcUz/7dfFzrC1U9RqhZ"
+  tSum="2"
+  flag="3"
+>
+  <item layout="1">
+    <title color="#000000" size="34">群聊的聊天记录</title>
+    <title color="#777777" size="26">Vδο:[动画表情]</title>
+    <title color="#777777" size="26">Vδο:[动画表情]</title>
+    <title color="#777777" size="26">Vδο:[动画表情]</title>
+    <hr></hr>
+    <summary color="#808080">查看转发消息</summary>
+  </item>
+  <source name="群聊的聊天记录"></source>
+</msg>
+
+<?xml version='1.0' encoding='UTF-8' standalone="yes"?>
+<msg
+  serviceID="35"
+  templateID="1"
+  action="viewMultiMsg"
+  brief="[聊天记录]"
+  m_fileName="8f47048a-d75c-414a-81be-3ede375d63e5"
+  m_resid="C8MgCocjZt/dDKeb5bXa+ZUc9kk/Z7VhmyT8rqX6022LANok94yWSdJqF87k0cPE"
+  tSum="99"
+  flag="3"
+>
+  <item layout="1">
+    <title color="#000000" size="34">群聊的聊天记录</title>
+    <title color="#777777" size="26">QQ用户: 我超</title>
+    <title color="#777777" size="26">QQ用户: 炉管卢出事了家人们</title>
+    <title color="#777777" size="26">QQ用户: [图片]</title>
+    <title color="#777777" size="26">QQ用户: ？</title>
+    <hr></hr>
+    <summary color="#808080">查看99条转发消息</summary>
+  </item>
+  <source name="群聊的聊天记录"></source>
+</msg>
+
+
+
+<?xml version='1.0' encoding='UTF-8' standalone="yes"?>
+<msg
+  serviceID="35"
+  templateID="1"
+  action="viewMultiMsg"
+  brief="[聊天记录]"
+  m_fileName="08a4ccec-4a93-45c6-8d77-24279260179c"
+  m_resid="ad7c9SyBgGhxfltW6x5Z9xFtN/5KyDarmmYc1DgVKkxGrF/OfHdih21WpeJoVZPb"
+  tSum="3"
+  flag="3"
+>
+  <item layout="1">
+    <title color="#000000" size="34">群聊的聊天记录</title>
+    <title color="#777777" size="26">液\x14！✌🏻塔诺西！: [文件] Plants vs. Zombies 2026年2月22日 ☀10_49_45.png</title>
+    <title color="#777777" size="26">液\x14！✌🏻塔诺西！: 植物均真强啊</title>
+    <title color="#777777" size="26">液\x14！✌🏻塔诺西！: 对面不死均根本过不来我这个终场</title>
+    <hr></hr>
+    <summary color="#808080">查看3条转发消息</summary>
+  </item>
+  <source name="群聊 的聊天记录"></source>
+</msg>

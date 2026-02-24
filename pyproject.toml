@@ -18,6 +18,8 @@ dependencies = [
     "redis==7.1.0",
     "requests==2.31.0",
     "sqlalchemy>=2.0.46",
+    "pyzipper>=0.3.6",
+    "jmcomic>=2.6.13"
 ]
 
 [dependency-groups]

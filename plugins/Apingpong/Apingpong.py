@@ -17,17 +17,37 @@ class Apingpong(Plugins):
                             """
         self.init_status()
 
-    @plugin_main()
+    @plugin_main(call_word=["ping", "try"])
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
-        if "ping" in message:
-            reply_message = message
-            try:
+
+        try:
+            if "ping" in message:
+                reply_message = message.replace("ping", "", 1)
                 self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-            except Exception as e:
-                log.debug(f"插件{self.name}运行时出错，作者{self.author}")
-                log.debug(f"{e}")
-            else:
-                log.debug(f"成功向{event.group_id}发送内容", debug)
+            elif "try" in message:
+                reply_message = [
+                    {
+                        "type": "node",
+                        "data": {
+                            "content": [
+                                {
+                                    "type": "file",
+                                    "data": {
+                                        "file": r"C:\Users\cojita\Pictures\ENDFIELD\ENDFIELD_SHARE_1769696344.png"
+                                    },
+                                }
+                            ]
+                        },
+                    }
+                ]
+
+                self.api.groupService.send_group_forward_msg(
+                    group_id=event.group_id, forward_message=reply_message
+                )
+        except Exception as e:
+            log.error(f"插件{self.name}运行时出错，{e}")
+        else:
+            log.debug(f"成功向{event.group_id}发送内容{reply_message}", debug)
 
         return

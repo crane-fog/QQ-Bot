@@ -1,6 +1,7 @@
 import re
 
 from sqlalchemy import BigInteger, Column, DateTime, Text, func
+from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
@@ -28,6 +29,7 @@ class Message(Base):
     msg_id = Column(BigInteger, nullable=False, default=0)
     user_nickname = Column(Text, nullable=False, default=" ")
     user_card = Column(Text, nullable=False, default=" ")
+    data = Column(JSONB, nullable=True, default=" ")
 
 
 class MessageRecorder(Plugins):
@@ -77,5 +79,6 @@ class MessageRecorder(Plugins):
                     msg_id=event.message_id,
                     user_nickname=event.nickname,
                     user_card=event.card,
+                    data=event.all_data,
                 )
                 session.add(new_msg)
