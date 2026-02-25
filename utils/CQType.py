@@ -92,13 +92,14 @@ class Reply(CQMessage):
 
 
 class Forward:
-    def __init__(self, group_id):
-        self.group_id = group_id
+    def __init__(self):
         self.message = []
 
-    def add_sth(self, type, uid=None, sender_name=None, file_path=None, text=None, msg=None):
-        "尝试返回一个列表形式的本质字典"
-        "group_id其实没有用，只是用来标记某一个列表"
+    def add_node(self, type, uid=None, sender_name=None, file_path=None, text=None, msg=None):
+        """
+        为合并转发消息添加一个节点
+        :param type: 消息类型，可能的值：image、file、text、msg
+        """
         node = {"type": "node", "data": {"content": [{"type": type, "data": {}}]}}
         if type == "image" or type == "file":
             node["data"]["content"][0]["data"]["file"] = file_path

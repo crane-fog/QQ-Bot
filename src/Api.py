@@ -75,13 +75,10 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
-        def send_group_forward_msg(self, group_id, forward_message):
-            params = {"group_id": group_id, "message": forward_message}
-
-            headers = {"Content-Type": "application/json"}
-
+        def send_group_forward_msg(self, group_id, forward_message: list):
+            params = {"group_id": group_id, "messages": forward_message}
             response = requests.post(
-                self.api.bot_api_address + "send_group_forward_msg", json=params, headers=headers
+                self.api.bot_api_address + "send_group_forward_msg", json=params
             )
             return response.json()
 

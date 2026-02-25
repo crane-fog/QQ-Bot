@@ -228,10 +228,10 @@ class pixiv_img_get:
     def get_forward(self):
         "原图加入聊天记录"
         print("\nforward打包\n")
-        f = Forward("000")
+        f = Forward()
         for i, file_path in enumerate(self.paths):
             if i < self.page - 1:
-                f.add_sth(type="image", file_path=file_path)
+                f.add_node(type="image", file_path=file_path)
                 print(f"已经加入图片，位置{file_path}")
         return f.message
 
