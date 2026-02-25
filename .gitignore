@@ -5,3 +5,4 @@ temp/
 /plugins/*/data/
 .venv/
 .ruff_cache/
+"configs/" 
