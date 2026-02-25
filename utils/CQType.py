@@ -93,6 +93,7 @@ class Reply(CQMessage):
 
 class Forward:
     def __init__(self, group_id):
+        self.group_id = group_id
         self.message = []
 
     def add_sth(self, type, uid=None, sender_name=None, file_path=None, text=None, msg=None):
