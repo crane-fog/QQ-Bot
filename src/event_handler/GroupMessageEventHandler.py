@@ -1,4 +1,3 @@
-from sqlalchemy.dialects.postgresql import JSONB
 
 from src.PrintLog import Log
 
@@ -25,8 +24,6 @@ class GroupMessageEvent:
         self.message_id: int = data.get("message_id")
         self.group_id: int = data.get("group_id")
         self.group_name: str = data.get("group_name")
-        self.all_data: JSONB = data
-
         ...
 
     def post_event(self, debug):

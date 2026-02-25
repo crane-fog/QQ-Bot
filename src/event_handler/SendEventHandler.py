@@ -1,4 +1,3 @@
-from sqlalchemy.dialects.postgresql import JSONB
 
 from src.PrintLog import Log
 
@@ -21,7 +20,6 @@ class SendEvent:
         self.post_type: str = data.get("post_type")
         self.message: str = data.get("message")
         self.raw_message: str = data.get("raw_message")
-        self.all_data: JSONB = data
         ...
 
     def post_event(self, debug): ...
