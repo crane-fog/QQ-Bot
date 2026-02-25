@@ -173,8 +173,8 @@ class pixiv_img_get:
                             print(f"R-18作品翻转完成，位置{file_path}")
                         
                         # 加入列表
-                            self.paths.append(file_path)
-                            print(f"{img_name} 下载完成,位置为{file_path}")
+                        self.paths.append(file_path)
+                        print(f"{img_name} 下载完成,位置为{file_path}")
                     elif r.status_code==429:
                         "429：繁忙，重试"
                         print("429繁忙，等待4-5秒后重试")
@@ -185,7 +185,7 @@ class pixiv_img_get:
                                 img_name=img_name,
                                 url=url,
                                 file_path=file_path,
-                                retry_times=retry_times
+                                retry_times=retry_times-1
                         )
 
                     else:

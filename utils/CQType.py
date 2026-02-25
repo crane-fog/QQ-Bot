@@ -111,27 +111,7 @@ class Forward:
 
         self.message.append(node)
 
-class Forward:
-    def __init__(self, group_id):
-        self.message = []
 
-    def add_sth(self, type, uid=None, sender_name=None, file_path=None, text=None, msg=None):
-        "尝试返回一个列表形式的本质字典"
-        "group_id其实没有用，只是用来标记某一个列表"
-        node = {"type": "node", "data": {"content": [{"type": type, "data": {}}]}}
-        if type == "image" or type == "file":
-            node["data"]["content"][0]["data"]["file"] = file_path
-        elif type == "text":
-            node["data"]["content"][0]["data"]["text"] = text
-        elif type == "msg":
-            node["data"]["content"] = msg
-
-        if uid:
-            node["data"]["uin"] = uid
-        if sender_name:
-            node["data"]["name"] = sender_name
-
-        self.message.append(node)
 
 
 ...

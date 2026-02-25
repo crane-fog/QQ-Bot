@@ -1,4 +1,3 @@
-
 from src.PrintLog import Log
 
 log = Log()
