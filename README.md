@@ -19,7 +19,7 @@ uv sync
 uv run pre-commit install
 ```
 
-安装并正确配置运行 bot 的 qq 监听端，建议使用 [LLOneBot](https://github.com/LLOneBot/LuckyLilliaBot)（详见后文）
+安装并正确配置运行 bot 的 qq 监听端（详见后文），建议使用 [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)
 
 启动 bot
 ```bash
@@ -37,27 +37,56 @@ uv run main.py
 
 以CQ码格式接收消息
 
-（todo）
+> 如果你想为 `./src/Api.py` 添加尚未实现在该项目中的 llbot api，请参考 [llbot api 文档](https://llonebot.apifox.cn/)
 
-如果你想为 `./src/Api.py` 添加尚未实现在该项目中的 [llbot api](https://llonebot.apifox.cn/)
+## 配置文件说明
 
----
+### `configs/bot.ini` bot 基础信息配置
 
-三份配置文件：
+配置项 | 说明
+------|----
+server_address | 监听端的监听地址（即 bot 上报事件的地址）
+client_address | 监听端的事件上报的地址（即 bot 接收事件的地址）
+web_controller_address | bot web 控制面板的监听地址
+bot_name | bot 的名字（目前似乎没有什么用）
+debug | 是否开启日志调试模式（True/False）
+database_enable | 是否启用数据库（True/False）（建议使用 PostgreSQL）
+database_username | 数据库用户名
+database_address | 数据库地址
+database_passwd | 数据库密码
+database_name | 数据库名
+owner_id | 机器人所有者QQ号
+assistant_group | 助教群号（用于部分插件）
 
-`./configs/bot.ini` bot 基础信息配置
+### `configs/groups.ini` 群聊插件启用信息配置
+```ini
+[123456789]
+PluginName1 = True
+PluginName2 = True
+```
+决定了一个群聊（123456789）中启用哪些插件（PluginName1、PluginName2），未配置的插件默认不启用
 
-`./configs/groups.ini` 群聊插件启用信息配置
+### `configs/plugins.ini` 插件启用信息及部分特殊配置
+```ini
+[PluginName1]
+enable = True
 
-`./configs/plugins.ini` 插件启用信息及部分特殊配置
+[PluginName2]
+enable = False
+some_special_config = 123
+```
+`enable` 决定插件是否启用，此处的启用优先级高于群聊配置，即，只要配置了 `enable = False`，该插件不会被加载，不会在任何群聊中生效
 
-（todo）
+其余可包含插件需要读取的特殊配置项，建议将插件中需要可变的配置项写入此文件
 
 ---
 
 TODO:
+
 优化插件 log 使用
+
 重写 EventController
+
 配置文件读取优化
 
 ---
