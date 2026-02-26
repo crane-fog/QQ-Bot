@@ -43,14 +43,7 @@ class Repeater(Plugins):
             self.message_latest[group_id] = message_newest
             self.counts[group_id] = 1
             return
-        if (
-            message_newest == "Theresa 晚安"
-            or message_newest == "Theresa 早安"
-            or message_newest == "Theresa luck"
-            or message_newest == "Theresa 求刀"
-            or message_newest == "Theresa 公开我的期末成绩吧"
-            or message_newest == "Theresa linecount"
-        ):
+        if message_newest.startswith("Theresa"):
             return
 
         if message_newest == self.message_latest[group_id]:
