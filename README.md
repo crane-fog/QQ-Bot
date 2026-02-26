@@ -7,37 +7,28 @@
 框架自带比较完善的运行日志输出系统，同时配备了由原作者编写的 web 控制面板方便远程管理 bot 的运行情况与监测运行日志
 
 ## 在开发插件之前，你需要做哪些准备？
-本项目使用 uv 进行依赖管理
+- 本项目使用 uv 进行依赖管理 [uv安装文档](https://docs.astral.sh/uv/getting-started/installation/)
+- 拉取项目代码及初始化
+    ```bash
+    git clone https://github.com/crane-fog/QQ-Bot
+    cd QQ-Bot
+    uv sync
+    uv run pre-commit install
+    ```
+- 安装并正确配置运行 bot 的 qq 监听端（详见后文），建议使用 [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)
+- 启动 bot
+    ```bash
+    uv run main.py
+    ```
 
-[uv安装文档](https://docs.astral.sh/uv/getting-started/installation/)
+## 监听端配置
+- 启用HTTP服务
+- 设置“HTTP服务监听端口”，例：5700（对应 `bot.ini` 中的 server_address 端口）（端口可任意指定）
+- 勾选“启用HTTP事件上报”
+- 设置上报地址，例：http://127.0.0.1:5701/onebot （其端口对应 `bot.ini` 中的 client_address 端口）（端口可任意指定）
+- 以CQ码格式接收消息
 
-拉取项目代码及初始化
-```bash
-git clone https://github.com/crane-fog/QQ-Bot
-cd QQ-Bot
-uv sync
-uv run pre-commit install
-```
-
-安装并正确配置运行 bot 的 qq 监听端（详见后文），建议使用 [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)
-
-启动 bot
-```bash
-uv run main.py
-```
-
-## 监听端配置教程
-启用HTTP服务
-
-设置“HTTP服务监听端口”，例：5700（对应 `bot.ini` 中的 server_address 端口）（端口可任意指定）
-
-勾选“启用HTTP事件上报”
-
-设置上报地址，例：http://127.0.0.1:5701/onebot （其端口对应 `bot.ini` 中的 client_address 端口）（端口可任意指定）
-
-以CQ码格式接收消息
-
-> 如果你想为 `./src/Api.py` 添加尚未实现在该项目中的 llbot api，请参考 [llbot api 文档](https://llonebot.apifox.cn/)
+> 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
 
 ## 配置文件说明
 
@@ -63,6 +54,10 @@ assistant_group | 助教群号（用于部分插件）
 [123456789]
 PluginName1 = True
 PluginName2 = True
+
+[987654321]
+PluginName1 = True
+PluginName3 = True
 ```
 决定了一个群聊（123456789）中启用哪些插件（PluginName1、PluginName2），未配置的插件默认不启用
 
@@ -83,11 +78,9 @@ some_special_config = 123
 
 TODO:
 
-优化插件 log 使用
-
-重写 EventController
-
-配置文件读取优化
+- 优化插件 log 使用
+- 重写 EventController
+- 配置文件读取优化
 
 ---
 
