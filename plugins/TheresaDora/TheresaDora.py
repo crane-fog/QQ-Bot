@@ -259,7 +259,7 @@ class TheresaDora(Plugins):
 
         cmd = " ".join(message.split(" ")[1:])
         if not cmd:
-            self.api.GroupService.send_group_msg(self, group_id=group_id, message="请输入内容")
+            self.api.groupService.send_group_msg(group_id=group_id, message="请输入内容")
             return
         cmd += "！"
 
@@ -267,5 +267,5 @@ class TheresaDora(Plugins):
 
         generate_img(cmd, path)
 
-        self.api.GroupService.send_group_img(self, group_id=group_id, image_path=path)
+        self.api.groupService.send_group_img(group_id=group_id, image_path=path)
         return

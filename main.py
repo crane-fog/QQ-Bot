@@ -4,13 +4,8 @@ from src.Bot import Bot
 
 
 async def main():
-    config_file = "configs/bot.ini"
-
-    bot = Bot(
-        config_file=config_file,
-    )
+    bot = Bot(configs_path="configs", plugins_path="plugins")
     await bot.initialize()
-    # bot.runWebCtrler()
     bot.run()
 
 

@@ -64,5 +64,5 @@ class TheresaEat(Plugins):
         else:
             msg = choice(choices[event.message.strip().split(" ")[2]])
 
-        self.api.GroupService.send_group_msg(group_id=event.group_id, message=msg)
+        self.api.groupService.send_group_msg(group_id=event.group_id, message=msg)
         return

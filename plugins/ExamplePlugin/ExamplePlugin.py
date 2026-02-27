@@ -34,6 +34,10 @@ class ExamplePlugin(Plugins):
         注意！所有的插件都需要写成异步的方法，防止某个插件出问题卡死时导致整个程序阻塞
         """
 
+        # 读取 plugins.ini 中的配置项
+        # 由于项目结构设计限制及保证配置动态加载能力，不得在 __init__ 中读取
+        self.config.get("some_config")
+
         self.set_status("error")
         log.debug("成功将该插件状态变为error", debug)
         log.error(f"这个错误是由测试插件：{self.name}主动产生的，Nothing goes wrong！")

@@ -8,8 +8,7 @@ from collections import deque
 from jinja2 import Template
 from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
@@ -55,10 +54,6 @@ class TheresaChat(Plugins):
                             """
         self.init_status()
 
-        # 从数据库读取的上下文消息条数
-        self.context_length = int(self.config.get("context_length"))
-        self.context_length_for_face = int(self.config.get("context_length_for_face"))
-
         # 冷却时间，防止刷屏
         self.group_cooldown = {}
         self.cooldown_time = 5
@@ -79,6 +74,10 @@ class TheresaChat(Plugins):
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEventHandler, debug):
+        # 从数据库读取的上下文消息条数
+        self.context_length = self.config.getint("context_length")
+        self.context_length_for_face = self.config.getint("context_length_for_face")
+
         message = event.message
         group_id = event.group_id
         face_flag = False
@@ -139,11 +138,7 @@ class TheresaChat(Plugins):
                     msg.cq_type = "image"
                     msg.subType = "1"
                     msg.file = f"file://{image_name}"
-                    self.api.GroupService.send_group_msg(
-                        self,
-                        group_id=group_id,
-                        message=str(msg),
-                    )
+                    self.api.groupService.send_group_msg(group_id=group_id, message=str(msg))
             else:
                 persona = self.persona_template.render(
                     owner_id=self.bot.owner_id,
@@ -162,7 +157,7 @@ class TheresaChat(Plugins):
                 if "[NO REPLY]" not in response:
                     # 更新冷却时间
                     self.group_cooldown[group_id] = time.time()
-                    self.api.GroupService.send_group_msg(self, group_id=group_id, message=response)
+                    self.api.groupService.send_group_msg(group_id=group_id, message=response)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")
