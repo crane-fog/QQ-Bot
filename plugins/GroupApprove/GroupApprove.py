@@ -56,8 +56,8 @@ class GroupApprove(Plugins):
         if not self.request_conform(debug):
             if reject_flag1:
                 reject_reason = "请以正确格式申请入群"
-                self.api.GroupService.set_group_add_request(
-                    self, flag=flag, approve="false", reason=reject_reason
+                self.api.groupService.set_group_add_request(
+                    flag=flag, approve="false", reason=reject_reason
                 )
                 log.debug(
                     f"{self.name}:{group_id}错误入群申请{flag}拒绝，拒绝理由为{reject_reason}",
@@ -71,8 +71,8 @@ class GroupApprove(Plugins):
         if not self.stu_id_conform(stu_id):
             if reject_flag2:
                 reject_reason = "学号错误"
-                self.api.GroupService.set_group_add_request(
-                    self, flag=flag, approve="false", reason=reject_reason
+                self.api.groupService.set_group_add_request(
+                    flag=flag, approve="false", reason=reject_reason
                 )
                 log.debug(
                     f"{self.name}:{group_id}无信息入群申请{flag}拒绝，拒绝理由为{reject_reason}",
@@ -81,7 +81,7 @@ class GroupApprove(Plugins):
             else:
                 log.debug(f"{self.name}:{group_id}无信息入群申请{flag}挂起", debug)
         else:
-            self.api.GroupService.set_group_add_request(self, flag=flag)
+            self.api.groupService.set_group_add_request(flag=flag)
             log.debug(f"{self.name}:{group_id}正确入群申请{flag}批准", debug)
 
     def request_conform(self, debug):

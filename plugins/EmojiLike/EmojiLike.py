@@ -32,8 +32,6 @@ class EmojiLike(Plugins):
 
         if randint(0, 99) < frequency:
             emoji_id = randint(0, 350)
-            self.api.GroupService.set_msg_emoji_like(
-                self, message_id=event.message_id, emoji_id=emoji_id
-            )
+            self.api.groupService.set_msg_emoji_like(message_id=event.message_id, emoji_id=emoji_id)
 
         return

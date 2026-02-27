@@ -55,7 +55,7 @@ class Plugins:
 
     def __init__(self, server_address: str, bot):
         self.server_address = server_address
-        self.api = Api(server_address)
+        self.api: Api = Api(server_address)
         self.bot = bot
         self.name = "name"
         self.type = "type"

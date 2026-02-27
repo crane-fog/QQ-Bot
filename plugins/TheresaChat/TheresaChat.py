@@ -139,11 +139,7 @@ class TheresaChat(Plugins):
                     msg.cq_type = "image"
                     msg.subType = "1"
                     msg.file = f"file://{image_name}"
-                    self.api.GroupService.send_group_msg(
-                        self,
-                        group_id=group_id,
-                        message=str(msg),
-                    )
+                    self.api.groupService.send_group_msg(group_id=group_id, message=str(msg))
             else:
                 persona = self.persona_template.render(
                     owner_id=self.bot.owner_id,
@@ -162,7 +158,7 @@ class TheresaChat(Plugins):
                 if "[NO REPLY]" not in response:
                     # 更新冷却时间
                     self.group_cooldown[group_id] = time.time()
-                    self.api.GroupService.send_group_msg(self, group_id=group_id, message=response)
+                    self.api.groupService.send_group_msg(group_id=group_id, message=response)
 
         except Exception as e:
             log.error(f"插件：{self.name}运行时出错：{e}")

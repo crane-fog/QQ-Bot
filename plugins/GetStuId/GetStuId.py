@@ -30,9 +30,9 @@ class GetStuId(Plugins):
             return
 
         group_id = int(message.split(" ")[1])
-        group_member_list = self.api.GroupService.get_group_member_list(
-            self, group_id=group_id
-        ).get("data")
+        group_member_list = self.api.groupService.get_group_member_list(group_id=group_id).get(
+            "data"
+        )
 
         info_list = []
         for member in group_member_list:
@@ -41,8 +41,8 @@ class GetStuId(Plugins):
             if ("-" in card) and (card.split("-")[0].isdigit()):
                 stu_id = card.split("-")[0]
                 info_list.append((user_id, stu_id))
-        self.api.GroupService.send_group_msg(
-            self, group_id=event.group_id, message=f"共获取到{len(info_list)}条数据"
+        self.api.groupService.send_group_msg(
+            group_id=event.group_id, message=f"共获取到{len(info_list)}条数据"
         )
 
         async with self.session_factory() as session:

@@ -8,9 +8,9 @@ class Api:
         self.bot_api_address = f"http://{server_address}/"
 
         # 传递Api类的实例引用
-        self.botSelfInfo = self.BotSelfInfo(self)
-        self.privateService = self.PrivateService(self)
-        self.groupService = self.GroupService(self)
+        self.botSelfInfo: Api.BotSelfInfo = self.BotSelfInfo(self)
+        self.privateService: Api.PrivateService = self.PrivateService(self)
+        self.groupService: Api.GroupService = self.GroupService(self)
 
     class BotSelfInfo:
         def __init__(self, api_instance):

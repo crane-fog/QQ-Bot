@@ -45,8 +45,8 @@ class TheresaCard(Plugins):
 
         kick_flag = event.message == "Theresa card kick"
 
-        group_member_list = self.api.GroupService.get_group_member_list(
-            self, group_id=event.group_id
+        group_member_list = self.api.groupService.get_group_member_list(
+            group_id=event.group_id
         ).get("data")
         ignored_ids: list = self.config.get("ignored_ids")
 
@@ -57,7 +57,7 @@ class TheresaCard(Plugins):
             user_id = member["user_id"]
             if user_id in ignored_ids:
                 continue
-            # card = self.api.GroupService.get_group_member_info(self, group_id=event.group_id, user_id=user_id).get("data").get("card")
+            # card = self.api.groupService.get_group_member_info(group_id=event.group_id, user_id=user_id).get("data").get("card")
             card = member.get("card_or_nickname")
             if not check_card_format(card):
                 if event.message == "Theresa card debug":
@@ -89,20 +89,18 @@ class TheresaCard(Plugins):
             if len(entry_lines) > 20:
                 for entry_chunk in chunked(entry_lines, 20):
                     message = "\n".join(entry_chunk)
-                    self.api.GroupService.send_group_msg(
-                        self, group_id=event.group_id, message=message
-                    )
-                self.api.GroupService.send_group_msg(
-                    self, group_id=event.group_id, message=suffix.strip()
+                    self.api.groupService.send_group_msg(group_id=event.group_id, message=message)
+                self.api.groupService.send_group_msg(
+                    group_id=event.group_id, message=suffix.strip()
                 )
             else:
                 message = "\n".join(entry_lines) + suffix
-                self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
+                self.api.groupService.send_group_msg(group_id=event.group_id, message=message)
         else:
             message = "所有群成员名片格式均符合要求"
-            self.api.GroupService.send_group_msg(self, group_id=event.group_id, message=message)
+            self.api.groupService.send_group_msg(group_id=event.group_id, message=message)
 
         if kick_flag:
             for user_id in not_allowed_ids:
-                self.api.GroupService.set_group_kick(self, group_id=event.group_id, user_id=user_id)
+                self.api.groupService.set_group_kick(group_id=event.group_id, user_id=user_id)
         return
