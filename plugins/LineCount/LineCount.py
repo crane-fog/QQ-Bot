@@ -119,6 +119,6 @@ class LineCount(Plugins):
     Basement = declarative_base()
 
     class StuId(Basement):
-        __tablename__ = "stu_id"
+        __tablename__ = "stu_qq_id_map"
         stu_id = Column(Integer, primary_key=True)
         qq_id = Column(String)

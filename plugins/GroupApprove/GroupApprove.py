@@ -33,15 +33,15 @@ class GroupApprove(Plugins):
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupRequestEvent, debug):
-        if self.all_inform is None:
-            for _ in range(5):
-                try:
-                    self.all_inform = await self.select_all_infom()
-                    log.debug("初始化验证信息成功", debug)
-                    break
-                except Exception as e:
-                    log.debug(e, debug=debug)
-                    continue
+        # if self.all_inform is None:
+        #     for _ in range(5):
+        #         try:
+        #             self.all_inform = await self.select_all_infom()
+        #             log.debug("初始化验证信息成功", debug)
+        #             break
+        #         except Exception as e:
+        #             log.debug(e, debug=debug)
+        #             continue
         if event.sub_type != "add":
             return
         group_id = event.group_id
