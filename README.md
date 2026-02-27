@@ -32,6 +32,8 @@
 
 ## 配置文件说明
 
+> 在 clone 项目后，对于 `configs` 文件夹下的每个配置文件，需要复制一份去掉 `.template` 后缀的文件，并根据需要修改配置项，bot 启动时如无法找到配置文件会自动复制模板文件
+
 ### `configs/bot.ini` bot 基础信息配置
 
 配置项 | 说明
@@ -80,7 +82,7 @@ TODO:
 
 - 优化插件 log 使用
 - 重写 EventController
-- 配置文件读取优化
+- 重写 WebController
 
 ---
 

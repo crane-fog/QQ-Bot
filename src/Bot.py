@@ -3,6 +3,7 @@ import logging
 import os
 from importlib import import_module
 from pkgutil import iter_modules
+from shutil import copyfile
 
 from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
@@ -40,6 +41,9 @@ class Bot:
             # 成员变量初始化
             self.configs_path: str = configs_path
             self.plugins_path: str = plugins_path
+
+            # 检查配置文件
+            check_config_files(self.configs_path)
 
             # 初始化配置加载器
             self.config: configparser.ConfigParser = configparser.ConfigParser()
@@ -202,6 +206,30 @@ class Bot:
         # log.error("TEST ERROR")
 
         joinall([event_server, web_server])
+
+
+def check_config_files(configs_path: str) -> None:
+    """
+    如配置文件不存在，复制默认配置文件模板
+    """
+    if not os.path.isfile(os.path.join(configs_path, "bot.ini")):
+        log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
+        copyfile(
+            os.path.join(configs_path, "bot.ini.template"),
+            os.path.join(configs_path, "bot.ini"),
+        )
+    if not os.path.isfile(os.path.join(configs_path, "groups.ini")):
+        log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
+        copyfile(
+            os.path.join(configs_path, "groups.ini.template"),
+            os.path.join(configs_path, "groups.ini"),
+        )
+    if not os.path.isfile(os.path.join(configs_path, "plugins.ini")):
+        log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
+        copyfile(
+            os.path.join(configs_path, "plugins.ini.template"),
+            os.path.join(configs_path, "plugins.ini"),
+        )
 
 
 if __name__ == "__main__":
