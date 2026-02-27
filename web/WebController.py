@@ -12,8 +12,6 @@ from flask import (
 )
 from gevent.pywsgi import WSGIServer
 
-from plugins import configs_path, plugins_path
-
 total_lines_read = 0
 last_cleared_line = 0
 
@@ -196,8 +194,8 @@ class WebController:
 
         # 2. 扫描未加载的插件 (从 plugins.ini 和 文件夹)
 
-        plugins_config_path = os.path.join(configs_path, "plugins.ini")
-        groups_config_path = os.path.join(configs_path, "groups.ini")
+        plugins_config_path = os.path.join(bot.configs_path, "plugins.ini")
+        groups_config_path = os.path.join(bot.configs_path, "groups.ini")
 
         config = configparser.ConfigParser()
         config.optionxform = str
@@ -209,8 +207,8 @@ class WebController:
         if os.path.exists(groups_config_path):
             g_config.read(groups_config_path, encoding="utf-8")
 
-        for item in os.listdir(plugins_path):
-            plugin_dir = os.path.join(plugins_path, item)
+        for item in os.listdir(bot.plugins_path):
+            plugin_dir = os.path.join(bot.plugins_path, item)
             if os.path.isdir(plugin_dir) and not item.startswith("__"):
                 if item not in loaded_plugin_names:
                     # 这是一个未加载的插件

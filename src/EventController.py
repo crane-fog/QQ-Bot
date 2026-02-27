@@ -8,7 +8,6 @@ from gevent.pywsgi import WSGIServer
 
 from plugins import Plugins
 
-from .ConfigLoader import ConfigLoader
 from .event_handler.GroupMessageEventHandler import GroupMessageEvent
 from .event_handler.NoticeEventHandler import GroupPokeEvent, GroupRecallEvent
 from .event_handler.PrivateMessageEventHandler import PrivateMessageEvent
@@ -83,11 +82,10 @@ class Event:
     flask_log = logging.getLogger("werkzeug")
     flask_log.setLevel(logging.ERROR)
 
-    def __init__(self, plugins_list: list[Plugins], config_loader: ConfigLoader, debug: bool):
+    def __init__(self, plugins_list: list[Plugins], debug: bool):
         try:
             self.debug = debug
             self.plugins_list = plugins_list
-            self.config_loader = config_loader
         except Exception as e:
             log.error(f"初始化事件处理器时失败：{e}")
             raise e
@@ -230,6 +228,5 @@ class Event:
 # 示例用法
 if __name__ == "__main__":
     plugins_list = []  # 假设的插件列表
-    config_loader = None  # 假设的配置加载器
-    event = Event(plugins_list, config_loader, debug=True)
+    event = Event(plugins_list, debug=True)
     event.run("127.0.0.1", 5000, False)

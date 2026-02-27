@@ -5,12 +5,6 @@ import os
 
 from src.Api import Api
 
-# 获取当前目录的路径
-plugins_path = os.path.dirname(__file__)
-configs_path = os.path.join(os.path.dirname(os.path.dirname(__file__)), "configs")
-plugins_config_path = os.path.join(configs_path, "plugins.ini")
-groups_config_path = os.path.join(configs_path, "groups.ini")
-
 
 def plugin_main(check_call_word=True, call_word: list = None, check_group=True, require_db=False):
     """
@@ -70,6 +64,8 @@ class Plugins:
         self.status = None  # running/disable/error
         self.error_info = ""
         self.config = None
+        self.plugins_config_path = os.path.join(self.bot.configs_path, "plugins.ini")
+        self.groups_config_path = os.path.join(self.bot.configs_path, "groups.ini")
 
     async def main(self, event, debug):
         raise NotImplementedError("方法还未实现")
@@ -120,18 +116,18 @@ class Plugins:
         config_dict = {}
 
         # 读取插件自身的基础配置
-        if os.path.exists(plugins_config_path):
+        if os.path.exists(self.plugins_config_path):
             u_config = configparser.ConfigParser()
-            u_config.read(plugins_config_path, encoding="utf-8")
+            u_config.read(self.plugins_config_path, encoding="utf-8")
 
             if u_config.has_section(self.name):
                 for key, value in u_config.items(self.name):
                     config_dict[key] = convert_value(value)
 
         # 读取群组配置，构建 effected_group 列表
-        if os.path.exists(groups_config_path):
+        if os.path.exists(self.groups_config_path):
             g_config = configparser.ConfigParser()
-            g_config.read(groups_config_path, encoding="utf-8")
+            g_config.read(self.groups_config_path, encoding="utf-8")
 
             effected_group = []
             for section in g_config.sections():

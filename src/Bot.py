@@ -1,6 +1,6 @@
+import configparser
 import logging
 import os
-from configparser import ConfigParser
 from importlib import import_module
 from pkgutil import iter_modules
 
@@ -8,11 +8,10 @@ from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
-from plugins import Plugins, plugins_config_path, plugins_path
+from plugins import Plugins
 from web.WebController import WebController
 
 from .Api import Api
-from .ConfigLoader import ConfigLoader
 from .EventController import Event
 from .PrintLog import Log
 
@@ -30,18 +29,22 @@ def run_service(service, host, port, debug):
 
 
 class Bot:
-    def __init__(self, config_file: str):
+    def __init__(self, configs_path: str, plugins_path: str):
         """
         初始化bot对象
-        :param config_file: 配置文件的路径（绝对/相对）
+        :param configs_path: 配置文件目录的路径
+        :param plugins_path: 插件文件目录的路径
         """
         log.start_logging()
         try:
             # 成员变量初始化
-            self.config_file: str = config_file
+            self.configs_path: str = configs_path
+            self.plugins_path: str = plugins_path
 
             # 初始化配置加载器
-            self.configLoader: ConfigLoader = ConfigLoader(config_file)
+            self.config: configparser.ConfigParser = configparser.ConfigParser()
+            with open(os.path.join(self.configs_path, "bot.ini"), encoding="utf-8") as f:
+                self.config.read_file(f)
 
             # 初始化插件列表
             self.plugins_list: list[Plugins] = []
@@ -49,28 +52,27 @@ class Bot:
             # 初始化数据库连接对象
             self.database = None
 
-            # 通过configLoader加载其他初始化参数
-            log.info(f"开始加载Bot配置文件，文件路径：{self.config_file}")
-            init_config = self.configLoader.bot_init_loader()
+            # 通过 ConfigParser 加载其他初始化参数
+            log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
 
             # 需要检查的关键配置项
             required_configs = {
-                "server_address": self.configLoader.get_init_config("server_address", "str"),
-                "client_address": self.configLoader.get_init_config("client_address", "str"),
-                "web_controller_address": self.configLoader.get_init_config(
-                    "web_controller_address", "str"
+                "server_address": self.config.get("Init", "server_address", fallback=None),
+                "client_address": self.config.get("Init", "client_address", fallback=None),
+                "web_controller_address": self.config.get(
+                    "Init", "web_controller_address", fallback=None
                 ),
-                "bot_name": self.configLoader.get_init_config("bot_name", "str"),
-                "debug": self.configLoader.get_init_config("debug", "bool"),
-                "database_enable": self.configLoader.get_init_config("database_enable", "bool"),
-                "database_username": self.configLoader.get_init_config("database_username", "str"),
-                "database_address": self.configLoader.get_init_config("database_address", "str"),
-                "database_passwd": self.configLoader.get_init_config("database_passwd", "str"),
-                "database_name": self.configLoader.get_init_config("database_name", "str"),
-                "owner_id": self.configLoader.get_init_config("owner_id", "int"),
-                "assistant_group": self.configLoader.get_init_config("assistant_group", "int"),
+                "bot_name": self.config.get("Init", "bot_name", fallback=None),
+                "debug": self.config.getboolean("Init", "debug", fallback=None),
+                "database_enable": self.config.getboolean("Init", "database_enable", fallback=None),
+                "database_username": self.config.get("Init", "database_username", fallback=None),
+                "database_address": self.config.get("Init", "database_address", fallback=None),
+                "database_passwd": self.config.get("Init", "database_passwd", fallback=None),
+                "database_name": self.config.get("Init", "database_name", fallback=None),
+                "owner_id": self.config.getint("Init", "owner_id", fallback=None),
+                "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
             }
-
+            print(required_configs)
             # 检查哪些关键配置项是空的
             missing_configs = [key for key, value in required_configs.items() if value is None]
             if missing_configs:
@@ -92,7 +94,7 @@ class Bot:
 
             log.info("成功加载配置文件")
             log.info("加载的bot初始化配置信息如下：")
-            for item in init_config.items():
+            for item in required_configs.items():
                 log.info(str(item))
 
             # 初始化api接口对象
@@ -146,14 +148,12 @@ class Bot:
         log.info("开始加载插件")
 
         # 读取统一的插件配置文件
-        plugins_config = ConfigParser()
-        if os.path.exists(plugins_config_path):
-            plugins_config.read(plugins_config_path, encoding="utf-8")
-        else:
-            log.warning(f"未找到插件配置文件：{plugins_config_path}，将不加载任何插件")
-            return
+        plugins_config = configparser.ConfigParser()
+        plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
+        with open(plugins_config_path, encoding="utf-8") as f:
+            plugins_config.read_file(f)
 
-        for _, name, ispkg in iter_modules([plugins_path]):
+        for _, name, ispkg in iter_modules([self.plugins_path]):
             if not ispkg:
                 continue  # 如果不是插件包就跳过
 
@@ -185,7 +185,7 @@ class Bot:
                 raise e
 
     def run(self):
-        event = Event(self.plugins_list, self.configLoader, self.debug)
+        event = Event(self.plugins_list, self.debug)
         ip_address, port = self.client_address.split(":")
         # 使用Flask实例的run方法启动Flask服务
         log.info(f"尝试将监听服务启动在 {ip_address}:{port}")
