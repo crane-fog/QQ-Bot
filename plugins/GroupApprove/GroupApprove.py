@@ -45,8 +45,8 @@ class GroupApprove(Plugins):
         if event.sub_type != "add":
             return
         group_id = event.group_id
-        reject_flag1 = self.config.get("reject1")
-        reject_flag2 = self.config.get("reject2")
+        reject_flag1 = self.config.getboolean("reject1")
+        reject_flag2 = self.config.getboolean("reject2")
         flag = event.flag
         full_comment = event.comment
 
@@ -85,11 +85,11 @@ class GroupApprove(Plugins):
             log.debug(f"{self.name}:{group_id}正确入群申请{flag}批准", debug)
 
     def request_conform(self, debug):
-        parts = self.config.get("parts")
+        parts = self.config.getint("parts")
         flag = False
         for spacer in self.spacer:
             answer_cuts = self.real_answer.split(spacer)
-            if len(answer_cuts) == int(parts):
+            if len(answer_cuts) == parts:
                 flag = True
                 self.spacer_type = spacer
                 break

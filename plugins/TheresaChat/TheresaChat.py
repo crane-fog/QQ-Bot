@@ -55,10 +55,6 @@ class TheresaChat(Plugins):
                             """
         self.init_status()
 
-        # 从数据库读取的上下文消息条数
-        self.context_length = int(self.config.get("context_length"))
-        self.context_length_for_face = int(self.config.get("context_length_for_face"))
-
         # 冷却时间，防止刷屏
         self.group_cooldown = {}
         self.cooldown_time = 5
@@ -79,6 +75,10 @@ class TheresaChat(Plugins):
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEventHandler, debug):
+        # 从数据库读取的上下文消息条数
+        self.context_length = self.config.getint("context_length")
+        self.context_length_for_face = self.config.getint("context_length_for_face")
+
         message = event.message
         group_id = event.group_id
         face_flag = False

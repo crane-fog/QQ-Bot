@@ -48,7 +48,7 @@ class TheresaCard(Plugins):
         group_member_list = self.api.groupService.get_group_member_list(
             group_id=event.group_id
         ).get("data")
-        ignored_ids: list = self.config.get("ignored_ids")
+        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
 
         not_allowed_ids = []
         not_allowed_cards = []

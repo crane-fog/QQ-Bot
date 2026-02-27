@@ -126,7 +126,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "Private":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
@@ -144,7 +144,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "Group" or plugins_type == "GroupRecall" or plugins_type == "Record":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
@@ -162,7 +162,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "GroupRecall":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
@@ -180,7 +180,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "GroupRequest":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
@@ -198,7 +198,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "Poke":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
@@ -216,7 +216,7 @@ class Event:
             plugins_author = plugins.author
             if plugins_type == "Send" or plugins_type == "Record":
                 try:
-                    plugins.load_config()
+                    plugins.load_effected_groups()
                     await plugins.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()

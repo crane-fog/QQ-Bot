@@ -174,7 +174,8 @@ class Bot:
                 PluginClass = getattr(plugin_module, name)
                 # 实例化插件
                 plugin_instance: Plugins = PluginClass(self.server_address, self)
-                plugin_instance.load_config()
+                # 传递插件配置
+                plugin_instance.config = plugins_config[name]
                 # 添加到插件列表
                 self.plugins_list.append(plugin_instance)
                 log.info(

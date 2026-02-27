@@ -346,7 +346,7 @@ class WebController:
             # 如果插件已加载，更新内存中的配置和状态
             for plugin in self.bot.plugins_list:
                 if plugin_name == plugin.name:
-                    plugin.load_config()
+                    plugin.load_effected_groups()
                     status = "running" if plugin.config.get("enable") else "disable"
                     plugin.set_status(status=status)
                     break

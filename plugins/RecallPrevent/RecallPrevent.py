@@ -34,12 +34,12 @@ class RecallPrevent(Plugins):
         # 初始化同步 Redis 连接
         if not self.redis_client:
             host = self.config.get("host", "localhost")
-            port = int(self.config.get("port", 6379))
-            db = int(self.config.get("db", 0))
+            port = int(self.config.getint("port", 6379))
+            db = int(self.config.getint("db", 0))
             self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
         group_id = event.group_id
 
-        for_administer = bool(self.config.get("for_administer"))
+        for_administer = bool(self.config.getboolean("for_administer"))
 
         if event.post_type == "message":  # 当获取消息时将消息的信息存入redis
             # 获取消息和消息ID
@@ -77,13 +77,13 @@ class RecallPrevent(Plugins):
             log.error(f"解析 Redis 数据时出错：{e}")
             return
 
-        for_everyone = bool(self.config.get("for_everyone"))
-        ban = bool(self.config.get("ban"))
+        for_everyone = bool(self.config.getboolean("for_everyone"))
+        ban = bool(self.config.getboolean("ban"))
         ban_time = self.config.get("ban_time")
         ban_time_cuts = ban_time.split("-")
         min_ban_time = ban_time_cuts[0].split(":")
         max_ban_time = ban_time_cuts[1].split(":")
-        ignored_ids: list = self.config.get("ignored_ids")
+        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
         duration = random.randint(
             int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 + int(min_ban_time[2]),
             int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 + int(max_ban_time[2]),
