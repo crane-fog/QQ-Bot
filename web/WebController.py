@@ -194,8 +194,8 @@ class WebController:
 
         # 2. 扫描未加载的插件 (从 plugins.ini 和 文件夹)
 
-        plugins_config_path = os.path.join(bot.configs_path, "plugins.ini")
-        groups_config_path = os.path.join(bot.configs_path, "groups.ini")
+        plugins_config_path = os.path.join(self.bot.configs_path, "plugins.ini")
+        groups_config_path = os.path.join(self.bot.configs_path, "groups.ini")
 
         config = configparser.ConfigParser()
         config.optionxform = str
@@ -207,8 +207,8 @@ class WebController:
         if os.path.exists(groups_config_path):
             g_config.read(groups_config_path, encoding="utf-8")
 
-        for item in os.listdir(bot.plugins_path):
-            plugin_dir = os.path.join(bot.plugins_path, item)
+        for item in os.listdir(self.bot.plugins_path):
+            plugin_dir = os.path.join(self.bot.plugins_path, item)
             if os.path.isdir(plugin_dir) and not item.startswith("__"):
                 if item not in loaded_plugin_names:
                     # 这是一个未加载的插件
@@ -258,9 +258,8 @@ class WebController:
     def update_plugin_status(self, plugin_name, new_status):
         # 此方法似乎未被前端直接调用，或者逻辑需要更新
         # 暂时保留，但指向 plugins.ini
-        from plugins import plugins_path
 
-        config_path = os.path.join(plugins_path, "plugins.ini")
+        config_path = os.path.join(self.bot.configs_path, "plugins.ini")
         config = configparser.ConfigParser()
         config.optionxform = str
 
@@ -290,10 +289,8 @@ class WebController:
             return {"success": False, "message": "缺少插件名称"}
 
         try:
-            from plugins import plugins_path
-
-            plugins_config_path = os.path.join(plugins_path, "plugins.ini")
-            groups_config_path = os.path.join(plugins_path, "groups.ini")
+            plugins_config_path = os.path.join(self.bot.configs_path, "plugins.ini")
+            groups_config_path = os.path.join(self.bot.configs_path, "groups.ini")
 
             p_config = configparser.ConfigParser()
             p_config.optionxform = str
@@ -347,7 +344,7 @@ class WebController:
             for plugin in self.bot.plugins_list:
                 if plugin_name == plugin.name:
                     plugin.load_effected_groups()
-                    status = "running" if plugin.config.get("enable") else "disable"
+                    status = "running" if plugin.config.getboolean("enable") else "disable"
                     plugin.set_status(status=status)
                     break
 

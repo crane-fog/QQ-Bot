@@ -28,7 +28,7 @@ class EmojiLike(Plugins):
         if event.user_id in ignored_ids:
             return
 
-        frequency = int(self.config.getint("frequency"))
+        frequency = self.config.getint("frequency")
 
         if randint(0, 99) < frequency:
             emoji_id = randint(0, 350)

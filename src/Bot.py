@@ -76,7 +76,7 @@ class Bot:
                 "owner_id": self.config.getint("Init", "owner_id", fallback=None),
                 "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
             }
-            print(required_configs)
+
             # 检查哪些关键配置项是空的
             missing_configs = [key for key, value in required_configs.items() if value is None]
             if missing_configs:
