@@ -32,11 +32,8 @@ class TheresaHelp(Plugins):
             response = f"未找到名为 {target_plugin_name} 的插件"
             for plugin in self.bot.plugins_list:
                 if plugin.name.lower() == target_plugin_name.lower():
-                    # 获取插件启用的群组列表
-                    effected_groups: list = plugin.config.get("effected_group")
-
                     # 如果当前群组在插件的启用列表中
-                    if group_id in effected_groups:
+                    if group_id in plugin.effected_groups:
                         # 获取插件介绍，去除首尾空白
                         intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
                         # 格式化输出，去除多余的缩进
@@ -50,11 +47,8 @@ class TheresaHelp(Plugins):
             response = "当前群聊启用的插件如下：\n\n"
             # 遍历所有已加载的插件
             for plugin in self.bot.plugins_list:
-                # 获取插件启用的群组列表
-                effected_groups: list = plugin.config.get("effected_group")
-
                 # 如果当前群组在插件的启用列表中
-                if group_id in effected_groups:
+                if group_id in plugin.effected_groups:
                     # 获取插件介绍，去除首尾空白
                     intro = plugin.introduction.strip() if plugin.introduction else "暂无介绍"
                     # 格式化输出，去除多余的缩进
