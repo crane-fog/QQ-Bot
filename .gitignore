@@ -5,3 +5,7 @@ temp/
 /plugins/*/data/
 .venv/
 .ruff_cache/
+.pytest_cache/
+/configs/bot.ini
+/configs/groups.ini
+/configs/plugins.ini

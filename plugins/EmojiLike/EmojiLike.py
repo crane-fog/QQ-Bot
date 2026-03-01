@@ -24,16 +24,14 @@ class EmojiLike(Plugins):
 
     @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEventHandler, debug):
-        ignored_ids: list = self.config.get("ignored_ids")
+        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
         if event.user_id in ignored_ids:
             return
 
-        frequency = int(self.config.get("frequency"))
+        frequency = self.config.getint("frequency")
 
         if randint(0, 99) < frequency:
             emoji_id = randint(0, 350)
-            self.api.GroupService.set_msg_emoji_like(
-                self, message_id=event.message_id, emoji_id=emoji_id
-            )
+            self.api.groupService.set_msg_emoji_like(message_id=event.message_id, emoji_id=emoji_id)
 
         return

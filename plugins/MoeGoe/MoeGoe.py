@@ -21,7 +21,6 @@ class MoeGoe(Plugins):
                                 usage: moegoe ema/sheri zh/ja <文本>
                             """
         self.init_status()
-        self.base_url = self.config.get("url")  # API基础URL
 
     @plugin_main(call_word=["moegoe"])
     async def main(self, event: GroupMessageEventHandler, debug):
@@ -53,7 +52,7 @@ class MoeGoe(Plugins):
         return
 
     def get_api_response(self, prompt, filename, lang, chara):
-        url = self.base_url
+        url = self.config.get("url")
         payload = {"text": prompt, "lang": lang, "chara": chara}
         response = requests.post(url, json=payload)
         with open(filename, "wb") as f:

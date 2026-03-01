@@ -30,10 +30,10 @@ class Repeater(Plugins):
     @plugin_main(check_call_word=False)
     async def main(self, event: GroupMessageEvent, debug):
         group_id = event.group_id
-        threshold = int(self.config.get("threshold"))
-        ban = bool(self.config.get("ban"))
-        recall = bool(self.config.get("recall"))
-        for_everyone = bool(self.config.get("for_everyone"))
+        threshold = self.config.getint("threshold")
+        ban = self.config.getboolean("ban")
+        recall = self.config.getboolean("recall")
+        for_everyone = self.config.getboolean("for_everyone")
 
         if not self.message_latest.get(group_id):
             self.message_latest[group_id] = ""
@@ -43,14 +43,7 @@ class Repeater(Plugins):
             self.message_latest[group_id] = message_newest
             self.counts[group_id] = 1
             return
-        if (
-            message_newest == "Theresa 晚安"
-            or message_newest == "Theresa 早安"
-            or message_newest == "Theresa luck"
-            or message_newest == "Theresa 求刀"
-            or message_newest == "Theresa 公开我的期末成绩吧"
-            or message_newest == "Theresa linecount"
-        ):
+        if message_newest.startswith("Theresa"):
             return
 
         if message_newest == self.message_latest[group_id]:
@@ -58,14 +51,13 @@ class Repeater(Plugins):
 
         # 到达阈值时正式进行插件的运行
         if self.counts[group_id] >= threshold:
-            ignored_ids: list = self.config.get("ignored_ids")
+            ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
             reply_message = self.config.get("normal_message")
             card_cuts = event.card.split("-")
             ban_time = self.config.get("ban_time")
             ban_time_cuts = ban_time.split("-")
             min_ban_time = ban_time_cuts[0].split(":")
             max_ban_time = ban_time_cuts[1].split(":")
-            ignored_ids: list = self.config.get("ignored_ids")
             duration = random.randint(
                 int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 + int(min_ban_time[2]),
                 int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 + int(max_ban_time[2]),

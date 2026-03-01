@@ -95,8 +95,7 @@ class TheresaMathAI(Plugins):
                 1020010981: "/819b03b4-3378-4d2c-b680-641e0d5564ff",
             }
 
-            self.api.GroupService.send_group_file(
-                self,
+            self.api.groupService.send_group_file(
                 group_id=group_id,
                 file_path=filepath,
                 name=f"{asker_qq}_{ask_time}.md",

@@ -54,9 +54,7 @@ class TheresaImage(Plugins):
                     ]
                 )
                 reply_message = Reply(id=event.message_id) + response
-                self.api.GroupService.send_group_msg(
-                    self, group_id=event.group_id, message=reply_message
-                )
+                self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
         return
 
     def get_image_filename_from_msg(self, msg: str) -> str | None:

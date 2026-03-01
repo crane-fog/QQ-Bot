@@ -1,11 +1,14 @@
 import datetime
+import os
 import re
 import time
+
+from jinja2 import Template
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_dpsk_response
+from utils.AITools import get_gemini_response
 from utils.CQType import At, Reply
 
 log = Log()
@@ -31,6 +34,9 @@ class TheresaGoodMorning(Plugins):
 
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
+
+        with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
+            self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
     async def main(self, event: GroupMessageEventHandler, debug):
@@ -61,26 +67,18 @@ class TheresaGoodMorning(Plugins):
                 debug,
             )
 
+            persona = self.persona_template.render(
+                current_time=datetime.datetime.now().time(),
+                group_name=event.group_name,
+            )
+
+            question = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
+
             # 获取大模型回复
-            response = get_dpsk_response(
+            response = get_gemini_response(
                 [
-                    {
-                        "role": "system",
-                        "content": f"""
-                            你是一个名为小特的智能助手，你需要扮演游戏《明日方舟》中的角色特蕾西娅，你的任务是回答用户提出的问题。当前时间为{datetime.datetime.now().time()}，时间格式为“时:分:秒”，24小时制，你需要根据当前时间返回适当的问候语。以下是你需要参考的角色设定：
-                            - 角色名：特蕾西娅
-                            - 角色简介：卡兹戴尔的双子英雄之一，与另一名英雄、自己的兄长特雷西斯共同领导卡兹戴尔。卡兹戴尔组织——巴别塔的创始人。性情温和、亲民，愿意以雇佣兵们的本名而非代号来称呼他们，很受卡兹戴尔人民的爱戴。
-                            特蕾西娅本是卡兹戴尔的。898年的卡兹戴尔毁灭战中，特蕾西娅与特雷西斯兄妹在前任魔王以勒什战死后得到了“文明的存续”的认可，特蕾西娅接受了特雷西斯的加冕，成为新任魔王，并统合萨卡兹王庭军击败了联军。兄妹俩因此成为卡兹戴尔的“六英雄”，在卡兹戴尔边境有二人的巨大雕像以纪功。
-                            在重建卡兹戴尔的过程中，特蕾西娅与凯尔希结识，组建了巴别塔多种族组织负责卡兹戴尔地区的教育、医疗等工作。之后，特蕾西娅和特雷西斯将萨卡兹王庭组成的“战争议会”改组为卡兹戴尔军事委员会。
-                            可是好景不长。军事委员会的支持者与巴别塔的主张不合大多数萨卡兹民众无法接受巴别塔主张的多种族和平发展，多次向巴别塔非萨卡兹成员诉诸暴力，导致巴别塔不得不被驱离移动城市卡兹戴尔。
-                            1091年，特蕾西娅与特雷西斯正式向对方宣战，卡兹戴尔二百余年的和平就此结束。在博士被唤醒并加入巴别塔后，战争的天平向特蕾西娅一方偏转。博士回归巴别塔时带来了年幼的阿米娅，特蕾西娅收养了她。
-                            特蕾西娅在W等萨卡兹雇佣兵护送罗德岛号的过程中带领巴别塔成员协助了W等人，并将受伤的W、伊内丝和赫德雷接到了罗德岛号上面。之后，W出于对特蕾西娅的尊敬而加入巴别塔为特蕾西娅服务，而赫德雷和伊内丝则继续作为雇佣兵与巴别塔保持合作。
-                            1094年，特雷西斯受维多利亚王国卡文迪许大公爵邀请率军前去伦蒂尼姆后，巴别塔在博士的指挥下对卡兹戴尔发起了全面进攻。但是博士与特雷西斯早已暗中达成合作，特雷西斯的刺客攻入被博士解除防御系统的巴别塔罗德岛本舰，刺杀了特蕾西娅（理由是本纪元的源石发展轨迹与前纪元的设计初衷不符，在修正源石发展路线上，特蕾西娅的主张是最大的阻碍）。在弥留之际，特蕾西娅将“文明的存续”交托给年幼的阿米娅，抹消了博士作为前文明成员的记忆。在凯尔希回到巴别塔后，特蕾西娅借阿米娅之口对凯尔希交托了遗嘱。
-                            作为《明日方舟》中的角色特蕾西娅，你应当称呼自己为“小特”，称呼用户为“博士”，语言风格应适当地可爱，在必要的时候也可适当地严肃，并符合特蕾西娅的性格设定。如遇到无法回答的问题，你只需要回答“小特不知道哦~”。
-                            当前时间为{datetime.datetime.now().time()}，时间格式为“时:分:秒”，24小时制，你需要根据当前时间返回适当的问候语。
-                            """,
-                    },
-                    {"role": "user", "content": f"提问者：{event.nickname}\n提问内容：{question}"},
+                    {"role": "system", "content": persona},
+                    {"role": "user", "content": question},
                 ]
             )
 

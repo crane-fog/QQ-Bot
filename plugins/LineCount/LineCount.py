@@ -1,7 +1,6 @@
 from sqlalchemy import Column, Integer, String, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.ext.declarative import declarative_base
-from sqlalchemy.orm import sessionmaker
+from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
@@ -119,6 +118,6 @@ class LineCount(Plugins):
     Basement = declarative_base()
 
     class StuId(Basement):
-        __tablename__ = "stu_id"
+        __tablename__ = "stu_qq_id_map"
         stu_id = Column(Integer, primary_key=True)
         qq_id = Column(String)
