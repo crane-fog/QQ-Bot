@@ -1,4 +1,5 @@
 import re
+import time
 
 from plugins import Plugins, plugin_main
 from src.PrintLog import Log
@@ -8,7 +9,7 @@ log = Log()
 
 
 def check_card_format(card: str) -> bool:
-    pattern = r"^(\d{7})-(围观|助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越)-(.+)$"
+    pattern = r"^(\d{7})-(助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越|经管|计算机|生科|外国语|医学|航力|人文)-(.+)$"
     match = re.match(pattern, card)
     if not match:
         return False
@@ -28,8 +29,8 @@ class TheresaCard(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                检查高程群名片格式，将不符合要求的踢出，仅限群管理员使用
-                                usage: Theresa card (kick/debug)
+                                检查高程群名片格式，将不符合要求且进群超过指定小时的踢出，仅限群管理员使用
+                                usage: Theresa card (kick/debug) (<小时数>)
                             """
         self.init_status()
 
@@ -43,7 +44,7 @@ class TheresaCard(Plugins):
         if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
             return
 
-        kick_flag = event.message == "Theresa card kick"
+        kick_flag = event.message.startswith("Theresa card kick")
 
         group_member_list = self.api.groupService.get_group_member_list(
             group_id=event.group_id
@@ -53,17 +54,28 @@ class TheresaCard(Plugins):
         not_allowed_ids = []
         not_allowed_cards = []
 
+        check_time_flag = False
+        if event.message.split(" ")[-1].isdigit():
+            time_limit_hours = int(event.message.split(" ")[-1])
+            time_limit_seconds = time_limit_hours * 3600
+            check_time_flag = True
+
         for member in group_member_list:
             user_id = member["user_id"]
+
             if user_id in ignored_ids:
                 continue
-            # card = self.api.groupService.get_group_member_info(group_id=event.group_id, user_id=user_id).get("data").get("card")
+
+            if check_time_flag:
+                if member["join_time"] > int(time.time()) - time_limit_seconds:
+                    continue
+
             card = member.get("card_or_nickname")
             if not check_card_format(card):
                 if event.message == "Theresa card debug":
                     log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
                 not_allowed_ids.append(user_id)
-                if "–" in card or "—" in card or "_" in card:
+                if "–" in card or "—" in card or "_" in card or "⁻" in card:
                     card += "\n名片中连字符应为英文状态下的-"
                 if "微电" in card and "应" in card:
                     card += "\n微电子应用物理双学位应为微应物"
@@ -84,7 +96,7 @@ class TheresaCard(Plugins):
             if kick_flag:
                 suffix = "\n\n已将不符合要求的成员踢出群聊"
             else:
-                suffix = "\n\n以上成员群名片格式不符合要求，请参照群公告修改\n如有专业简称对照表中遗漏/误杀的同学请私聊联系 2450313"
+                suffix = "\n\n以上成员群名片格式不符合要求，请参照群公告修改"
 
             if len(entry_lines) > 20:
                 for entry_chunk in chunked(entry_lines, 20):
