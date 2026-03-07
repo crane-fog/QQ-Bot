@@ -46,6 +46,7 @@ enable = False
 [TheresaCard]
 enable = True
 ignored_ids = 123,456
+permission_ids = 123,456
 
 [TheresaAI]
 enable = True

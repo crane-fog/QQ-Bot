@@ -1,25 +1,25 @@
 import re
 import time
 
+from sqlalchemy import Column, Integer, Text, select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import declarative_base, sessionmaker
+
 from plugins import Plugins, plugin_main
 from src.PrintLog import Log
 from utils.CQType import At
 
 log = Log()
 
-
-def check_card_format(card: str) -> bool:
-    pattern = r"^(\d{7})-(助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越|经管|计算机|生科|外国语|医学|航力|人文)-(.+)$"
-    match = re.match(pattern, card)
-    if not match:
-        return False
-    stu_id = int(match.group(1))
-    name = match.group(3)
-    return check_in_list(stu_id, name)
+Base = declarative_base()
 
 
-def check_in_list(stu_id: int, name: str) -> bool:
-    return True
+class StuList(Base):
+    __tablename__ = "stulists"
+
+    semester = Column(Integer, primary_key=True)
+    stu_id = Column(Integer, primary_key=True)
+    name = Column(Text, nullable=False)
 
 
 class TheresaCard(Plugins):
@@ -29,37 +29,66 @@ class TheresaCard(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                检查高程群名片格式，将不符合要求且进群超过指定小时的踢出，仅限群管理员使用
-                                usage: Theresa card (kick/debug) (<小时数>)
+                                检查高程群名片格式，将不符合要求且进群超过指定小时的踢出
+                                usage: Theresa card (kick/debug) (strict) (<小时数>)
                             """
+
+        self.assistant_list: set[int] = set()
+        assistants = self.api.groupService.get_group_member_list(
+            group_id=self.bot.assistant_group
+        ).get("data")
+        for member in assistants:
+            self.assistant_list.add(member["user_id"])
+
+        self.session_factory = sessionmaker(
+            bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
+        )
+
+        self.semester_dict = {
+            893688452: 252620,
+            1082118774: 252620,
+            1084322221: 252620,
+        }
+
         self.init_status()
 
-    @plugin_main(call_word=["Theresa card"])
+    @plugin_main(call_word=["Theresa card"], require_db=True)
     async def main(self, event, debug):
-        def chunked(items, size):
-            for i in range(0, len(items), size):
-                yield items[i : i + size]
-
-        permissionList = [self.bot.owner_id]
-        if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+        # 可使用 kick
+        permission_ids: list[int] = list(map(int, self.config.get("permission_ids").split(",")))
+        permission_ids.append(self.bot.owner_id)
+        # 可使用普通检查
+        if (
+            (event.user_id not in permission_ids)
+            and (event.role not in ["admin", "owner"])
+            and (event.user_id not in self.assistant_list)
+        ):
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="权限不足")
             return
 
-        kick_flag = event.message.startswith("Theresa card kick")
-
-        group_member_list = self.api.groupService.get_group_member_list(
-            group_id=event.group_id
-        ).get("data")
-        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
-
-        not_allowed_ids = []
-        not_allowed_cards = []
-
+        # 解析参数
+        debug_flag = "debug" in event.message
+        kick_flag = ("kick" in event.message) and (not debug_flag)
+        strict_flag = "strict" in event.message
         check_time_flag = False
         if event.message.split(" ")[-1].isdigit():
             time_limit_hours = int(event.message.split(" ")[-1])
             time_limit_seconds = time_limit_hours * 3600
             check_time_flag = True
+        if kick_flag and (event.user_id not in permission_ids):
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="权限不足")
+            return
 
+        # 获取群成员列表，初始化变量
+        group_member_list = self.api.groupService.get_group_member_list(
+            group_id=event.group_id
+        ).get("data")
+        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
+        not_allowed_ids = []
+        not_allowed_cards = []
+        strict_candidates: list[tuple[int, int, str, str]] = []
+
+        # 执行检查
         for member in group_member_list:
             user_id = member["user_id"]
 
@@ -71,18 +100,43 @@ class TheresaCard(Plugins):
                     continue
 
             card = member.get("card_or_nickname")
-            if not check_card_format(card):
-                if event.message == "Theresa card debug":
+            passed, stu_id, name = self.basic_card_check(card)
+            if not passed:
+                if debug_flag:
                     log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
-                not_allowed_ids.append(user_id)
+
+                # 对常见错误进行提示
                 if "–" in card or "—" in card or "_" in card or "⁻" in card:
                     card += "\n名片中连字符应为英文状态下的-"
                 if "微电" in card and "应" in card:
                     card += "\n微电子应用物理双学位应为微应物"
-                not_allowed_cards.append(card)
 
+                not_allowed_ids.append(user_id)
+                not_allowed_cards.append(card)
+            elif strict_flag:
+                semester = self.semester_dict.get(event.group_id)
+                if semester is None:
+                    self.api.groupService.send_group_msg(
+                        group_id=event.group_id,
+                        message=f"未设定群 {event.group_id} 学期信息，请联系 bot 管理员",
+                    )
+                    return
+                if user_id not in self.assistant_list:
+                    strict_candidates.append((user_id, stu_id, name, card))
+
+        if strict_flag and strict_candidates:
+            stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
+            db_name_map = await self.check_in_list_batch(semester, stu_ids)
+            for user_id, stu_id, _, card in strict_candidates:
+                if db_name_map.get(stu_id) is None:  # != name:
+                    if debug_flag:
+                        log.debug(f"用户 {user_id} 的名片信息不在名单中: {card}", debug)
+                    not_allowed_ids.append(user_id)
+                    not_allowed_cards.append(card + "\n不在选课名单中")
+
+        # 处理检查结果
         if not_allowed_ids:
-            if event.message == "Theresa card debug":
+            if debug_flag:
                 entry_lines = [
                     f"{user_id} 名片: {card}"
                     for user_id, card in zip(not_allowed_ids, not_allowed_cards, strict=True)
@@ -116,3 +170,27 @@ class TheresaCard(Plugins):
             for user_id in not_allowed_ids:
                 self.api.groupService.set_group_kick(group_id=event.group_id, user_id=user_id)
         return
+
+    def basic_card_check(self, card: str) -> tuple[bool, int | None, str | None]:
+        pattern = r"^(\d{7})-(助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越|经管|计算机|生科|外国语|医学|航力|人文|物拔)-(.+)$"
+        match = re.match(pattern, card)
+        if not match:
+            return False, None, None
+        stu_id = int(match.group(1))
+        name = match.group(3)
+        return True, stu_id, name
+
+    async def check_in_list_batch(self, semester: int, stu_ids: set[int]) -> dict[int, str]:
+        async with self.session_factory() as session:
+            stmt = select(StuList.stu_id, StuList.name).where(
+                StuList.semester == semester,
+                StuList.stu_id.in_(stu_ids),
+            )
+            result = await session.execute(stmt)
+
+        return {stu_id: name for stu_id, name in result.all()}
+
+
+def chunked(items, size):
+    for i in range(0, len(items), size):
+        yield items[i : i + size]
