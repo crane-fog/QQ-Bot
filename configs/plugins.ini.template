@@ -15,8 +15,8 @@ frequency = 1
 [GroupApprove]
 enable = True
 parts = 2
-reject1 = False
-reject2 = False
+reject = False
+strict = False
 
 [RecallPrevent]
 enable = True
@@ -46,6 +46,7 @@ enable = False
 [TheresaCard]
 enable = True
 ignored_ids = 123,456
+permission_ids = 123,456
 
 [TheresaAI]
 enable = True
@@ -92,13 +93,7 @@ enable = True
 [QiuDao]
 enable = True
 
-[QiuDaoData]
-enable = True
-
 [LineCount]
-enable = True
-
-[LineCountData]
 enable = True
 
 [MessageRecorder]
@@ -112,3 +107,6 @@ enable = False
 
 [A_Pixiv]
 enable = False
+
+[DataImport]
+enable = True

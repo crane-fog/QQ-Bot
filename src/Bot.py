@@ -104,6 +104,14 @@ class Bot:
             # 初始化api接口对象
             self.api = Api(self.server_address)
 
+            self.assistant_list: set[int] = set()
+            if self.assistant_group != 123456789:
+                assistants = self.api.groupService.get_group_member_list(
+                    group_id=self.assistant_group
+                ).get("data")
+                for member in assistants:
+                    self.assistant_list.add(member["user_id"])
+
         except Exception as e:
             raise e
 

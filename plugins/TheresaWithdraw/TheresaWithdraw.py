@@ -13,7 +13,7 @@ class TheresaWithdraw(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                防止防撤回的撤回，仅限群管理员使用
+                                防止防撤回的撤回，仅限管理员使用
                                 usage: <回复消息>Twithdraw
                             """
         self.init_status()
@@ -27,8 +27,11 @@ class TheresaWithdraw(Plugins):
 
         try:
             # 检查用户权限
-            permissionList = [self.bot.owner_id]
-            if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+            if (
+                (event.user_id != self.bot.owner_id)
+                and (event.role not in ["admin", "owner"])
+                and (event.user_id not in self.bot.assistant_list)
+            ):
                 return
             else:
                 target_message_id = message[13 : message.find("]")]

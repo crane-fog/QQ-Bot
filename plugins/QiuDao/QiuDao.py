@@ -9,6 +9,23 @@ from utils.CQType import At, Face
 
 log = Log()
 
+Base = declarative_base()
+
+
+class Scores(Base):
+    __tablename__ = "scores"
+
+    semester = Column(Integer, primary_key=True)
+    stu_id = Column(Integer, primary_key=True)
+    score = Column(Integer, nullable=False)
+
+
+class StuId(Base):
+    __tablename__ = "stu_qq_id_map"
+
+    stu_id = Column(Integer, primary_key=True)
+    qq_id = Column(String)
+
 
 class QiuDao(Plugins):
     def __init__(self, server_address, bot):
@@ -21,14 +38,13 @@ class QiuDao(Plugins):
                                 usage: Theresa 求刀/公开我的期末成绩吧
                             """
         self.init_status()
-        self.table_dict = {
-            893688452: "score_252610",  # bot测试群
-            783564589: "score_252611",  # 25261OOP
-            861871927: "score_252610",  # 25261卓班高程
-            110275974: "score_252610",  # 25261AI拔高程
-            927504458: "score_252610",  # 25261嘉定高程
+        self.semester_dict = {
+            893688452: 252611,
+            783564589: 252611,
+            861871927: 252610,
+            110275974: 252610,
+            927504458: 252610,
         }
-        self._score_models = {}
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
@@ -53,9 +69,9 @@ class QiuDao(Plugins):
         else:
             stu_id = int(sender_card[0])
             select_result = None
-            table_name = self.table_dict.get(group_id, "score")
+            semester_id = self.semester_dict.get(group_id)
             try:
-                select_result = await self.query_by_stu_id(stu_id, table_name)
+                select_result = await self.query_by_stu_id(stu_id, semester_id)
             except Exception as e:
                 raise e
 
@@ -100,37 +116,16 @@ class QiuDao(Plugins):
         else:
             return f"{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)}"  # 虽然理论上不可能有低于0分的，但是还是做了这个的情况, 59是便便表情
 
-    def get_scores_model(self, table_name):
-        if table_name in self._score_models:
-            return self._score_models[table_name]
-
-        class DynamicScores(self.Basement):
-            __tablename__ = table_name
-            __table_args__ = {"extend_existing": True}
-            stu_id = Column(Integer, primary_key=True)
-            score = Column(Integer)
-
-        self._score_models[table_name] = DynamicScores
-        return DynamicScores
-
-    async def query_by_stu_id(self, stu_id, table_name):
-        Scores = self.get_scores_model(table_name)
+    async def query_by_stu_id(self, stu_id, semester_id):
         async with self.session_factory() as session:
             async with session.begin():
                 stmt = (
-                    select(Scores.score, self.StuId.qq_id)
-                    .join(self.StuId, Scores.stu_id == self.StuId.stu_id)
-                    .where(Scores.stu_id == stu_id)
+                    select(Scores.score, StuId.qq_id)
+                    .join(StuId, Scores.stu_id == StuId.stu_id)
+                    .where(Scores.stu_id == stu_id, Scores.semester == semester_id)
                 )
                 result = await session.execute(stmt)
                 data = result.first()
                 if data:
                     return {"score": data.score, "user_id": data.qq_id}
                 return None
-
-    Basement = declarative_base()
-
-    class StuId(Basement):
-        __tablename__ = "stu_qq_id_map"
-        stu_id = Column(Integer, primary_key=True)
-        qq_id = Column(String)
