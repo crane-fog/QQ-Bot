@@ -15,8 +15,8 @@ frequency = 1
 [GroupApprove]
 enable = True
 parts = 2
-reject1 = False
-reject2 = False
+reject = False
+strict = False
 
 [RecallPrevent]
 enable = True
