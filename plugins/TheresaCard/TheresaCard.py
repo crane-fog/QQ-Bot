@@ -33,13 +33,6 @@ class TheresaCard(Plugins):
                                 usage: Theresa card (kick/debug) (strict) (unenter) (<小时数>)
                             """
 
-        self.assistant_list: set[int] = set()
-        assistants = self.api.groupService.get_group_member_list(
-            group_id=self.bot.assistant_group
-        ).get("data")
-        for member in assistants:
-            self.assistant_list.add(member["user_id"])
-
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
@@ -61,7 +54,7 @@ class TheresaCard(Plugins):
         if (
             (event.user_id not in permission_ids)
             and (event.role not in ["admin", "owner"])
-            and (event.user_id not in self.assistant_list)
+            and (event.user_id not in self.bot.assistant_list)
         ):
             self.api.groupService.send_group_msg(group_id=event.group_id, message="权限不足")
             return
@@ -123,7 +116,7 @@ class TheresaCard(Plugins):
                         message=f"未设定群 {event.group_id} 学期信息，请联系 bot 管理员",
                     )
                     return
-                if user_id not in self.assistant_list:
+                if user_id not in self.bot.assistant_list:
                     strict_candidates.append((user_id, stu_id, name, card))
 
         if strict_flag or unenter_flag:

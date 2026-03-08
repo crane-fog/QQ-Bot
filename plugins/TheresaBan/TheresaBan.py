@@ -15,7 +15,7 @@ class TheresaBan(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                禁言，仅限群管理员使用
+                                禁言，仅限管理员使用
                                 usage: Theresa ban <@> <禁言秒数>
                             """
         self.init_status()
@@ -32,18 +32,27 @@ class TheresaBan(Plugins):
 
         try:
             # 检查用户权限
-            permissionList = [self.bot.owner_id]
-            if (event.user_id not in permissionList) and (event.role not in ["admin", "owner"]):
+            if (
+                (event.user_id != self.bot.owner_id)
+                and (event.role not in ["admin", "owner"])
+                and (event.user_id not in self.bot.assistant_list)
+            ):
                 return
             else:
                 match = re.search(r"qq=(\d+)", command_list[2])
                 if match:
                     qq = match.group(1)
                     ban_seconds = int(command_list[3])
-                    reply_message = ""
-                    self.api.groupService.set_group_ban(
-                        group_id=event.group_id, user_id=qq, duration=ban_seconds
-                    )
+                    if qq == str(self.bot.owner_id):
+                        reply_message = f"{At(qq=event.user_id)} 你想干嘛"
+                        self.api.groupService.set_group_ban(
+                            group_id=event.group_id, user_id=event.user_id, duration=ban_seconds
+                        )
+                    else:
+                        reply_message = ""
+                        self.api.groupService.set_group_ban(
+                            group_id=event.group_id, user_id=qq, duration=ban_seconds
+                        )
                 else:
                     reply_message = f"{At(qq=event.user_id)} 格式错误，@不存在"
 
