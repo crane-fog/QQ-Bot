@@ -42,7 +42,7 @@ class TheresaBan(Plugins):
                 match = re.search(r"qq=(\d+)", command_list[2])
                 if match:
                     qq = match.group(1)
-                    ban_seconds = int(command_list[3])
+                    ban_seconds = int(command_list[3].split(".")[0])
                     if qq == str(self.bot.owner_id):
                         reply_message = f"{At(qq=event.user_id)} 你想干嘛"
                         self.api.groupService.set_group_ban(
