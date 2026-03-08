@@ -45,7 +45,6 @@ class QiuDao(Plugins):
             110275974: 252610,
             927504458: 252610,
         }
-        self._score_models = {}
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )

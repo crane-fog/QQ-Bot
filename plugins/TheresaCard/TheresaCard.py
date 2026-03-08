@@ -72,6 +72,14 @@ class TheresaCard(Plugins):
         if kick_flag and (event.user_id not in permission_ids):
             self.api.groupService.send_group_msg(group_id=event.group_id, message="权限不足")
             return
+        if strict_flag or unenter_flag:
+            semester = self.semester_dict.get(event.group_id)
+            if semester is None:
+                self.api.groupService.send_group_msg(
+                    group_id=event.group_id,
+                    message=f"未设定群 {event.group_id} 学期信息，请联系 bot 管理员",
+                )
+                return
 
         # 获取群成员列表，初始化变量
         group_member_list = self.api.groupService.get_group_member_list(
@@ -109,13 +117,6 @@ class TheresaCard(Plugins):
                 not_allowed_ids.append(user_id)
                 not_allowed_cards.append(card)
             elif strict_flag or unenter_flag:
-                semester = self.semester_dict.get(event.group_id)
-                if semester is None:
-                    self.api.groupService.send_group_msg(
-                        group_id=event.group_id,
-                        message=f"未设定群 {event.group_id} 学期信息，请联系 bot 管理员",
-                    )
-                    return
                 if user_id not in self.bot.assistant_list:
                     strict_candidates.append((user_id, stu_id, name, card))
 
@@ -163,19 +164,24 @@ class TheresaCard(Plugins):
             self.api.groupService.send_group_msg(group_id=event.group_id, message=message)
 
         if unenter_flag:
-            if not_entered:
-                not_entered_lines = [f"{stu_id} {name}" for stu_id, name in not_entered.items()]
-                forward = Forward()
-                forward.add_node(
-                    type="text", text=f"以下成员已选课但未入群，共{len(not_entered)}人"
-                )
-                forward.add_node(type="text", text="\n".join(not_entered_lines))
-                self.api.groupService.send_group_forward_msg(
-                    group_id=event.group_id, forward_message=forward.message
-                )
+            if strict_candidates:
+                if not_entered:
+                    not_entered_lines = [f"{stu_id} {name}" for stu_id, name in not_entered.items()]
+                    forward = Forward()
+                    forward.add_node(
+                        type="text", text=f"以下成员已选课但未入群，共{len(not_entered)}人"
+                    )
+                    forward.add_node(type="text", text="\n".join(not_entered_lines))
+                    self.api.groupService.send_group_forward_msg(
+                        group_id=event.group_id, forward_message=forward.message
+                    )
+                else:
+                    self.api.groupService.send_group_msg(
+                        group_id=event.group_id, message="所有已选课成员均已入群"
+                    )
             else:
                 self.api.groupService.send_group_msg(
-                    group_id=event.group_id, message="所有已选课成员均已入群"
+                    group_id=event.group_id, message="所有成员均未入群"
                 )
 
         if kick_flag:
@@ -208,7 +214,7 @@ class TheresaCard(Plugins):
                 )
             result = await session.execute(stmt)
 
-        return {stu_id: name for stu_id, name in result.all()}
+            return {stu_id: name for stu_id, name in result.all()}
 
 
 def chunked(items, size):

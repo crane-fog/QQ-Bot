@@ -19,7 +19,6 @@ class DataImport(Plugins):
                                 usage: DataImport scores/linecounts/stulists <学期课程编号>
                             """
         self.init_status()
-        self.all_line_count = None
         self.models = {}
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
@@ -53,6 +52,12 @@ class DataImport(Plugins):
             return
 
         table_name = message.split(" ")[1]
+        if table_name not in ["scores", "linecounts", "stulists"]:
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id,
+                message="表名错误，请使用 scores、linecounts 或 stulists",
+            )
+            return
         semester = int(message.split(" ")[2])
         filename = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -82,19 +87,17 @@ class DataImport(Plugins):
                 elif table_name == "linecounts":
                     data_list = []
                     for line in lines:
-                        stu_id, count = line.strip().split(" ")
+                        stu_id, count = line.strip().split(delimiter)
                         data_list.append({"stu_id": int(stu_id), "count": int(count)})
                     data_list.sort(key=lambda x: x["count"])
-                    async with self.session_factory() as session:
-                        async with session.begin():
-                            for index, data in enumerate(data_list):
-                                count_info = model(
-                                    semester=semester,
-                                    stu_id=data["stu_id"],
-                                    count=data["count"],
-                                    rank=index,
-                                )
-                                await session.merge(count_info)
+                    for index, data in enumerate(data_list):
+                        count_info = model(
+                            semester=semester,
+                            stu_id=data["stu_id"],
+                            count=data["count"],
+                            rank=index,
+                        )
+                        await session.merge(count_info)
                 elif table_name == "stulists":
                     for line in lines:
                         stu_id, name = line.strip().split(delimiter)
