@@ -6,10 +6,8 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
-from src.PrintLog import Log
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from utils.CQType import At, Forward
-
-log = Log()
 
 Base = declarative_base()
 
@@ -46,7 +44,7 @@ class TheresaCard(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Theresa card"], require_db=True)
-    async def main(self, event, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         # 可使用 kick
         permission_ids: list[int] = list(map(int, self.config.get("permission_ids").split(",")))
         permission_ids.append(self.bot.owner_id)
@@ -105,9 +103,6 @@ class TheresaCard(Plugins):
             card = member.get("card_or_nickname")
             passed, stu_id, name = self.basic_card_check(card)
             if not passed:
-                if debug_flag:
-                    log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
-
                 # 对常见错误进行提示
                 if "–" in card or "—" in card or "_" in card or "⁻" in card:
                     card += "\n名片中连字符应为英文状态下的-"
@@ -190,7 +185,7 @@ class TheresaCard(Plugins):
         return
 
     def basic_card_check(self, card: str) -> tuple[bool, int | None, str | None]:
-        pattern = r"^(\d{7})-(助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越|经管|计算机|生科|外国语|医学|航力|人文|物拔)-(.+)$"
+        pattern = r"^(\d{7})-(助教|数学|数拔|材料|测绘|车辆|汽车|城规|地物|地质|电气|电科|电信|园林|土法|工力|工力强|国豪|同德|济美|光电|海技|海洋|环工|环科|机电|机械|化拔|计拔|力拔|计科|国豪计科|图灵|智交|交通|交通应数|交运|金融|物理|领军|AI|AI拔|国豪AI|软工|视传|大数据|数金|应数|应数强|通信|统计|微电子|微应物|文管|物流|新能材|信安|信管|行政|应物强|智建|智造|自动化|卓\d{2}|卓越|经管|计算机|生科|外国语|医学|航力|人文|物拔|中德|中德车辆|中外机械)-(.+)$"
         match = re.match(pattern, card)
         if not match:
             return False, None, None

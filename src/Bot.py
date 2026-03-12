@@ -1,3 +1,4 @@
+import asyncio
 import configparser
 import logging
 import os
@@ -5,7 +6,6 @@ from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
 
-from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -21,13 +21,6 @@ logging.getLogger("sqlalchemy").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.orm").setLevel(logging.CRITICAL)
 
-log = Log()
-
-
-# 全局定义 run_service 函数
-def run_service(service, host, port, debug):
-    service.run(ip=host, port=port, debug=debug)
-
 
 class Bot:
     def __init__(self, configs_path: str, plugins_path: str):
@@ -36,128 +29,119 @@ class Bot:
         :param configs_path: 配置文件目录的路径
         :param plugins_path: 插件文件目录的路径
         """
-        log.start_logging()
+        Log.start_logging()
+        # 成员变量初始化
+        self.configs_path: str = configs_path
+        self.plugins_path: str = plugins_path
+
+        # 检查配置文件
+        check_config_files(self.configs_path)
+
+        # 初始化配置加载器
+        self.config: configparser.ConfigParser = configparser.ConfigParser()
+        with open(os.path.join(self.configs_path, "bot.ini"), encoding="utf-8") as f:
+            self.config.read_file(f)
+
+        # 初始化插件列表
+        self.plugins_list: list[Plugins] = []
+
+        # 初始化数据库连接对象
+        self.database = None
+
+        # 通过 ConfigParser 加载其他初始化参数
+        Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
+
+        # 需要检查的关键配置项
+        required_configs = {
+            "server_address": self.config.get("Init", "server_address", fallback=None),
+            "client_address": self.config.get("Init", "client_address", fallback=None),
+            "web_controller_address": self.config.get(
+                "Init", "web_controller_address", fallback=None
+            ),
+            "bot_name": self.config.get("Init", "bot_name", fallback=None),
+            "debug": self.config.getboolean("Init", "debug", fallback=None),
+            "database_enable": self.config.getboolean("Init", "database_enable", fallback=None),
+            "database_username": self.config.get("Init", "database_username", fallback=None),
+            "database_address": self.config.get("Init", "database_address", fallback=None),
+            "database_passwd": self.config.get("Init", "database_passwd", fallback=None),
+            "database_name": self.config.get("Init", "database_name", fallback=None),
+            "owner_id": self.config.getint("Init", "owner_id", fallback=None),
+            "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
+        }
+
+        # 检查哪些关键配置项是空的
+        missing_configs = [key for key, value in required_configs.items() if value is None]
+        if missing_configs:
+            raise ValueError(f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}")
+
+        # 将配置值分配给实例变量
+        self.server_address = required_configs["server_address"]
+        self.client_address = required_configs["client_address"]
+        self.web_controller_address = required_configs["web_controller_address"]
+        self.bot_name = required_configs["bot_name"]
+        self.debug = required_configs["debug"]
+        self.database_enable = required_configs["database_enable"]
+        self.database_username = required_configs["database_username"]
+        self.database_address = required_configs["database_address"]
+        self.database_passwd = required_configs["database_passwd"]
+        self.database_name = required_configs["database_name"]
+        self.owner_id = required_configs["owner_id"]
+        self.assistant_group = required_configs["assistant_group"]
+
+        Log.info("成功加载配置文件")
+        Log.info("加载的bot初始化配置信息如下：")
+        for item in required_configs.items():
+            Log.info(str(item))
+
+        # 初始化api接口对象
+        self.api = Api(self.server_address)
+
+        self.assistant_list: set[int] = set()
+
+    def initialize(self):
         try:
-            # 成员变量初始化
-            self.configs_path: str = configs_path
-            self.plugins_path: str = plugins_path
-
-            # 检查配置文件
-            check_config_files(self.configs_path)
-
-            # 初始化配置加载器
-            self.config: configparser.ConfigParser = configparser.ConfigParser()
-            with open(os.path.join(self.configs_path, "bot.ini"), encoding="utf-8") as f:
-                self.config.read_file(f)
-
-            # 初始化插件列表
-            self.plugins_list: list[Plugins] = []
-
-            # 初始化数据库连接对象
-            self.database = None
-
-            # 通过 ConfigParser 加载其他初始化参数
-            log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
-
-            # 需要检查的关键配置项
-            required_configs = {
-                "server_address": self.config.get("Init", "server_address", fallback=None),
-                "client_address": self.config.get("Init", "client_address", fallback=None),
-                "web_controller_address": self.config.get(
-                    "Init", "web_controller_address", fallback=None
-                ),
-                "bot_name": self.config.get("Init", "bot_name", fallback=None),
-                "debug": self.config.getboolean("Init", "debug", fallback=None),
-                "database_enable": self.config.getboolean("Init", "database_enable", fallback=None),
-                "database_username": self.config.get("Init", "database_username", fallback=None),
-                "database_address": self.config.get("Init", "database_address", fallback=None),
-                "database_passwd": self.config.get("Init", "database_passwd", fallback=None),
-                "database_name": self.config.get("Init", "database_name", fallback=None),
-                "owner_id": self.config.getint("Init", "owner_id", fallback=None),
-                "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
-            }
-
-            # 检查哪些关键配置项是空的
-            missing_configs = [key for key, value in required_configs.items() if value is None]
-            if missing_configs:
-                raise ValueError(f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}")
-
-            # 将配置值分配给实例变量
-            self.server_address = required_configs["server_address"]
-            self.client_address = required_configs["client_address"]
-            self.web_controller_address = required_configs["web_controller_address"]
-            self.bot_name = required_configs["bot_name"]
-            self.debug = required_configs["debug"]
-            self.database_enable = required_configs["database_enable"]
-            self.database_username = required_configs["database_username"]
-            self.database_address = required_configs["database_address"]
-            self.database_passwd = required_configs["database_passwd"]
-            self.database_name = required_configs["database_name"]
-            self.owner_id = required_configs["owner_id"]
-            self.assistant_group = required_configs["assistant_group"]
-
-            log.info("成功加载配置文件")
-            log.info("加载的bot初始化配置信息如下：")
-            for item in required_configs.items():
-                log.info(str(item))
-
-            # 初始化api接口对象
-            self.api = Api(self.server_address)
-
-            self.assistant_list: set[int] = set()
-            if self.assistant_group != 123456789:
-                assistants = self.api.groupService.get_group_member_list(
-                    group_id=self.assistant_group
-                ).get("data")
-                for member in assistants:
-                    self.assistant_list.add(member["user_id"])
-
+            self.api.botSelfInfo.get_login()
         except Exception as e:
-            raise e
+            raise ConnectionError(f"无法连接到Bot服务端，请确认监听端配置：{e}") from None
+        self.bot_id = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
+        if self.bot_id is None:
+            raise ValueError("无法获取Bot登录信息")
+        Log.info(f"获取到Bot的登录信息：{self.bot_id}")
+        self.init_database()
+        self.init_assistant_list()
+        self.init_plugins()
+        Log.info("Bot初始化成功！")
 
-    async def initialize(self):
-        """
-        异步地完成Bot对象的初始化
-        """
-        try:
-            self.bot_id = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
-            if self.bot_id is None:
-                raise ValueError("无法获取Bot登录信息")
-            log.info(f"获取到Bot的登录信息：{self.bot_id}")
-            log.info("Bot初始化成功！")
-            await self.init_database()
-            self.init_plugins()
-        except Exception as e:
-            log.error(f"初始化Bot时失败：{e}")
-            raise e
-
-    async def init_database(self):
-        """
-        创建与数据库之间的连接
-        :return:
-        """
+    def init_database(self):
         if not self.database_enable:
-            log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
+            Log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
             self.database = None
             return
-        log.info("开始创建与数据库之间的连接")
+        Log.info("开始创建与数据库之间的连接")
         try:
             self.database = create_async_engine(
                 f"postgresql+asyncpg://"
                 f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
                 poolclass=NullPool,
             )
-            log.info("成功连接到bot数据库")
+            Log.info("成功连接到bot数据库")
         except Exception as e:
-            log.error(f"连接到数据库时失败：{e}")
+            Log.error(f"连接到数据库时失败：{e}")
             raise e
 
+    def init_assistant_list(self):
+        if self.assistant_group == 123456789:
+            Log.warning("未设置助教群ID，跳过加载助教列表")
+            return
+
+        assistants = self.api.groupService.get_group_member_list(group_id=self.assistant_group).get(
+            "data"
+        )
+        for member in assistants:
+            self.assistant_list.add(member["user_id"])
+
     def init_plugins(self):
-        """
-        初始化所有添加了的插件
-        :return:
-        """
-        log.info("开始加载插件")
+        Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
         plugins_config = configparser.ConfigParser()
@@ -176,7 +160,7 @@ class Bot:
                     enable = plugins_config.getboolean(name, "enable")
 
             if not enable:
-                log.info(f"插件 {name} 未启用，跳过加载")
+                Log.info(f"插件 {name} 未启用，跳过加载")
                 continue
 
             try:
@@ -190,30 +174,31 @@ class Bot:
                 plugin_instance.config = plugins_config[name]
                 # 添加到插件列表
                 self.plugins_list.append(plugin_instance)
-                log.info(
+                Log.info(
                     f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
                 )
             except Exception as e:
-                log.error(f"加载插件{name}失败：{e}")
+                Log.error(f"加载插件{name}失败：{e}")
                 raise e
 
-    def run(self):
+    async def run(self):
         event = Event(self.plugins_list, self.debug)
-        ip_address, port = self.client_address.split(":")
-        # 使用Flask实例的run方法启动Flask服务
-        log.info(f"尝试将监听服务启动在 {ip_address}:{port}")
-        event_server = spawn(event.run, ip_address, int(port))
-        log.info("监听服务启动成功！")
+        event_ip, event_port = self.client_address.split(":")
+        Log.info(f"启动监听服务 {event_ip}:{event_port}")
+        event_server = asyncio.create_task(event.run(event_ip, int(event_port)))
+        Log.info("监听服务启动成功！")
 
-        webController = WebController(self)
-        ip_address, port = self.web_controller_address.split(":")
-        # 使用Flask实例的run方法启动Flask服务
-        log.info(f"启动web controller服务 {ip_address}:{port}")
-        web_server = spawn(webController.run, ip_address, int(port))
-        log.info("web controller服务启动成功！")
-        # log.error("TEST ERROR")
+        web_controller = WebController(self)
+        web_ip, web_port = self.web_controller_address.split(":")
+        Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
+        web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
+        Log.info("web controller 服务启动成功！")
 
-        joinall([event_server, web_server])
+        try:
+            await asyncio.gather(event_server, web_server)
+        finally:
+            await event.stop()
+            await web_controller.stop()
 
 
 def check_config_files(configs_path: str) -> None:
@@ -221,24 +206,20 @@ def check_config_files(configs_path: str) -> None:
     如配置文件不存在，复制默认配置文件模板
     """
     if not os.path.isfile(os.path.join(configs_path, "bot.ini")):
-        log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "bot.ini.template"),
             os.path.join(configs_path, "bot.ini"),
         )
     if not os.path.isfile(os.path.join(configs_path, "groups.ini")):
-        log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "groups.ini.template"),
             os.path.join(configs_path, "groups.ini"),
         )
     if not os.path.isfile(os.path.join(configs_path, "plugins.ini")):
-        log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "plugins.ini.template"),
             os.path.join(configs_path, "plugins.ini"),
         )
-
-
-if __name__ == "__main__":
-    ...

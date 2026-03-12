@@ -16,7 +16,7 @@ def plugin_main(check_call_word=True, call_word: list = None, check_group=True, 
 
     def decorator(func):
         @wraps(func)
-        async def wrapper(self, event, debug):
+        async def wrapper(self, event, debug: bool):
             # 检查数据库依赖
             if require_db and not self.bot.database_enable:
                 self.set_status("error")
@@ -65,7 +65,7 @@ class Plugins:
         self.config: configparser.SectionProxy = None
         self.effected_groups: list[int] = []
 
-    async def main(self, event, debug):
+    async def main(self, event, debug: bool):
         raise NotImplementedError("方法还未实现")
 
     def set_status(self, status: str, error_info: str = ""):

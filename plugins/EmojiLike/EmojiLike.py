@@ -2,6 +2,7 @@ from random import randint
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
+from src.PrintLog import Log
 
 
 class EmojiLike(Plugins):
@@ -23,7 +24,7 @@ class EmojiLike(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
         if event.user_id in ignored_ids:
             return
@@ -33,5 +34,6 @@ class EmojiLike(Plugins):
         if randint(0, 99) < frequency:
             emoji_id = randint(0, 350)
             self.api.groupService.set_msg_emoji_like(message_id=event.message_id, emoji_id=emoji_id)
+            Log.debug(f"插件：{self.name}为消息{event.message_id}添加了表情{emoji_id}", debug)
 
         return

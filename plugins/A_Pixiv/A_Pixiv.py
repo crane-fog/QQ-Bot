@@ -12,8 +12,6 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.CQType import Forward
 
-log = Log()
-
 
 class pixiv_img_get:
     "这个类我尽量不用框架内的东西，这样在外面也能用"
@@ -250,94 +248,84 @@ class A_Pixiv(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["pid", "p_clean"], check_call_word=True)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
         if "pid" in message[0:3]:
             # 下载部分
             pid = message[3:]
-            log.debug(f"截取到pid:{pid},请求中.....", debug)
+            Log.debug(f"截取到pid:{pid},请求中.....", debug)
 
-            try:
-                if pid.isdecimal():
-                    pixic = pixiv_img_get(pid=pid)
+            if pid.isdecimal():
+                pixic = pixiv_img_get(pid=pid)
 
-                    # 一套标准流程
-                    if pixic.error == "no":
-                        urls = pixic.get_img_urls_origin()
-                        urls = pixic.img_urls(urls=urls)
-                        if pixic.download_img(urls=urls):
-                            forward_message = pixic.get_forward()
-                        else:
-                            log.error("下载失败")
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="下载失败了!请检查日志"
-                            )
-                            return
+                # 一套标准流程
+                if pixic.error == "no":
+                    urls = pixic.get_img_urls_origin()
+                    urls = pixic.img_urls(urls=urls)
+                    if pixic.download_img(urls=urls):
+                        forward_message = pixic.get_forward()
+                    else:
+                        Log.error("下载失败")
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id, message="下载失败了!请检查日志"
+                        )
+                        return
 
-                        reply_message = f"标题:{pixic.title}\ntags:{pixic.tags}"
+                    reply_message = f"标题:{pixic.title}\ntags:{pixic.tags}"
 
-                        if pixic.R_18:
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id,
-                                message=reply_message
-                                + "\n由于请求为R-18作品，小孩子还是不要看啦...",
-                            )
-                            if self.send_R_18:
-                                self.api.groupService.send_group_forward_msg(
-                                    group_id=event.group_id, forward_message=forward_message
-                                )
-                            else:
-                                self.api.groupService.send_group_msg(
-                                    group_id=event.group_id,
-                                    message="基于本群的bot设置,R-18图像的倒转将不会被发出",
-                                )
-                        else:
-                            self.api.groupService.send_group_msg_with_img(
-                                group_id=event.group_id,
-                                message=reply_message,
-                                image_path=pixic.preview_path,
-                            )
+                    if pixic.R_18:
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id,
+                            message=reply_message + "\n由于请求为R-18作品，小孩子还是不要看啦...",
+                        )
+                        if self.send_R_18:
                             self.api.groupService.send_group_forward_msg(
                                 group_id=event.group_id, forward_message=forward_message
                             )
-                    else:
-                        "某种失败"
-                        self.api.groupService.send_group_msg(
-                            group_id=event.group_id, message=pixic.error
-                        )
-                        if pixic.error[0:4] == "网络请求":
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="看来网络不是很稳定呢..."
-                            )
-                        elif pixic.error[0:4] == "JSON":
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id,
-                                message="JSON解析失败了....是获取到的数据有问题吗？",
-                            )
                         else:
                             self.api.groupService.send_group_msg(
                                 group_id=event.group_id,
-                                message="某种未知的错误，看看是不是插件写错啦？",
+                                message="基于本群的bot设置,R-18图像的倒转将不会被发出",
                             )
+                    else:
+                        self.api.groupService.send_group_msg_with_img(
+                            group_id=event.group_id,
+                            message=reply_message,
+                            image_path=pixic.preview_path,
+                        )
+                        self.api.groupService.send_group_forward_msg(
+                            group_id=event.group_id, forward_message=forward_message
+                        )
                 else:
-                    "输入并非纯数字"
+                    "某种失败"
                     self.api.groupService.send_group_msg(
-                        group_id=event.group_id, message="输入并非纯数字"
+                        group_id=event.group_id, message=pixic.error
                     )
-            except Exception as e:
-                log.error(f"插件{self.name}运行时出错，{e}")
+                    if pixic.error[0:4] == "网络请求":
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id, message="看来网络不是很稳定呢..."
+                        )
+                    elif pixic.error[0:4] == "JSON":
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id,
+                            message="JSON解析失败了....是获取到的数据有问题吗？",
+                        )
+                    else:
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id,
+                            message="某种未知的错误，看看是不是插件写错啦？",
+                        )
             else:
-                log.debug(f"成功处理{event.group_id}的pid请求", debug)
-
+                "输入并非纯数字"
+                self.api.groupService.send_group_msg(
+                    group_id=event.group_id, message="输入并非纯数字"
+                )
+            Log.debug(f"成功处理{event.group_id}的pid请求", debug)
             return
         elif message == "p_clean":
-            try:
-                """
-                直接删除整个文件夹，然后重新创建空文件夹
-                """
-                pixiv_img_get()
-                self.api.groupService.send_group_msg(group_id=event.group_id, message="已全部删除")
-            except Exception as e:
-                log.error(f"插件{self.name}运行时出错，{e}")
-            else:
-                log.debug(f"成功处理{event.group_id}的删除请求", debug)
+            """
+            直接删除整个文件夹，然后重新创建空文件夹
+            """
+            pixiv_img_get()
+            self.api.groupService.send_group_msg(group_id=event.group_id, message="已全部删除")
+            Log.debug(f"成功处理{event.group_id}的删除请求", debug)

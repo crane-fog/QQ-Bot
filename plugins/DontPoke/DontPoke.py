@@ -3,10 +3,7 @@ from random import randint
 
 from plugins import Plugins, plugin_main
 from src.event_handler.NoticeEventHandler import GroupPokeEvent
-from src.PrintLog import Log
 from utils.CQType import At, Face
-
-log = Log()
 
 
 class DontPoke(Plugins):
@@ -29,7 +26,7 @@ class DontPoke(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False, check_group=True)
-    async def main(self, event: GroupPokeEvent, debug):
+    async def main(self, event: GroupPokeEvent, debug: bool):
         group_id = event.group_id
         target_id = event.target_id
         self_id = event.self_id

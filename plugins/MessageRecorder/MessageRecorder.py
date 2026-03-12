@@ -7,10 +7,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.event_handler.SendEventHandler import SendEvent
-from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 
-log = Log()
 Base = declarative_base()
 
 PATTERN = re.compile(r"\[CQ:reply,id=(-?\d+)\]")
@@ -50,9 +48,7 @@ class MessageRecorder(Plugins):
             if cq.cq_type == "image":
                 msg = str(cq)
                 cq.path = (
-                    self.api.MessageService.get_image(self, cq.file)
-                    .get("data", {})
-                    .get("file", None)
+                    self.api.messageService.get_image(cq.file).get("data", {}).get("file", None)
                 )
                 del cq.url
                 if cq.path is not None:
@@ -61,7 +57,7 @@ class MessageRecorder(Plugins):
         return message
 
     @plugin_main(check_call_word=False, check_group=False, require_db=True)
-    async def main(self, event: GroupMessageEvent | SendEvent, debug):
+    async def main(self, event: GroupMessageEvent | SendEvent, debug: bool):
 
         if isinstance(event, SendEvent) and event.message_type != "group":
             return

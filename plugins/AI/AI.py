@@ -7,8 +7,6 @@ from src.PrintLog import Log
 from utils.AITools import get_gemini_response
 from utils.CQType import At, Reply
 
-log = Log()
-
 
 class AI(Plugins):
     def __init__(self, server_address, bot):
@@ -26,7 +24,7 @@ class AI(Plugins):
         self.cooldown_time = 1  # 冷却时间（秒）
 
     @plugin_main(call_word=["monika ask"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         # 检查是否是纯ask命令
@@ -34,7 +32,7 @@ class AI(Plugins):
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
             )
-            log.debug(
+            Log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复",
                 debug,
             )
@@ -62,17 +60,12 @@ class AI(Plugins):
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
-            log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
-                debug,
-            )
-
             # 获取大模型回复
-            response = get_gemini_response(
+            response = await get_gemini_response(
                 [
                     {
                         "role": "system",
-                        "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
+                        "content": '尽可能简短、直接地回答用户的问题，不得输出markdown格式。如遇到你不确定/无法回答的问题，你必须回答"小莫不知道哦~"。',
                     },
                     {"role": "user", "content": question},
                 ]
@@ -82,10 +75,10 @@ class AI(Plugins):
             reply_message = Reply(id=event.message_id) + response
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
 
-            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(f"插件：{self.name}回答用户{event.user_id}的问题{question}", debug)
 
         except Exception as e:
-            log.error(f"插件：{self.name}运行时出错：{e}")
+            Log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
                 message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",

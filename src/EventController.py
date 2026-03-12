@@ -1,10 +1,8 @@
 import asyncio
-import logging
 import traceback
-from threading import Thread
 
-from flask import Flask, request
-from gevent.pywsgi import WSGIServer
+import uvicorn
+from fastapi import FastAPI, Request
 
 from plugins import Plugins
 
@@ -15,16 +13,15 @@ from .event_handler.RequestEventHandler import GroupRequestEvent
 from .event_handler.SendEventHandler import SendEvent
 from .PrintLog import Log
 
-log = Log()
 
+def create_event_app(event_controller: "Event"):
+    app = FastAPI(title="Event Controller")
 
-# 全局启动 Flask 应用的函数
-def create_event_app(event_controller):
-    app = Flask("Event Controller")
-
-    @app.route("/onebot", methods=["POST", "GET"])
-    def post_data():
-        data = request.get_json()
+    @app.api_route("/onebot", methods=["POST", "GET"], status_code=200)
+    async def post_data(request: Request):
+        if request.method == "GET":
+            return {"message": "Event Controller is running."}
+        data = await request.json()
         post_type = data.get("post_type")
 
         if post_type == "message":
@@ -32,201 +29,102 @@ def create_event_app(event_controller):
             if message_type == "private":
                 event = PrivateMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_private_message, args=(event,))
-                thread.start()
+                event_controller.schedule_task(event_controller.run_private_plugins(event))
             elif message_type == "group":
                 event = GroupMessageEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_message, args=(event,))
-                thread.start()
+                event_controller.schedule_task(event_controller.run_group_plugins(event))
         elif post_type == "notice":
             notice_type = data.get("notice_type")
             if notice_type == "group_recall":
                 event = GroupRecallEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_recall, args=(event,))
-                thread.start()
+                event_controller.schedule_task(event_controller.run_group_recall(event))
             elif notice_type == "notify":
                 sub_type = data.get("sub_type")
                 if sub_type == "poke":
                     event = GroupPokeEvent(data)
                     event.poke_event(event_controller.debug)
-                    thread = Thread(target=event_controller.handle_group_poke, args=(event,))
-                    thread.start()
-                else:
-                    ...
-            else:
-                ...
+                    event_controller.schedule_task(event_controller.run_group_poke(event))
         elif post_type == "request":
             request_type = data.get("request_type")
             if request_type == "group":
                 event = GroupRequestEvent(data)
                 event.post_event(event_controller.debug)
-                thread = Thread(target=event_controller.handle_group_request, args=(event,))
-                thread.start()
-            else:
-                ...
+                event_controller.schedule_task(event_controller.run_group_request(event))
         elif post_type == "message_sent":
             event = SendEvent(data)
             event.post_event(event_controller.debug)
-            thread = Thread(target=event_controller.handle_send_event, args=(event,))
-            thread.start()
+            event_controller.schedule_task(event_controller.run_send_event(event))
 
-        return {}, 200
+        return {}
 
-    app.logger.setLevel(logging.ERROR)
     return app
 
 
 class Event:
-    flask_log = logging.getLogger("werkzeug")
-    flask_log.setLevel(logging.ERROR)
-
     def __init__(self, plugins_list: list[Plugins], debug: bool):
-        try:
-            self.debug = debug
-            self.plugins_list = plugins_list
-        except Exception as e:
-            log.error(f"初始化事件处理器时失败：{e}")
-            raise e
-        else:
-            log.info("初始化事件处理器成功！")
+        self.debug = debug
+        self.plugins_list = plugins_list
+        self.tasks: set[asyncio.Task] = set()
+        self.server = None
 
-    # 创建一个不记录任何内容的日志器
-    class SilentLogger:
-        def __init__(self):
-            self.allowed_loggers = ["ConsoleLogger", "FileLogger"]
-            self.console_logger = logging.getLogger("ConsoleLogger")
-            self.file_logger = logging.getLogger("FileLogger")
+    def schedule_task(self, coro):
+        task = asyncio.create_task(coro)
+        self.tasks.add(task)
 
-        def write(self, message):
-            # 过滤并只记录来自自定义日志记录器的消息
-            if any(logger_name in message for logger_name in self.allowed_loggers):
-                if message.strip():  # 过滤空消息
-                    self.console_logger.info(message.strip())
-                    self.file_logger.info(message.strip())
+        def on_done(done_task: asyncio.Task):
+            self.tasks.discard(done_task)
+            try:
+                done_task.result()
+            except Exception as e:
+                Log.error(f"事件任务执行失败：{e}")
 
-        def flush(self):
-            pass
+        task.add_done_callback(on_done)
 
-    def run(self, ip, port):
-        # 启动新进程运行 Flask 应用
+    async def run(self, ip, port):
         app = create_event_app(self)
-        server = WSGIServer((ip, port), app, log=self.SilentLogger(), error_log=self.SilentLogger())
-        # server = WSGIServer((ip, port), app)
-        server.serve_forever()
+        config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
+        self.server = uvicorn.Server(config)
+        await self.server.serve()
 
-    def handle_private_message(self, event):
-        asyncio.run(self.run_private_plugins(event))
+    async def stop(self):
+        if self.server is not None:
+            self.server.should_exit = True
+
+        tasks = list(self.tasks)
+        if tasks:
+            for task in tasks:
+                task.cancel()
+            await asyncio.gather(*tasks, return_exceptions=True)
+
+    async def run_plugins_by_types(self, event, allowed_types: set[str]):
+        for plugin in self.plugins_list:
+            plugin_type = plugin.type
+            if plugin_type in allowed_types:
+                try:
+                    plugin.load_effected_groups()
+                    await plugin.main(event, self.debug)
+                except Exception as e:
+                    traceback_info = traceback.format_exc()
+                    error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
+                    plugin.set_status("error", error_info)
+                    Log.error(error_info)
 
     async def run_private_plugins(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Private":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-    def handle_group_message(self, event):
-        asyncio.run(self.run_group_plugins(event))
+        await self.run_plugins_by_types(event, {"Private"})
 
     async def run_group_plugins(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Group" or plugins_type == "GroupRecall" or plugins_type == "Record":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-    def handle_group_recall(self, event):
-        asyncio.run(self.run_group_recall(event))
+        await self.run_plugins_by_types(event, {"Group", "GroupRecall", "Record"})
 
     async def run_group_recall(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "GroupRecall":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-    def handle_group_request(self, event):
-        asyncio.run(self.run_group_request(event))
+        await self.run_plugins_by_types(event, {"GroupRecall"})
 
     async def run_group_request(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "GroupRequest":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-    def handle_group_poke(self, event):
-        asyncio.run(self.run_group_poke(event))
+        await self.run_plugins_by_types(event, {"GroupRequest"})
 
     async def run_group_poke(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Poke":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-    def handle_send_event(self, event):
-        asyncio.run(self.run_send_event(event))
+        await self.run_plugins_by_types(event, {"Poke"})
 
     async def run_send_event(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Send" or plugins_type == "Record":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
-
-
-# 示例用法
-if __name__ == "__main__":
-    plugins_list = []  # 假设的插件列表
-    event = Event(plugins_list, debug=True)
-    event.run("127.0.0.1", 5000, False)
+        await self.run_plugins_by_types(event, {"Send", "Record"})

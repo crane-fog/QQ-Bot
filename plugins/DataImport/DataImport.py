@@ -45,7 +45,7 @@ class DataImport(Plugins):
         return DynamicModel
 
     @plugin_main(call_word=["DataImport"], require_db=True)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
 
         if not event.user_id == self.bot.owner_id:

@@ -4,10 +4,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.PrintLog import Log
 from utils.CQType import At, Face
-
-log = Log()
 
 Base = declarative_base()
 
@@ -50,7 +47,7 @@ class QiuDao(Plugins):
         )
 
     @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
 
         old_callword = "Theresa 求刀"
@@ -70,12 +67,8 @@ class QiuDao(Plugins):
             stu_id = int(sender_card[0])
             select_result = None
             semester_id = self.semester_dict.get(group_id)
-            try:
-                select_result = await self.query_by_stu_id(stu_id, semester_id)
-            except Exception as e:
-                raise e
+            select_result = await self.query_by_stu_id(stu_id, semester_id)
 
-            log.debug(f"查询到的信息是：{select_result}", debug)
             if select_result is not None:
                 score = select_result.get("score")
                 query_user_id = select_result.get("user_id")

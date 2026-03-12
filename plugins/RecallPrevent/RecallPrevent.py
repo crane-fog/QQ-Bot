@@ -4,10 +4,10 @@ import random
 import redis
 
 from plugins import Plugins, plugin_main
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.event_handler.NoticeEventHandler import GroupRecallEvent
 from src.PrintLog import Log
 from utils.CQType import At
-
-log = Log()
 
 
 class RecallPrevent(Plugins):
@@ -30,7 +30,7 @@ class RecallPrevent(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False)
-    async def main(self, event, debug):
+    async def main(self, event: GroupMessageEvent | GroupRecallEvent, debug: bool):
         # 初始化同步 Redis 连接
         if not self.redis_client:
             host = self.config.get("host", fallback="localhost")
@@ -51,13 +51,8 @@ class RecallPrevent(Plugins):
 
             message_id = event.message_id
 
-            try:
-                json_data = json.dumps(data)
-                self.redis_client.setex(f"message:{message_id}", 180, json_data)
-                log.debug(f"已成功存储消息 ID: {message_id}，消息内容：{event}", debug)
-            except Exception as e:
-                log.error(f"插件：{self.name} 存储消息到 Redis 时出错：{e}")
-
+            json_data = json.dumps(data)
+            self.redis_client.setex(f"message:{message_id}", 180, json_data)
             return
 
         user_id = event.user_id
@@ -66,16 +61,12 @@ class RecallPrevent(Plugins):
         # 获取消息数据
         response = self.get_message(event.message_id)
         if not response:
-            log.error(f"未能找到消息 ID: {event.message_id}，请确认消息已存储.")
+            Log.error(f"未能找到消息 ID: {event.message_id}，请确认消息已存储.")
             return
 
-        try:
-            response_data = json.loads(response)
-            card_cuts = response_data["card"].split("-")
-            recalled_message = response_data["message"]
-        except Exception as e:
-            log.error(f"解析 Redis 数据时出错：{e}")
-            return
+        response_data = json.loads(response)
+        card_cuts = response_data["card"].split("-")
+        recalled_message = response_data["message"]
 
         for_everyone = self.config.getboolean("for_everyone")
         ban = self.config.getboolean("ban")
@@ -98,28 +89,12 @@ class RecallPrevent(Plugins):
 
         if user_id == operator_id:  # 正式进入插件运行部分
             reply_message = f"{At(qq=user_id)} 撤回的消息是：{recalled_message}"
-            try:
-                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
-            except Exception as e:
-                log.error(f"插件：{self.name}运行时出错：{e}")
-            else:
-                log.debug(
-                    f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
-                    debug,
-                )
+            self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
 
             if ban:
-                try:
-                    self.api.groupService.set_group_ban(
-                        group_id=group_id, user_id=event.user_id, duration=duration
-                    )
-                except Exception as e:
-                    log.error(f"插件：{self.name}运行时出错：{e}")
-                else:
-                    log.debug(
-                        f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
-                        debug,
-                    )
+                self.api.groupService.set_group_ban(
+                    group_id=group_id, user_id=event.user_id, duration=duration
+                )
         return
 
     def get_message(self, message_id):

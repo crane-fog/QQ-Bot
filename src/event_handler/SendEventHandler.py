@@ -1,7 +1,5 @@
 from src.PrintLog import Log
 
-log = Log()
-
 
 class SendEvent:
     def __init__(self, data):
@@ -21,4 +19,12 @@ class SendEvent:
         self.raw_message: str = data.get("raw_message")
         ...
 
-    def post_event(self, debug): ...
+    def post_event(self, debug: bool):
+        log_message = self.message.replace("&amp;", "&")
+        if self.message_type == "group":
+            Log.debug(
+                f"向群聊 {self.group_id} 发送消息：{log_message}",
+                debug,
+            )
+        elif self.message_type == "private":
+            Log.debug(f"向好友 {self.target_id} 发送私聊消息：{log_message}", debug)

@@ -66,9 +66,6 @@ enable = True
 [TheresaMathAI]
 enable = False
 
-[TheresaRole]
-enable = False
-
 [TheresaWithdraw]
 enable = True
 
@@ -101,9 +98,6 @@ enable = True
 
 [TheresaImage]
 enable = True
-
-[TheresaEat]
-enable = False
 
 [A_Pixiv]
 enable = False

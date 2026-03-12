@@ -69,9 +69,6 @@ def setup_file_logger():
 console_logger = setup_console_logger()
 file_logger = setup_file_logger()
 
-flask_logger = logging.getLogger("werkzeug")
-flask_logger.addFilter(SpecificLoggerFilter(["ConsoleLogger", "FileLogger"]))
-
 
 class Log:
     @classmethod
@@ -95,7 +92,8 @@ class Log:
         console_logger.error(message)
         file_logger.error(message)
 
-    def start_logging(self):
+    @classmethod
+    def start_logging(cls):
         with open(log_file_path, "w"):
             ...
 

@@ -8,8 +8,6 @@ from src.PrintLog import Log
 from utils.AITools import get_dpsk_response
 from utils.CQType import At
 
-log = Log()
-
 
 class TheresaMathAI(Plugins):
     """
@@ -33,7 +31,7 @@ class TheresaMathAI(Plugins):
         self.cooldown_time = 60  # 冷却时间（秒）
 
     @plugin_main(call_word=["math ask"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         group_id = event.group_id
         message = event.message
 
@@ -41,10 +39,6 @@ class TheresaMathAI(Plugins):
         if message.strip() == "math ask":
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
-            )
-            log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复",
-                debug,
             )
             return
 
@@ -69,13 +63,9 @@ class TheresaMathAI(Plugins):
             # 提取问题内容
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
-            log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
-                debug,
-            )
 
             # 获取大模型回复
-            response = get_dpsk_response(
+            response = await get_dpsk_response(
                 messages=[
                     {"role": "system", "content": "You are a professional math prover."},
                     {"role": "user", "content": question},
@@ -101,10 +91,12 @@ class TheresaMathAI(Plugins):
                 name=f"{asker_qq}_{ask_time}.md",
                 folder_id=folder_ids.get(group_id),
             )
-            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(
+                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题{question}", debug
+            )
 
         except Exception as e:
-            log.error(f"插件：{self.name}运行时出错：{e}")
+            Log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
                 message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",

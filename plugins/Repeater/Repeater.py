@@ -4,8 +4,6 @@ from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 
-log = Log()
-
 
 class Repeater(Plugins):
     """
@@ -28,7 +26,7 @@ class Repeater(Plugins):
         self.counts = {}
 
     @plugin_main(check_call_word=False)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
         threshold = self.config.getint("threshold")
         ban = self.config.getboolean("ban")
@@ -70,35 +68,19 @@ class Repeater(Plugins):
                         return
             if (event.user_id in ignored_ids) or (event.role in ["admin", "owner"]):
                 return
+
+            Log.debug(
+                f"插件：{self.name}，用户{event.user_id}在群{group_id}复读了消息{message_newest}",
+                debug,
+            )
+
             if recall:
-                try:
-                    self.api.groupService.delete_msg(message_id=event.message_id)
-                except Exception as e:
-                    log.error(f"插件：{self.name}运行时出错：{e}")
-                else:
-                    log.debug(
-                        f"插件：{self.name}运行正确，成功在{group_id}中撤回了一条消息：{event.message}",
-                        debug,
-                    )
+                self.api.groupService.delete_msg(message_id=event.message_id)
+
             if ban:
-                try:
-                    self.api.groupService.set_group_ban(
-                        group_id=group_id, user_id=event.user_id, duration=duration
-                    )
-                except Exception as e:
-                    log.error(f"插件：{self.name}运行时出错：{e}")
-                else:
-                    log.debug(
-                        f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
-                        debug,
-                    )
-            try:
-                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
-            except Exception as e:
-                log.error(f"插件：{self.name}运行时出错：{e}")
-            else:
-                log.debug(
-                    f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
-                    debug,
+                self.api.groupService.set_group_ban(
+                    group_id=group_id, user_id=event.user_id, duration=duration
                 )
+
+            self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
         return

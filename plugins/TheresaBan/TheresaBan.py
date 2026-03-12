@@ -5,8 +5,6 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.CQType import At
 
-log = Log()
-
 
 class TheresaBan(Plugins):
     def __init__(self, server_address, bot):
@@ -21,7 +19,7 @@ class TheresaBan(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Theresa ban"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
         command_list = message.split()
         if len(command_list) != 4:
@@ -57,10 +55,9 @@ class TheresaBan(Plugins):
                     reply_message = f"{At(qq=event.user_id)} 格式错误，@不存在"
 
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-            log.debug(f"插件：{self.name}运行正确，ban用户", debug)
 
         except Exception as e:
-            log.error(f"插件：{self.name}运行时出错：{e}")
+            Log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
                 message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",

@@ -3,12 +3,11 @@ import os
 import re
 
 from plugins import Plugins, plugin_main
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.AITools import get_gemini_response
 from utils.CQHelper import CQHelper
-from utils.CQType import Reply
-
-log = Log()
+from utils.CQType import At, Reply
 
 
 class TheresaImage(Plugins):
@@ -24,47 +23,56 @@ class TheresaImage(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["[CQ:reply,"], require_db=True)
-    async def main(self, event, debug):
-        pattern = r"id=(-?\d+).*?\]Timage(.*)"
-        match = re.search(pattern, event.message)
-        if match:
-            msg_id = match.group(1)
-            prompt = match.group(2).strip()
-            msg_str = (
-                self.api.MessageService.get_msg(self, message_id=msg_id).get("data").get("message")
-            )
-            image_path = self.get_image_filename_from_msg(msg_str)
-            if image_path:
-                response = get_gemini_response(
-                    messages=[
-                        {
-                            "role": "system",
-                            "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
-                        },
-                        {
-                            "role": "user",
-                            "content": [
-                                {"type": "text", "text": prompt},
-                                {
-                                    "type": "image_url",
-                                    "image_url": {"url": encode_image(image_path)},
-                                },
-                            ],
-                        },
-                    ]
+    async def main(self, event: GroupMessageEvent, debug: bool):
+        try:
+            pattern = r"id=(-?\d+).*?\]Timage(.*)"
+            match = re.search(pattern, event.message)
+            if match:
+                msg_id = match.group(1)
+                prompt = match.group(2).strip()
+                msg_str = (
+                    self.api.messageService.get_msg(message_id=msg_id).get("data").get("message")
                 )
-                reply_message = Reply(id=event.message_id) + response
-                self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
+                image_path = self.get_image_filename_from_msg(msg_str)
+                if image_path:
+                    response = await get_gemini_response(
+                        messages=[
+                            {
+                                "role": "system",
+                                "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
+                            },
+                            {
+                                "role": "user",
+                                "content": [
+                                    {"type": "text", "text": prompt},
+                                    {
+                                        "type": "image_url",
+                                        "image_url": {"url": encode_image(image_path)},
+                                    },
+                                ],
+                            },
+                        ]
+                    )
+                    reply_message = Reply(id=event.message_id) + response
+                    self.api.groupService.send_group_msg(
+                        group_id=event.group_id, message=reply_message
+                    )
+                    Log.debug(
+                        f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题{prompt}",
+                        debug,
+                    )
+        except Exception as e:
+            Log.error(f"插件：{self.name}运行时出错：{e}")
+            self.api.groupService.send_group_msg(
+                group_id=event.group_id,
+                message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",
+            )
         return
 
     def get_image_filename_from_msg(self, msg: str) -> str | None:
         result = CQHelper.load_cq(msg)
         if result is not None:
-            return (
-                self.api.MessageService.get_image(self, file_name=result.file)
-                .get("data")
-                .get("file")
-            )
+            return self.api.messageService.get_image(file_name=result.file).get("data").get("file")
         return None
 
 

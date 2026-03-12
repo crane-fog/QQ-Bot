@@ -253,7 +253,7 @@ class TheresaDora(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Dora"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         group_id = event.group_id
         message = event.message
 
