@@ -60,11 +60,6 @@ class AI(Plugins):
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
-            Log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
-                debug,
-            )
-
             # 获取大模型回复
             response = get_gemini_response(
                 [
@@ -80,7 +75,7 @@ class AI(Plugins):
             reply_message = Reply(id=event.message_id) + response
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
 
-            Log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(f"插件：{self.name}回答用户{event.user_id}的问题{question}", debug)
 
         except Exception as e:
             Log.error(f"插件：{self.name}运行时出错：{e}")

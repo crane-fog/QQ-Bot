@@ -40,10 +40,6 @@ class TheresaMathAI(Plugins):
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
             )
-            Log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复",
-                debug,
-            )
             return
 
         # 冷却检查
@@ -67,10 +63,6 @@ class TheresaMathAI(Plugins):
             # 提取问题内容
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
-            Log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
-                debug,
-            )
 
             # 获取大模型回复
             response = get_dpsk_response(
@@ -99,7 +91,9 @@ class TheresaMathAI(Plugins):
                 name=f"{asker_qq}_{ask_time}.md",
                 folder_id=folder_ids.get(group_id),
             )
-            Log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(
+                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题{question}", debug
+            )
 
         except Exception as e:
             Log.error(f"插件：{self.name}运行时出错：{e}")

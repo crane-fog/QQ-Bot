@@ -1,6 +1,5 @@
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
-from src.PrintLog import Log
 
 
 class TheresaWithdraw(Plugins):
@@ -36,4 +35,3 @@ class TheresaWithdraw(Plugins):
             self.api.groupService.delete_msg(message_id=event.message_id)
 
         self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-        Log.debug(f"插件：{self.name}运行正确，撤回用户", debug)

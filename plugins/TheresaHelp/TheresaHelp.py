@@ -1,6 +1,5 @@
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
-from src.PrintLog import Log
 
 
 class TheresaHelp(Plugins):
@@ -58,4 +57,3 @@ class TheresaHelp(Plugins):
         head = "()表示可选参数，<>表示替换内容\n\n"
         # 发送消息
         self.api.groupService.send_group_msg(group_id=group_id, message=head + response.strip())
-        Log.debug(f"插件：{self.name}运行正确，已发送帮助信息", debug)

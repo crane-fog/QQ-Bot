@@ -55,7 +55,6 @@ class TheresaBan(Plugins):
                     reply_message = f"{At(qq=event.user_id)} 格式错误，@不存在"
 
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
-            Log.debug(f"插件：{self.name}运行正确，ban用户", debug)
 
         except Exception as e:
             Log.error(f"插件：{self.name}运行时出错：{e}")

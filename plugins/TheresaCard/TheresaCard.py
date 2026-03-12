@@ -6,7 +6,6 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
-from src.PrintLog import Log
 from utils.CQType import At, Forward
 
 Base = declarative_base()
@@ -103,9 +102,6 @@ class TheresaCard(Plugins):
             card = member.get("card_or_nickname")
             passed, stu_id, name = self.basic_card_check(card)
             if not passed:
-                if debug_flag:
-                    Log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
-
                 # 对常见错误进行提示
                 if "–" in card or "—" in card or "_" in card or "⁻" in card:
                     card += "\n名片中连字符应为英文状态下的-"

@@ -60,11 +60,6 @@ class TheresaGoodMorning(Plugins):
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len("Theresa ") :]).strip()
 
-            Log.debug(
-                f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
-                debug,
-            )
-
             persona = self.persona_template.render(
                 current_time=datetime.datetime.now().time(),
                 group_name=event.group_name,
@@ -90,7 +85,9 @@ class TheresaGoodMorning(Plugins):
                     duration=self.get_seconds_to_next_6am(),
                 )
 
-            Log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(
+                f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题{question}", debug
+            )
 
         except Exception as e:
             Log.error(f"插件：{self.name}运行时出错：{e}")
