@@ -2,9 +2,9 @@
 
 ## 这是什么？
 
-一款由 Python 编写的基于 onebot 协议的 qq 机器人后端框架，使用面向对象的思想实现了（自认为）便于插件管理和开发的框架环境
+一款由 Python 编写的基于 onebot 协议的 qq 机器人后端框架，使用面向对象的思想实现了便于插件管理和开发的框架环境，部分插件主要用于高级语言程序设计课程群聊管理
 
-框架自带比较完善的运行日志输出系统，同时配备了由原作者编写的 web 控制面板方便远程管理 bot 的运行情况与监测运行日志
+框架自带运行日志输出系统，同时配备了由原作者编写的 web 控制面板方便远程管理 bot 的运行情况与监测运行日志
 
 ## 在开发插件之前，你需要做哪些准备？
 - 本项目使用 uv 进行依赖管理 [uv安装文档](https://docs.astral.sh/uv/getting-started/installation/)
@@ -80,9 +80,8 @@ some_special_config = 123
 
 TODO:
 
-- 优化插件 log 使用
-- 重写 EventController
 - 重写 WebController
+- config 现代化
 
 ---
 
