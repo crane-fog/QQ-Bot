@@ -31,9 +31,7 @@ class TheresaImage(Plugins):
                 msg_id = match.group(1)
                 prompt = match.group(2).strip()
                 msg_str = (
-                    self.api.MessageService.get_msg(self, message_id=msg_id)
-                    .get("data")
-                    .get("message")
+                    self.api.messageService.get_msg(message_id=msg_id).get("data").get("message")
                 )
                 image_path = self.get_image_filename_from_msg(msg_str)
                 if image_path:
@@ -74,11 +72,7 @@ class TheresaImage(Plugins):
     def get_image_filename_from_msg(self, msg: str) -> str | None:
         result = CQHelper.load_cq(msg)
         if result is not None:
-            return (
-                self.api.MessageService.get_image(self, file_name=result.file)
-                .get("data")
-                .get("file")
-            )
+            return self.api.messageService.get_image(file_name=result.file).get("data").get("file")
         return None
 
 

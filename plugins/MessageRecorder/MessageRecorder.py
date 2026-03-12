@@ -48,9 +48,7 @@ class MessageRecorder(Plugins):
             if cq.cq_type == "image":
                 msg = str(cq)
                 cq.path = (
-                    self.api.MessageService.get_image(self, cq.file)
-                    .get("data", {})
-                    .get("file", None)
+                    self.api.messageService.get_image(cq.file).get("data", {}).get("file", None)
                 )
                 del cq.url
                 if cq.path is not None:

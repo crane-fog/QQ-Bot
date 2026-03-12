@@ -11,6 +11,7 @@ class Api:
         self.botSelfInfo: Api.BotSelfInfo = self.BotSelfInfo(self)
         self.privateService: Api.PrivateService = self.PrivateService(self)
         self.groupService: Api.GroupService = self.GroupService(self)
+        self.messageService: Api.MessageService = self.MessageService(self)
 
     class BotSelfInfo:
         def __init__(self, api_instance):
