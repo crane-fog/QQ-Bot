@@ -7,10 +7,8 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.event_handler.SendEventHandler import SendEvent
-from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 
-log = Log()
 Base = declarative_base()
 
 PATTERN = re.compile(r"\[CQ:reply,id=(-?\d+)\]")

@@ -7,8 +7,6 @@ from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.CQType import At, Face
 
-log = Log()
-
 Base = declarative_base()
 
 
@@ -72,7 +70,7 @@ class QiuDao(Plugins):
             semester_id = self.semester_dict.get(group_id)
             select_result = await self.query_by_stu_id(stu_id, semester_id)
 
-            log.debug(f"查询到的信息是：{select_result}", debug)
+            Log.debug(f"查询到的信息是：{select_result}", debug)
             if select_result is not None:
                 score = select_result.get("score")
                 query_user_id = select_result.get("user_id")

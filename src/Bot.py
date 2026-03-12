@@ -21,8 +21,6 @@ logging.getLogger("sqlalchemy").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.orm").setLevel(logging.CRITICAL)
 
-log = Log()
-
 
 class Bot:
     def __init__(self, configs_path: str, plugins_path: str):
@@ -31,7 +29,7 @@ class Bot:
         :param configs_path: 配置文件目录的路径
         :param plugins_path: 插件文件目录的路径
         """
-        log.start_logging()
+        Log.start_logging()
         # 成员变量初始化
         self.configs_path: str = configs_path
         self.plugins_path: str = plugins_path
@@ -51,7 +49,7 @@ class Bot:
         self.database = None
 
         # 通过 ConfigParser 加载其他初始化参数
-        log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
+        Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
 
         # 需要检查的关键配置项
         required_configs = {
@@ -90,10 +88,10 @@ class Bot:
         self.owner_id = required_configs["owner_id"]
         self.assistant_group = required_configs["assistant_group"]
 
-        log.info("成功加载配置文件")
-        log.info("加载的bot初始化配置信息如下：")
+        Log.info("成功加载配置文件")
+        Log.info("加载的bot初始化配置信息如下：")
         for item in required_configs.items():
-            log.info(str(item))
+            Log.info(str(item))
 
         # 初始化api接口对象
         self.api = Api(self.server_address)
@@ -107,32 +105,32 @@ class Bot:
         self.bot_id = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
         if self.bot_id is None:
             raise ValueError("无法获取Bot登录信息")
-        log.info(f"获取到Bot的登录信息：{self.bot_id}")
+        Log.info(f"获取到Bot的登录信息：{self.bot_id}")
         self.init_database()
         self.init_assistant_list()
         self.init_plugins()
-        log.info("Bot初始化成功！")
+        Log.info("Bot初始化成功！")
 
     def init_database(self):
         if not self.database_enable:
-            log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
+            Log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
             self.database = None
             return
-        log.info("开始创建与数据库之间的连接")
+        Log.info("开始创建与数据库之间的连接")
         try:
             self.database = create_async_engine(
                 f"postgresql+asyncpg://"
                 f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
                 poolclass=NullPool,
             )
-            log.info("成功连接到bot数据库")
+            Log.info("成功连接到bot数据库")
         except Exception as e:
-            log.error(f"连接到数据库时失败：{e}")
+            Log.error(f"连接到数据库时失败：{e}")
             raise e
 
     def init_assistant_list(self):
         if self.assistant_group == 123456789:
-            log.warning("未设置助教群ID，跳过加载助教列表")
+            Log.warning("未设置助教群ID，跳过加载助教列表")
             return
 
         assistants = self.api.groupService.get_group_member_list(group_id=self.assistant_group).get(
@@ -142,7 +140,7 @@ class Bot:
             self.assistant_list.add(member["user_id"])
 
     def init_plugins(self):
-        log.info("开始加载插件")
+        Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
         plugins_config = configparser.ConfigParser()
@@ -161,7 +159,7 @@ class Bot:
                     enable = plugins_config.getboolean(name, "enable")
 
             if not enable:
-                log.info(f"插件 {name} 未启用，跳过加载")
+                Log.info(f"插件 {name} 未启用，跳过加载")
                 continue
 
             try:
@@ -175,25 +173,25 @@ class Bot:
                 plugin_instance.config = plugins_config[name]
                 # 添加到插件列表
                 self.plugins_list.append(plugin_instance)
-                log.info(
+                Log.info(
                     f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
                 )
             except Exception as e:
-                log.error(f"加载插件{name}失败：{e}")
+                Log.error(f"加载插件{name}失败：{e}")
                 raise e
 
     async def run(self):
         event = Event(self.plugins_list, self.debug)
         event_ip, event_port = self.client_address.split(":")
-        log.info(f"启动监听服务 {event_ip}:{event_port}")
+        Log.info(f"启动监听服务 {event_ip}:{event_port}")
         event_server = asyncio.create_task(event.run(event_ip, int(event_port)))
-        log.info("监听服务启动成功！")
+        Log.info("监听服务启动成功！")
 
         web_controller = WebController(self)
         web_ip, web_port = self.web_controller_address.split(":")
-        log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
+        Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
         web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
-        log.info("web controller 服务启动成功！")
+        Log.info("web controller 服务启动成功！")
 
         try:
             await asyncio.gather(event_server, web_server)
@@ -207,19 +205,19 @@ def check_config_files(configs_path: str) -> None:
     如配置文件不存在，复制默认配置文件模板
     """
     if not os.path.isfile(os.path.join(configs_path, "bot.ini")):
-        log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "bot.ini.template"),
             os.path.join(configs_path, "bot.ini"),
         )
     if not os.path.isfile(os.path.join(configs_path, "groups.ini")):
-        log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "groups.ini.template"),
             os.path.join(configs_path, "groups.ini"),
         )
     if not os.path.isfile(os.path.join(configs_path, "plugins.ini")):
-        log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
+        Log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
         copyfile(
             os.path.join(configs_path, "plugins.ini.template"),
             os.path.join(configs_path, "plugins.ini"),

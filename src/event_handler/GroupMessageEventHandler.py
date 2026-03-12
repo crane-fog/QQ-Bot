@@ -1,7 +1,5 @@
 from src.PrintLog import Log
 
-log = Log()
-
 
 class GroupMessageEvent:
     """
@@ -27,7 +25,7 @@ class GroupMessageEvent:
 
     def post_event(self, debug):
         log_message = self.message.replace("&amp;", "&")
-        log.debug(
+        Log.debug(
             f"群聊 {self.group_id} 消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{log_message}",
             debug,
         )

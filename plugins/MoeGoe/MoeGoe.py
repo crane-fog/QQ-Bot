@@ -5,9 +5,6 @@ import requests
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
-from src.PrintLog import Log
-
-log = Log()
 
 
 class MoeGoe(Plugins):

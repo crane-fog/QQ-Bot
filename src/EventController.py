@@ -13,8 +13,6 @@ from .event_handler.RequestEventHandler import GroupRequestEvent
 from .event_handler.SendEventHandler import SendEvent
 from .PrintLog import Log
 
-log = Log()
-
 
 def create_event_app(event_controller: "Event"):
     app = FastAPI(title="Event Controller")
@@ -78,7 +76,7 @@ class Event:
             try:
                 done_task.result()
             except Exception as e:
-                log.error(f"事件任务执行失败：{e}")
+                Log.error(f"事件任务执行失败：{e}")
 
         task.add_done_callback(on_done)
 
@@ -109,7 +107,7 @@ class Event:
                     traceback_info = traceback.format_exc()
                     error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
                     plugin.set_status("error", error_info)
-                    log.error(error_info)
+                    Log.error(error_info)
 
     async def run_private_plugins(self, event):
         await self.run_plugins_by_types(event, {"Private"})

@@ -9,8 +9,6 @@ from plugins import Plugins, plugin_main
 from src.PrintLog import Log
 from utils.CQType import At, Forward
 
-log = Log()
-
 Base = declarative_base()
 
 
@@ -106,7 +104,7 @@ class TheresaCard(Plugins):
             passed, stu_id, name = self.basic_card_check(card)
             if not passed:
                 if debug_flag:
-                    log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
+                    Log.debug(f"用户 {user_id} 的名片格式不符合要求: {card}", debug)
 
                 # 对常见错误进行提示
                 if "–" in card or "—" in card or "_" in card or "⁻" in card:

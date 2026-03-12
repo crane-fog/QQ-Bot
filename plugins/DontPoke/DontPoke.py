@@ -3,10 +3,7 @@ from random import randint
 
 from plugins import Plugins, plugin_main
 from src.event_handler.NoticeEventHandler import GroupPokeEvent
-from src.PrintLog import Log
 from utils.CQType import At, Face
-
-log = Log()
 
 
 class DontPoke(Plugins):

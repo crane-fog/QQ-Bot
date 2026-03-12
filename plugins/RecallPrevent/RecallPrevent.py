@@ -7,8 +7,6 @@ from plugins import Plugins, plugin_main
 from src.PrintLog import Log
 from utils.CQType import At
 
-log = Log()
-
 
 class RecallPrevent(Plugins):
     """
@@ -53,7 +51,7 @@ class RecallPrevent(Plugins):
 
             json_data = json.dumps(data)
             self.redis_client.setex(f"message:{message_id}", 180, json_data)
-            log.debug(f"已成功存储消息 ID: {message_id}，消息内容：{event}", debug)
+            Log.debug(f"已成功存储消息 ID: {message_id}，消息内容：{event}", debug)
             return
 
         user_id = event.user_id
@@ -62,7 +60,7 @@ class RecallPrevent(Plugins):
         # 获取消息数据
         response = self.get_message(event.message_id)
         if not response:
-            log.error(f"未能找到消息 ID: {event.message_id}，请确认消息已存储.")
+            Log.error(f"未能找到消息 ID: {event.message_id}，请确认消息已存储.")
             return
 
         response_data = json.loads(response)
@@ -91,7 +89,7 @@ class RecallPrevent(Plugins):
         if user_id == operator_id:  # 正式进入插件运行部分
             reply_message = f"{At(qq=user_id)} 撤回的消息是：{recalled_message}"
             self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
-            log.debug(
+            Log.debug(
                 f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
                 debug,
             )
@@ -100,7 +98,7 @@ class RecallPrevent(Plugins):
                 self.api.groupService.set_group_ban(
                     group_id=group_id, user_id=event.user_id, duration=duration
                 )
-                log.debug(
+                Log.debug(
                     f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
                     debug,
                 )

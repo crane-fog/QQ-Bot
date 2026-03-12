@@ -1,7 +1,5 @@
 from src.PrintLog import Log
 
-log = Log()
-
 
 class GroupRecallEvent:
     def __init__(self, data):
@@ -16,7 +14,7 @@ class GroupRecallEvent:
         ...
 
     def post_event(self, debug):
-        log.debug(
+        Log.debug(
             f"在群 {self.group_id} 中，消息 ID {self.message_id} 被撤回。"
             f"发送者：{self.user_id}，操作者：{self.operator_id}",
             debug,
@@ -40,7 +38,7 @@ class GroupPokeEvent:
         ...
 
     def poke_event(self, debug):
-        log.debug(
+        Log.debug(
             f"在群 {self.group_id} 中，用户 {self.user_id} 戳了戳 {self.target_id} 。",
             debug,
         )

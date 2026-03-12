@@ -1,7 +1,5 @@
 from src.PrintLog import Log
 
-log = Log()
-
 
 class PrivateMessageEvent:
     def __init__(self, data):
@@ -14,4 +12,4 @@ class PrivateMessageEvent:
 
     def post_event(self, debug):
         log_message = self.message.replace("&amp;", "&")
-        log.debug(f"好友 {self.nickname}({self.user_id}) 私聊消息：{log_message}", debug)
+        Log.debug(f"好友 {self.nickname}({self.user_id}) 私聊消息：{log_message}", debug)

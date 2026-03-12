@@ -12,8 +12,6 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.CQType import Forward
 
-log = Log()
-
 
 class pixiv_img_get:
     "这个类我尽量不用框架内的东西，这样在外面也能用"
@@ -255,7 +253,7 @@ class A_Pixiv(Plugins):
         if "pid" in message[0:3]:
             # 下载部分
             pid = message[3:]
-            log.debug(f"截取到pid:{pid},请求中.....", debug)
+            Log.debug(f"截取到pid:{pid},请求中.....", debug)
 
             if pid.isdecimal():
                 pixic = pixiv_img_get(pid=pid)
@@ -267,7 +265,7 @@ class A_Pixiv(Plugins):
                     if pixic.download_img(urls=urls):
                         forward_message = pixic.get_forward()
                     else:
-                        log.error("下载失败")
+                        Log.error("下载失败")
                         self.api.groupService.send_group_msg(
                             group_id=event.group_id, message="下载失败了!请检查日志"
                         )
@@ -322,7 +320,7 @@ class A_Pixiv(Plugins):
                 self.api.groupService.send_group_msg(
                     group_id=event.group_id, message="输入并非纯数字"
                 )
-            log.debug(f"成功处理{event.group_id}的pid请求", debug)
+            Log.debug(f"成功处理{event.group_id}的pid请求", debug)
             return
         elif message == "p_clean":
             """
@@ -330,4 +328,4 @@ class A_Pixiv(Plugins):
             """
             pixiv_img_get()
             self.api.groupService.send_group_msg(group_id=event.group_id, message="已全部删除")
-            log.debug(f"成功处理{event.group_id}的删除请求", debug)
+            Log.debug(f"成功处理{event.group_id}的删除请求", debug)

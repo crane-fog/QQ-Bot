@@ -33,9 +33,6 @@ class Message(Base):
     user_card = Column(Text, nullable=False, default=" ")
 
 
-log = Log()
-
-
 class TheresaChat(Plugins):
     """
     插件名：TheresaChat \n
@@ -110,7 +107,7 @@ class TheresaChat(Plugins):
             msg = random.choice(msg_list)
             await self.save_bot_reply_to_db(group_id, msg)
             self.api.groupService.send_group_msg(group_id=group_id, message=msg)
-            log.debug(
+            Log.debug(
                 f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
                 debug,
             )
@@ -122,7 +119,7 @@ class TheresaChat(Plugins):
             else:
                 return
 
-        log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
+        Log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
 
         if face_flag:
             context_messages = await self.load_context_from_db(

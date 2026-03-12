@@ -1,8 +1,6 @@
 from plugins import Plugins, plugin_main
 from src.PrintLog import Log
 
-log = Log()
-
 """
 这是一个插件的模板，开发一个新的插件至少应该包含以下部分
 注意：
@@ -39,6 +37,6 @@ class ExamplePlugin(Plugins):
         self.config.get("some_config")
 
         self.set_status("error")
-        log.debug("成功将该插件状态变为error", debug)
-        log.error(f"这个错误是由测试插件：{self.name}主动产生的，Nothing goes wrong！")
+        Log.debug("成功将该插件状态变为error", debug)
+        Log.error(f"这个错误是由测试插件：{self.name}主动产生的，Nothing goes wrong！")
         return

@@ -1,9 +1,6 @@
 from random import choice
 
 from plugins import Plugins, plugin_main
-from src.PrintLog import Log
-
-log = Log()
 
 
 class TheresaEat(Plugins):

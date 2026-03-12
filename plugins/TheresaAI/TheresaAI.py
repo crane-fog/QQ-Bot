@@ -11,8 +11,6 @@ from src.PrintLog import Log
 from utils.AITools import get_gemini_response
 from utils.CQType import At, Reply
 
-log = Log()
-
 
 class TheresaAI(Plugins):
     """
@@ -47,7 +45,7 @@ class TheresaAI(Plugins):
             self.api.groupService.send_group_msg(
                 group_id=event.group_id, message="请输入你的问题哦"
             )
-            log.debug(
+            Log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}没有提出问题，已发送提示性回复",
                 debug,
             )
@@ -75,7 +73,7 @@ class TheresaAI(Plugins):
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len("Theresa ask") :]).strip()
 
-            log.debug(
+            Log.debug(
                 f"插件：{self.name}运行正确，用户{event.user_id}提出问题{question}",
                 debug,
             )
@@ -99,10 +97,10 @@ class TheresaAI(Plugins):
             reply_message = Reply(id=event.message_id) + response
             self.api.groupService.send_group_msg(group_id=event.group_id, message=reply_message)
 
-            log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
+            Log.debug(f"插件：{self.name}运行正确，成功回答用户{event.user_id}的问题", debug)
 
         except Exception as e:
-            log.error(f"插件：{self.name}运行时出错：{e}")
+            Log.error(f"插件：{self.name}运行时出错：{e}")
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
                 message=f"{At(qq=event.user_id)} 处理请求时出错了: {str(e)}",

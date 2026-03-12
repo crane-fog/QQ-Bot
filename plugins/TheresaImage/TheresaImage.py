@@ -3,12 +3,9 @@ import os
 import re
 
 from plugins import Plugins, plugin_main
-from src.PrintLog import Log
 from utils.AITools import get_gemini_response
 from utils.CQHelper import CQHelper
 from utils.CQType import Reply
-
-log = Log()
 
 
 class TheresaImage(Plugins):

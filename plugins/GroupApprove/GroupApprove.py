@@ -6,8 +6,6 @@ from plugins import Plugins, plugin_main
 from src.event_handler.RequestEventHandler import GroupRequestEvent
 from src.PrintLog import Log
 
-log = Log()
-
 
 class GroupApprove(Plugins):
     def __init__(self, server_address, bot):
@@ -52,12 +50,12 @@ class GroupApprove(Plugins):
                 self.api.groupService.set_group_add_request(
                     flag=flag, approve="false", reason=reject_reason
                 )
-                log.debug(
+                Log.debug(
                     f"{self.name}:{group_id}错误入群申请{flag}拒绝，拒绝理由为{reject_reason}",
                     debug,
                 )
             else:
-                log.debug(f"{self.name}:{group_id}错误入群申请{flag}挂起", debug)
+                Log.debug(f"{self.name}:{group_id}错误入群申请{flag}挂起", debug)
             return
 
         stu_id = int(real_answer[:7])
@@ -67,15 +65,15 @@ class GroupApprove(Plugins):
                 self.api.groupService.set_group_add_request(
                     flag=flag, approve="false", reason=reject_reason
                 )
-                log.debug(
+                Log.debug(
                     f"{self.name}:{group_id}无信息入群申请{flag}拒绝，拒绝理由为{reject_reason}",
                     debug,
                 )
             else:
-                log.debug(f"{self.name}:{group_id}无信息入群申请{flag}挂起", debug)
+                Log.debug(f"{self.name}:{group_id}无信息入群申请{flag}挂起", debug)
         else:
             self.api.groupService.set_group_add_request(flag=flag)
-            log.debug(f"{self.name}:{group_id}正确入群申请{flag}批准", debug)
+            Log.debug(f"{self.name}:{group_id}正确入群申请{flag}批准", debug)
 
     def format_check(self, real_answer: str) -> bool:
         parts = self.config.getint("parts")
