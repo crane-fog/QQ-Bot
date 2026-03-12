@@ -70,6 +70,13 @@ def create_web_app(web_controller):
             lines_to_send = all_lines[total_lines_read:]
             total_lines_read = len(all_lines)
 
+        new_lines = [
+            line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line for line in all_lines
+        ]
+
+        with open(log_file_path, "w", encoding="utf-8") as file:
+            file.writelines(new_lines)
+
         return PlainTextResponse("".join(lines_to_send))
 
     @app.post("/clear-log")

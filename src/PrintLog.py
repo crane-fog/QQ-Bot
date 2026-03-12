@@ -93,7 +93,7 @@ class Log:
         file_logger.error(message)
 
     @classmethod
-    def start_logging(self):
+    def start_logging(cls):
         with open(log_file_path, "w"):
             ...
 
