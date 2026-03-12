@@ -71,34 +71,24 @@ class Repeater(Plugins):
             if (event.user_id in ignored_ids) or (event.role in ["admin", "owner"]):
                 return
             if recall:
-                try:
-                    self.api.groupService.delete_msg(message_id=event.message_id)
-                except Exception as e:
-                    log.error(f"插件：{self.name}运行时出错：{e}")
-                else:
-                    log.debug(
-                        f"插件：{self.name}运行正确，成功在{group_id}中撤回了一条消息：{event.message}",
-                        debug,
-                    )
-            if ban:
-                try:
-                    self.api.groupService.set_group_ban(
-                        group_id=group_id, user_id=event.user_id, duration=duration
-                    )
-                except Exception as e:
-                    log.error(f"插件：{self.name}运行时出错：{e}")
-                else:
-                    log.debug(
-                        f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
-                        debug,
-                    )
-            try:
-                self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
-            except Exception as e:
-                log.error(f"插件：{self.name}运行时出错：{e}")
-            else:
+                self.api.groupService.delete_msg(message_id=event.message_id)
                 log.debug(
-                    f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
+                    f"插件：{self.name}运行正确，成功在{group_id}中撤回了一条消息：{event.message}",
                     debug,
                 )
+
+            if ban:
+                self.api.groupService.set_group_ban(
+                    group_id=group_id, user_id=event.user_id, duration=duration
+                )
+                log.debug(
+                    f"插件：{self.name}运行正确，成功将用户{event.user_id}禁言{duration}秒",
+                    debug,
+                )
+
+            self.api.groupService.send_group_msg(group_id=group_id, message=reply_message)
+            log.debug(
+                f"插件：{self.name}运行正确，成功向{group_id}发送了一条消息：{reply_message}",
+                debug,
+            )
         return

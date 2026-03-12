@@ -124,43 +124,37 @@ class TheresaChat(Plugins):
 
         log.debug(f'插件：{self.name}在群{group_id}被消息"{message}"触发，准备获取回复', debug)
 
-        try:
-            if face_flag:
-                context_messages = await self.load_context_from_db(
-                    group_id, self.context_length_for_face
-                )
-                image_id = self.get_dpsk_response_for_face(context_messages)
-                if image_id != 0:
-                    image_name = (
-                        f"{os.path.dirname(os.path.abspath(__file__))}/faces/{image_id}.png"
-                    )
-                    msg = CQMessage()
-                    msg.cq_type = "image"
-                    msg.subType = "1"
-                    msg.file = f"file://{image_name}"
-                    self.api.groupService.send_group_msg(group_id=group_id, message=str(msg))
-            else:
-                persona = self.persona_template.render(
-                    owner_id=self.bot.owner_id,
-                    current_time=datetime.datetime.now().time(),
-                    group_name=event.group_name,
-                )
+        if face_flag:
+            context_messages = await self.load_context_from_db(
+                group_id, self.context_length_for_face
+            )
+            image_id = self.get_dpsk_response_for_face(context_messages)
+            if image_id != 0:
+                image_name = f"{os.path.dirname(os.path.abspath(__file__))}/faces/{image_id}.png"
+                msg = CQMessage()
+                msg.cq_type = "image"
+                msg.subType = "1"
+                msg.file = f"file://{image_name}"
+                self.api.groupService.send_group_msg(group_id=group_id, message=str(msg))
+        else:
+            persona = self.persona_template.render(
+                owner_id=self.bot.owner_id,
+                current_time=datetime.datetime.now().time(),
+                group_name=event.group_name,
+            )
 
-                context_messages = await self.load_context_from_db(group_id, self.context_length)
-                response = get_dpsk_response(
-                    [
-                        {"role": "system", "content": persona},
-                        *context_messages,
-                    ],
-                    temperature=1.5,
-                )
-                if "[NO REPLY]" not in response:
-                    # 更新冷却时间
-                    self.group_cooldown[group_id] = time.time()
-                    self.api.groupService.send_group_msg(group_id=group_id, message=response)
-
-        except Exception as e:
-            log.error(f"插件：{self.name}运行时出错：{e}")
+            context_messages = await self.load_context_from_db(group_id, self.context_length)
+            response = get_dpsk_response(
+                [
+                    {"role": "system", "content": persona},
+                    *context_messages,
+                ],
+                temperature=1.5,
+            )
+            if "[NO REPLY]" not in response:
+                # 更新冷却时间
+                self.group_cooldown[group_id] = time.time()
+                self.api.groupService.send_group_msg(group_id=group_id, message=response)
 
     async def resolve_msg(self, session: AsyncSession, message: str) -> str:
         cqs = CQHelper.loads_cq(message)

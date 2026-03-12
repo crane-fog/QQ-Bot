@@ -21,10 +21,7 @@ class Api:
             获取bot服务端是否在线
             :return: bot服务端返回的信息
             """
-            try:
-                response = requests.get(self.api.bot_api_address)
-            except Exception as e:
-                raise ConnectionError(f"无法连接到Bot服务端，请确认监听端配置：{e}") from None
+            response = requests.get(self.api.bot_api_address)
             return response.text
 
         def get_login_info(self):

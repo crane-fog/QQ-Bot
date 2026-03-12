@@ -64,16 +64,10 @@ def create_event_app(event_controller: "Event"):
 
 class Event:
     def __init__(self, plugins_list: list[Plugins], debug: bool):
-        try:
-            self.debug = debug
-            self.plugins_list = plugins_list
-            self.tasks: set[asyncio.Task] = set()
-            self.server = None
-        except Exception as e:
-            log.error(f"初始化事件处理器时失败：{e}")
-            raise e
-        else:
-            log.info("初始化事件处理器成功！")
+        self.debug = debug
+        self.plugins_list = plugins_list
+        self.tasks: set[asyncio.Task] = set()
+        self.server = None
 
     def schedule_task(self, coro):
         task = asyncio.create_task(coro)
@@ -83,8 +77,8 @@ class Event:
             self.tasks.discard(done_task)
             try:
                 done_task.result()
-            except Exception as exc:
-                log.error(f"事件任务执行失败：{exc}")
+            except Exception as e:
+                log.error(f"事件任务执行失败：{e}")
 
         task.add_done_callback(on_done)
 

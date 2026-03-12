@@ -70,10 +70,7 @@ class QiuDao(Plugins):
             stu_id = int(sender_card[0])
             select_result = None
             semester_id = self.semester_dict.get(group_id)
-            try:
-                select_result = await self.query_by_stu_id(stu_id, semester_id)
-            except Exception as e:
-                raise e
+            select_result = await self.query_by_stu_id(stu_id, semester_id)
 
             log.debug(f"查询到的信息是：{select_result}", debug)
             if select_result is not None:
