@@ -72,7 +72,7 @@ class AI(Plugins):
                 [
                     {
                         "role": "system",
-                        "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
+                        "content": '尽可能简短、直接地回答用户的问题，不得输出markdown格式。如遇到你不确定/无法回答的问题，你必须回答"小莫不知道哦~"。',
                     },
                     {"role": "user", "content": question},
                 ]
