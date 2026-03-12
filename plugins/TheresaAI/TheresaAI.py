@@ -74,13 +74,13 @@ class TheresaAI(Plugins):
                 current_time=datetime.datetime.now().time(),
                 group_name=event.group_name,
             )
-            question = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
+            question_full = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
 
             # 获取大模型回复
             response = await get_gemini_response(
                 [
                     {"role": "system", "content": persona},
-                    {"role": "user", "content": question},
+                    {"role": "user", "content": question_full},
                 ]
             )
 
