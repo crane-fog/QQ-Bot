@@ -98,6 +98,7 @@ class Bot:
 
         self.assistant_list: set[int] = set()
 
+    def initialize(self):
         try:
             self.api.botSelfInfo.get_login()
         except Exception as e:

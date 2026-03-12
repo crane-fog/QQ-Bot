@@ -17,8 +17,10 @@ from .PrintLog import Log
 def create_event_app(event_controller: "Event"):
     app = FastAPI(title="Event Controller")
 
-    @app.api_route("/onebot", methods=["POST", "GET"])
+    @app.api_route("/onebot", methods=["POST", "GET"], status_code=200)
     async def post_data(request: Request):
+        if request.method == "GET":
+            return {"message": "Event Controller is running."}
         data = await request.json()
         post_type = data.get("post_type")
 
@@ -55,7 +57,7 @@ def create_event_app(event_controller: "Event"):
             event.post_event(event_controller.debug)
             event_controller.schedule_task(event_controller.run_send_event(event))
 
-        return {}, 200
+        return {}
 
     return app
 

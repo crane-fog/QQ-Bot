@@ -70,13 +70,6 @@ def create_web_app(web_controller):
             lines_to_send = all_lines[total_lines_read:]
             total_lines_read = len(all_lines)
 
-        new_lines = [
-            line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line for line in all_lines
-        ]
-
-        with open(log_file_path, "w", encoding="utf-8") as file:
-            file.writelines(new_lines)
-
         return PlainTextResponse("".join(lines_to_send))
 
     @app.post("/clear-log")
@@ -329,9 +322,3 @@ class WebController:
 
         except Exception as e:
             return {"success": False, "message": f"后端执行操作时出错：{e}"}
-
-
-if __name__ == "__main__":
-    bot = None
-    web_controller = WebController(bot)
-    web_controller.run("127.0.0.1", 3000)

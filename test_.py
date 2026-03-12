@@ -26,7 +26,7 @@ def get_plugin_names():
 @pytest.fixture
 def bot():
     with patch("src.Bot.Api"):
-        bot = Bot(configs_path="configs", plugins_path=plugins_path)
+        bot = Bot(configs_path=configs_path, plugins_path=plugins_path)
     bot.database_enable = False
     return bot
 
