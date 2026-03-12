@@ -61,7 +61,7 @@ class AI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
             # 获取大模型回复
-            response = get_gemini_response(
+            response = await get_gemini_response(
                 [
                     {
                         "role": "system",

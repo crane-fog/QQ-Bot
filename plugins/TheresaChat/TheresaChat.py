@@ -125,7 +125,7 @@ class TheresaChat(Plugins):
             context_messages = await self.load_context_from_db(
                 group_id, self.context_length_for_face
             )
-            image_id = self.get_dpsk_response_for_face(context_messages)
+            image_id = await self.get_dpsk_response_for_face(context_messages)
             if image_id != 0:
                 image_name = f"{os.path.dirname(os.path.abspath(__file__))}/faces/{image_id}.png"
                 msg = CQMessage()
@@ -141,7 +141,7 @@ class TheresaChat(Plugins):
             )
 
             context_messages = await self.load_context_from_db(group_id, self.context_length)
-            response = get_dpsk_response(
+            response = await get_dpsk_response(
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
@@ -198,7 +198,7 @@ class TheresaChat(Plugins):
                     )
         return context
 
-    def get_dpsk_response_for_face(self, context_messages) -> int:
+    async def get_dpsk_response_for_face(self, context_messages) -> int:
         persona = self.persona_face_template.render(recent_faces=self.recent_faces)
         # 你现在在一个群聊中，你根据以下的上下文准备回复一条消息，这条消息的内容是
         # \"\"\"
@@ -209,7 +209,7 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = get_dpsk_response(
+        response = await get_dpsk_response(
             messages=messages,
             temperature=0.0,
             response_format={"type": "json_object"},

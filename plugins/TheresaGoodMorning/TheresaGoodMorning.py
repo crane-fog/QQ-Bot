@@ -68,7 +68,7 @@ class TheresaGoodMorning(Plugins):
             question = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
 
             # 获取大模型回复
-            response = get_gemini_response(
+            response = await get_gemini_response(
                 [
                     {"role": "system", "content": persona},
                     {"role": "user", "content": question},

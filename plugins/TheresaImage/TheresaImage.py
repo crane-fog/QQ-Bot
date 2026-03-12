@@ -37,7 +37,7 @@ class TheresaImage(Plugins):
                 )
                 image_path = self.get_image_filename_from_msg(msg_str)
                 if image_path:
-                    response = get_gemini_response(
+                    response = await get_gemini_response(
                         messages=[
                             {
                                 "role": "system",

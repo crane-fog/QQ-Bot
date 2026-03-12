@@ -65,7 +65,7 @@ class TheresaMathAI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
 
             # 获取大模型回复
-            response = get_dpsk_response(
+            response = await get_dpsk_response(
                 messages=[
                     {"role": "system", "content": "You are a professional math prover."},
                     {"role": "user", "content": question},
