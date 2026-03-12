@@ -104,92 +104,33 @@ class Event:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def run_private_plugins(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Private":
+    async def run_plugins_by_types(self, event, allowed_types: set[str]):
+        for plugin in self.plugins_list:
+            plugin_type = plugin.type
+            if plugin_type in allowed_types:
                 try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
+                    plugin.load_effected_groups()
+                    await plugin.main(event, self.debug)
                 except Exception as e:
                     traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
+                    error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
+                    plugin.set_status("error", error_info)
                     log.error(error_info)
+
+    async def run_private_plugins(self, event):
+        await self.run_plugins_by_types(event, {"Private"})
 
     async def run_group_plugins(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Group" or plugins_type == "GroupRecall" or plugins_type == "Record":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
+        await self.run_plugins_by_types(event, {"Group", "GroupRecall", "Record"})
 
     async def run_group_recall(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "GroupRecall":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
+        await self.run_plugins_by_types(event, {"GroupRecall"})
 
     async def run_group_request(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "GroupRequest":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
+        await self.run_plugins_by_types(event, {"GroupRequest"})
 
     async def run_group_poke(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Poke":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
+        await self.run_plugins_by_types(event, {"Poke"})
 
     async def run_send_event(self, event):
-        for plugins in self.plugins_list:
-            plugins_type = plugins.type
-            plugins_name = plugins.name
-            plugins_author = plugins.author
-            if plugins_type == "Send" or plugins_type == "Record":
-                try:
-                    plugins.load_effected_groups()
-                    await plugins.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugins_name}运行时出错：{e}，请联系该插件的作者：{plugins_author}\n详细信息：\n{traceback_info}"
-                    plugins.set_status("error", error_info)
-                    log.error(error_info)
+        await self.run_plugins_by_types(event, {"Send", "Record"})
