@@ -99,9 +99,6 @@ enable = True
 [TheresaImage]
 enable = True
 
-[TheresaEat]
-enable = False
-
 [A_Pixiv]
 enable = False
 
