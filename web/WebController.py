@@ -1,16 +1,12 @@
 import configparser
-import logging
 import os
 
 import requests
-from flask import (
-    Flask,
-    Response,
-    jsonify,
-    render_template,
-    request,
-)
-from gevent.pywsgi import WSGIServer
+import uvicorn
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, PlainTextResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 
 total_lines_read = 0
 last_cleared_line = 0
@@ -23,87 +19,96 @@ def create_web_app(web_controller):
     # 静态文件目录路径
     static_dir = os.path.join(basedir, "static")
 
-    app = Flask("Web Controller", template_folder=template_dir, static_folder=static_dir)
-    app.secret_key = "just monika"
+    app = FastAPI(title="Web Controller")
+    app.mount("/static", StaticFiles(directory=static_dir), name="static")
+    templates = Jinja2Templates(directory=template_dir)
 
-    @app.route("/")
-    def index():
-        return render_template("index.html")
+    @app.get("/")
+    async def index(request: Request):
+        return templates.TemplateResponse("index.html", {"request": request})
 
-    @app.route("/baseInfo.html")
-    def base_info():
-        bot_info = WebController.get_bot_info(web_controller)
-        plugins_info = WebController.get_plugins_init_info(web_controller)
+    @app.get("/baseInfo.html")
+    async def base_info(request: Request):
+        bot_info = web_controller.get_bot_info()
+        plugins_info = web_controller.get_plugins_init_info()
+        return templates.TemplateResponse(
+            "baseInfo.html",
+            {
+                "request": request,
+                "bot_info": bot_info,
+                "plugins_info": plugins_info,
+            },
+        )
 
-        return render_template("baseInfo.html", bot_info=bot_info, plugins_info=plugins_info)
+    @app.get("/log.html")
+    async def log_page(request: Request):
+        return templates.TemplateResponse("log.html", {"request": request})
 
-    @app.route("/log.html")
-    def log():
-        return render_template("log.html")
-
-    @app.route("/leave-log.html")
-    def leave_log():
+    @app.get("/leave-log.html")
+    async def leave_log():
         global total_lines_read, last_cleared_line
         total_lines_read = last_cleared_line
-        return jsonify(success=True)
+        return JSONResponse({"success": True})
 
-    @app.route("/plugins.html")
-    def plugins():
-        plugins_info = WebController.get_all_plugins_info(
-            web_controller
-        )  # 假设这是从数据库获取信息的函数
-        return render_template("plugins.html", plugins=plugins_info)
+    @app.get("/plugins.html")
+    async def plugins_page(request: Request):
+        plugins_info = web_controller.get_all_plugins_info()
+        return templates.TemplateResponse(
+            "plugins.html",
+            {"request": request, "plugins": plugins_info},
+        )
 
-    @app.route("/log.out")
-    def log_file():
-        global total_lines_read, last_cleared_line
+    @app.get("/log.out")
+    async def log_file():
+        global total_lines_read
 
         parent_dir = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
         log_file_path = os.path.join(parent_dir, "log.out")
 
-        lines_to_send = []
-        with open(log_file_path, encoding="utf-8") as file:  # 以读模式打开文件
+        with open(log_file_path, encoding="utf-8") as file:
             all_lines = file.readlines()
-            lines_to_send = all_lines[total_lines_read:]  # 提取新的日志行
-            total_lines_read = len(all_lines)  # 更新读取的总行数
+            lines_to_send = all_lines[total_lines_read:]
+            total_lines_read = len(all_lines)
 
-        # 处理错误标记并准备写回文件
         new_lines = [
             line.replace("[ERROR]", "[error]") if "[ERROR]" in line else line for line in all_lines
         ]
 
-        # 将更新后的内容写回文件
         with open(log_file_path, "w", encoding="utf-8") as file:
             file.writelines(new_lines)
 
-        return Response("".join(lines_to_send), mimetype="text/plain")
+        return PlainTextResponse("".join(lines_to_send))
 
-    @app.route("/clear-log", methods=["POST"])
-    def clear_log():
+    @app.post("/clear-log")
+    async def clear_log():
         global total_lines_read, last_cleared_line
         last_cleared_line = total_lines_read
-        return jsonify(success=True)
+        return JSONResponse({"success": True})
 
-    @app.route("/save_config", methods=["POST"])
-    def save_config():
-        config_data = request.json
-        print(config_data)
+    @app.post("/save_config")
+    async def save_config(request: Request):
+        config_data = await request.json()
+        result = web_controller.save_config(config_data)
+        return JSONResponse(result)
 
-        result = WebController.save_config(web_controller, config_data)
-
-        return jsonify(result)
-
-    app.logger.setLevel(logging.ERROR)
     return app
 
 
 class WebController:
-    flask_log = logging.getLogger("werkzeug")
-    flask_log.setLevel(logging.ERROR)
-
     def __init__(self, bot):
         self.bot = bot
         self.api = bot.api
+        self._server = None
+
+    async def run(self, ip, port):
+        app = create_web_app(self)
+        config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
+        self._server = uvicorn.Server(config)
+        await self._server.serve()
+
+    async def stop(self):
+        if self._server is not None:
+            self._server.should_exit = True
 
     def get_bot_info(self):
         login_info = self.api.botSelfInfo.get_login_info().get("data")
@@ -131,7 +136,6 @@ class WebController:
         error_plugins = []
         for plugins in self.bot.plugins_list:
             plugins_status = plugins.status
-            # print(plugins_status)
             plugins_name = plugins.name
             plugins_type = plugins.type
             plugins_author = plugins.author
@@ -155,25 +159,10 @@ class WebController:
             "error_plugins": error_plugins,
         }
 
-    # 创建一个不记录任何内容的日志器
-    class SilentLogger:
-        def write(self, *args, **kwargs):
-            pass
-
-        def flush(self, *args, **kwargs):
-            pass
-
-    def run(self, ip, port):
-        app = create_web_app(self)
-        server = WSGIServer((ip, port), app, log=self.SilentLogger())
-        # server = WSGIServer((ip, port), app)
-        server.serve_forever()
-
     def get_all_plugins_info(self):
         plugins_info = {}
         loaded_plugin_names = set()
 
-        # 1. 获取已加载插件的信息
         for plugins in self.bot.plugins_list:
             plugins_name = plugins.name
             loaded_plugin_names.add(plugins_name)
@@ -192,8 +181,6 @@ class WebController:
             }
             plugins_info[plugins_name]["config"] = plugins.config
 
-        # 2. 扫描未加载的插件 (从 plugins.ini 和 文件夹)
-
         plugins_config_path = os.path.join(self.bot.configs_path, "plugins.ini")
         groups_config_path = os.path.join(self.bot.configs_path, "groups.ini")
 
@@ -211,11 +198,9 @@ class WebController:
             plugin_dir = os.path.join(self.bot.plugins_path, item)
             if os.path.isdir(plugin_dir) and not item.startswith("__"):
                 if item not in loaded_plugin_names:
-                    # 这是一个未加载的插件
                     plugin_config = {}
                     if config.has_section(item):
                         for k, v in config.items(item):
-                            # 简单的类型转换，为了前端显示
                             if v.lower() in ("true", "false"):
                                 plugin_config[k] = v.lower() == "true"
                             elif "," in v:
@@ -226,11 +211,9 @@ class WebController:
                             else:
                                 plugin_config[k] = v
 
-                    # 确保有 enable 字段
                     if "enable" not in plugin_config:
                         plugin_config["enable"] = False
 
-                    # 构建 effected_group
                     effected_group = []
                     for section in g_config.sections():
                         if section.isdigit():
@@ -256,9 +239,6 @@ class WebController:
         return plugins_info
 
     def update_plugin_status(self, plugin_name, new_status):
-        # 此方法似乎未被前端直接调用，或者逻辑需要更新
-        # 暂时保留，但指向 plugins.ini
-
         config_path = os.path.join(self.bot.configs_path, "plugins.ini")
         config = configparser.ConfigParser()
         config.optionxform = str
@@ -324,7 +304,6 @@ class WebController:
                         g_config.add_section(group_id)
                     g_config.set(group_id, plugin_name, "True")
 
-            # 更新配置文件中的值
             for key, value in config_data.items():
                 if key in ["plugin_name", "effected_group"]:
                     continue
@@ -333,14 +312,12 @@ class WebController:
                 else:
                     p_config.set(plugin_name, key, str(value))
 
-            # 保存配置文件
             with open(plugins_config_path, "w", encoding="utf-8") as f:
                 p_config.write(f)
 
             with open(groups_config_path, "w", encoding="utf-8") as f:
                 g_config.write(f)
 
-            # 如果插件已加载，更新内存中的配置和状态
             for plugin in self.bot.plugins_list:
                 if plugin_name == plugin.name:
                     plugin.load_effected_groups()
@@ -355,6 +332,6 @@ class WebController:
 
 
 if __name__ == "__main__":
-    bot = None  # 创建或获取你的bot对象
+    bot = None
     web_controller = WebController(bot)
     web_controller.run("127.0.0.1", 3000)

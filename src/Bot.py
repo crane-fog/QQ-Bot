@@ -1,3 +1,4 @@
+import asyncio
 import configparser
 import logging
 import os
@@ -5,7 +6,6 @@ from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
 
-from gevent import joinall, spawn
 from sqlalchemy.ext.asyncio import create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -22,11 +22,6 @@ logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.orm").setLevel(logging.CRITICAL)
 
 log = Log()
-
-
-# 全局定义 run_service 函数
-def run_service(service, host, port, debug):
-    service.run(ip=host, port=port, debug=debug)
 
 
 class Bot:
@@ -105,37 +100,20 @@ class Bot:
             self.api = Api(self.server_address)
 
             self.assistant_list: set[int] = set()
-            if self.assistant_group != 123456789:
-                assistants = self.api.groupService.get_group_member_list(
-                    group_id=self.assistant_group
-                ).get("data")
-                for member in assistants:
-                    self.assistant_list.add(member["user_id"])
 
-        except Exception as e:
-            raise e
-
-    async def initialize(self):
-        """
-        异步地完成Bot对象的初始化
-        """
-        try:
             self.bot_id = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
             if self.bot_id is None:
                 raise ValueError("无法获取Bot登录信息")
             log.info(f"获取到Bot的登录信息：{self.bot_id}")
-            log.info("Bot初始化成功！")
-            await self.init_database()
+            self.init_database()
+            self.init_assistant_list()
             self.init_plugins()
+            log.info("Bot初始化成功！")
+
         except Exception as e:
-            log.error(f"初始化Bot时失败：{e}")
             raise e
 
-    async def init_database(self):
-        """
-        创建与数据库之间的连接
-        :return:
-        """
+    def init_database(self):
         if not self.database_enable:
             log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
             self.database = None
@@ -152,11 +130,18 @@ class Bot:
             log.error(f"连接到数据库时失败：{e}")
             raise e
 
+    def init_assistant_list(self):
+        if self.assistant_group == 123456789:
+            log.warning("未设置助教群ID，跳过加载助教列表")
+            return
+
+        assistants = self.api.groupService.get_group_member_list(group_id=self.assistant_group).get(
+            "data"
+        )
+        for member in assistants:
+            self.assistant_list.add(member["user_id"])
+
     def init_plugins(self):
-        """
-        初始化所有添加了的插件
-        :return:
-        """
         log.info("开始加载插件")
 
         # 读取统一的插件配置文件
@@ -197,23 +182,24 @@ class Bot:
                 log.error(f"加载插件{name}失败：{e}")
                 raise e
 
-    def run(self):
+    async def run(self):
         event = Event(self.plugins_list, self.debug)
-        ip_address, port = self.client_address.split(":")
-        # 使用Flask实例的run方法启动Flask服务
-        log.info(f"尝试将监听服务启动在 {ip_address}:{port}")
-        event_server = spawn(event.run, ip_address, int(port))
+        event_ip, event_port = self.client_address.split(":")
+        log.info(f"启动监听服务 {event_ip}:{event_port}")
+        event_server = asyncio.create_task(event.run(event_ip, int(event_port)))
         log.info("监听服务启动成功！")
 
-        webController = WebController(self)
-        ip_address, port = self.web_controller_address.split(":")
-        # 使用Flask实例的run方法启动Flask服务
-        log.info(f"启动web controller服务 {ip_address}:{port}")
-        web_server = spawn(webController.run, ip_address, int(port))
-        log.info("web controller服务启动成功！")
-        # log.error("TEST ERROR")
+        web_controller = WebController(self)
+        web_ip, web_port = self.web_controller_address.split(":")
+        log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
+        web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
+        log.info("web controller 服务启动成功！")
 
-        joinall([event_server, web_server])
+        try:
+            await asyncio.gather(event_server, web_server)
+        finally:
+            await event.stop()
+            await web_controller.stop()
 
 
 def check_config_files(configs_path: str) -> None:
@@ -238,7 +224,3 @@ def check_config_files(configs_path: str) -> None:
             os.path.join(configs_path, "plugins.ini.template"),
             os.path.join(configs_path, "plugins.ini"),
         )
-
-
-if __name__ == "__main__":
-    ...
