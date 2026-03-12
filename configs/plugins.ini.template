@@ -66,9 +66,6 @@ enable = True
 [TheresaMathAI]
 enable = False
 
-[TheresaRole]
-enable = False
-
 [TheresaWithdraw]
 enable = True
 
