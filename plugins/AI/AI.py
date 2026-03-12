@@ -24,7 +24,7 @@ class AI(Plugins):
         self.cooldown_time = 1  # 冷却时间（秒）
 
     @plugin_main(call_word=["monika ask"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         # 检查是否是纯ask命令

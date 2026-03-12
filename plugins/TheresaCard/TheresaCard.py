@@ -6,6 +6,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from utils.CQType import At, Forward
 
 Base = declarative_base()
@@ -43,7 +44,7 @@ class TheresaCard(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Theresa card"], require_db=True)
-    async def main(self, event, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         # 可使用 kick
         permission_ids: list[int] = list(map(int, self.config.get("permission_ids").split(",")))
         permission_ids.append(self.bot.owner_id)

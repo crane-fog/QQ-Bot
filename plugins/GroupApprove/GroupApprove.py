@@ -29,7 +29,7 @@ class GroupApprove(Plugins):
         }
 
     @plugin_main(check_call_word=False, require_db=True)
-    async def main(self, event: GroupRequestEvent, debug):
+    async def main(self, event: GroupRequestEvent, debug: bool):
         if not self.all_inform:
             self.all_inform = await self.select_all_inform()
 

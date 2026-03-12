@@ -13,7 +13,7 @@ class GroupRecallEvent:
         self.message_id: int = data.get("message_id")
         ...
 
-    def post_event(self, debug):
+    def post_event(self, debug: bool):
         Log.debug(
             f"在群 {self.group_id} 中，消息 ID {self.message_id} 被撤回。"
             f"发送者：{self.user_id}，操作者：{self.operator_id}",
@@ -37,7 +37,7 @@ class GroupPokeEvent:
         self.group_id: int = data.get("group_id")
         ...
 
-    def poke_event(self, debug):
+    def poke_event(self, debug: bool):
         Log.debug(
             f"在群 {self.group_id} 中，用户 {self.user_id} 戳了戳 {self.target_id} 。",
             debug,

@@ -21,7 +21,7 @@ class TheresaHelp(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Theresa help"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         group_id = event.group_id
         parts = event.message.split(" ")
         if len(parts) > 2:

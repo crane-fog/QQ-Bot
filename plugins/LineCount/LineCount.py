@@ -49,7 +49,7 @@ class LineCount(Plugins):
         )
 
     @plugin_main(call_word=["Theresa linecount"], require_db=True)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
         user_id = event.user_id
         sender_card = event.card.split("-")

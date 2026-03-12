@@ -23,7 +23,7 @@ class GroupMessageEvent:
         self.group_name: str = data.get("group_name")
         ...
 
-    def post_event(self, debug):
+    def post_event(self, debug: bool):
         log_message = self.message.replace("&amp;", "&")
         Log.debug(
             f"群聊 {self.group_id} 消息：{self.nickname}(群名片：{self.card}，QQ号：{self.user_id})说：{log_message}",

@@ -70,7 +70,7 @@ class TheresaChat(Plugins):
             self.persona_face_template = Template(f.read())
 
     @plugin_main(check_call_word=False, require_db=True)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         # 从数据库读取的上下文消息条数
         self.context_length = self.config.getint("context_length")
         self.context_length_for_face = self.config.getint("context_length_for_face")

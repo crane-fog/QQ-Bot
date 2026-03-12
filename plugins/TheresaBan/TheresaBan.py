@@ -19,7 +19,7 @@ class TheresaBan(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["Theresa ban"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
         command_list = message.split()
         if len(command_list) != 4:

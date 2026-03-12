@@ -10,6 +10,6 @@ class PrivateMessageEvent:
         self.message = data.get("message")
         ...
 
-    def post_event(self, debug):
+    def post_event(self, debug: bool):
         log_message = self.message.replace("&amp;", "&")
         Log.debug(f"好友 {self.nickname}({self.user_id}) 私聊消息：{log_message}", debug)

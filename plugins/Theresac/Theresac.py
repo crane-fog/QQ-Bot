@@ -17,7 +17,7 @@ class Theresac(Plugins):
         self.init_status()
 
     @plugin_main(check_group=False, call_word=["Theresac"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         if not event.user_id == self.bot.owner_id:

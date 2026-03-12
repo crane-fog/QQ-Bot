@@ -3,6 +3,7 @@ import os
 import re
 
 from plugins import Plugins, plugin_main
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.AITools import get_gemini_response
 from utils.CQHelper import CQHelper
@@ -22,7 +23,7 @@ class TheresaImage(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["[CQ:reply,"], require_db=True)
-    async def main(self, event, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         try:
             pattern = r"id=(-?\d+).*?\]Timage(.*)"
             match = re.search(pattern, event.message)

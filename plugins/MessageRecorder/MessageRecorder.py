@@ -59,7 +59,7 @@ class MessageRecorder(Plugins):
         return message
 
     @plugin_main(check_call_word=False, check_group=False, require_db=True)
-    async def main(self, event: GroupMessageEvent | SendEvent, debug):
+    async def main(self, event: GroupMessageEvent | SendEvent, debug: bool):
 
         if isinstance(event, SendEvent) and event.message_type != "group":
             return

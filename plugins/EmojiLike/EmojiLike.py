@@ -24,7 +24,7 @@ class EmojiLike(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
         if event.user_id in ignored_ids:
             return

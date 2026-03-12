@@ -47,7 +47,7 @@ class QiuDao(Plugins):
         )
 
     @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
 
         old_callword = "Theresa 求刀"

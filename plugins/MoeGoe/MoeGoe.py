@@ -20,7 +20,7 @@ class MoeGoe(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["moegoe"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         msg_parts = event.message.split(" ", maxsplit=3)
         if len(msg_parts) < 4:
             self.api.groupService.send_group_msg(

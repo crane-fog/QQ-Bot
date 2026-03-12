@@ -37,7 +37,7 @@ class TheresaAI(Plugins):
             self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Theresa ask"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         # 检查是否是纯ask命令

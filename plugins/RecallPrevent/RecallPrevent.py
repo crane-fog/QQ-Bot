@@ -4,6 +4,8 @@ import random
 import redis
 
 from plugins import Plugins, plugin_main
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.event_handler.NoticeEventHandler import GroupRecallEvent
 from src.PrintLog import Log
 from utils.CQType import At
 
@@ -28,7 +30,7 @@ class RecallPrevent(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False)
-    async def main(self, event, debug):
+    async def main(self, event: GroupMessageEvent | GroupRecallEvent, debug: bool):
         # 初始化同步 Redis 连接
         if not self.redis_client:
             host = self.config.get("host", fallback="localhost")

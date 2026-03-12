@@ -22,7 +22,7 @@ class GetStuId(Plugins):
         )
 
     @plugin_main(call_word=["GetStuId"], require_db=True)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         if not event.user_id == self.bot.owner_id:

@@ -19,7 +19,7 @@ class SendEvent:
         self.raw_message: str = data.get("raw_message")
         ...
 
-    def post_event(self, debug):
+    def post_event(self, debug: bool):
         log_message = self.message.replace("&amp;", "&")
         if self.message_type == "group":
             Log.debug(

@@ -15,7 +15,7 @@ class TheresaWithdraw(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["[CQ:reply,"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         if "Twithdraw" not in message:

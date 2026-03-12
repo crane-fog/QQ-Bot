@@ -23,7 +23,7 @@ class ExamplePlugin(Plugins):
     @plugin_main(
         check_call_word=False, check_group=False
     )  # 通用检查装饰器，参数根据具体需求修改，详见注释
-    async def main(self, event, debug):
+    async def main(self, event, debug: bool):
         """
         :param event: 消息事件体
         :param debug: 是否输出 debug 信息

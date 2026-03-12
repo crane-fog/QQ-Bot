@@ -248,7 +248,7 @@ class A_Pixiv(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["pid", "p_clean"], check_call_word=True)
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
         if "pid" in message[0:3]:
             # 下载部分

@@ -26,7 +26,7 @@ class DontPoke(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False, check_group=True)
-    async def main(self, event: GroupPokeEvent, debug):
+    async def main(self, event: GroupPokeEvent, debug: bool):
         group_id = event.group_id
         target_id = event.target_id
         self_id = event.self_id

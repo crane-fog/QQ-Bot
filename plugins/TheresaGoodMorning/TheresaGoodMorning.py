@@ -37,7 +37,7 @@ class TheresaGoodMorning(Plugins):
             self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
 
         # 冷却检查
