@@ -6,7 +6,6 @@ from unittest.mock import patch
 
 import pytest
 
-from plugins import Plugins
 from src.Bot import Bot
 
 base_path = os.path.dirname(os.path.abspath(__file__))
@@ -18,6 +17,10 @@ groups_config_path = os.path.join(configs_path, "groups.ini")
 
 os.environ.setdefault("DMXAPI_KEY", "testkey")
 os.environ.setdefault("DPSK_KEY", "testkey")
+
+
+def get_plugin_names():
+    return [name for _, name, ispkg in iter_modules([plugins_path]) if ispkg]
 
 
 @pytest.fixture
@@ -55,29 +58,18 @@ class Test:
         assert plugin_packages, "未找到任何插件包"
         assert not missing_sections, f"以下插件未在 plugins.ini.template 中声明: {missing_sections}"
 
-    def test_all_plugins_importable(self, bot):
+    @pytest.mark.parametrize("plugin_name", get_plugin_names())
+    def test_plugin_importable(self, bot, plugin_name):
         """所有插件包（含未启用）应能被正常导入和实例化"""
 
         plugins_config = configparser.ConfigParser()
         with open(plugins_config_path, encoding="utf-8") as f:
             plugins_config.read_file(f)
 
-        imported = []
-        failed = []
+        plugin_module = import_module(f".{plugin_name}", "plugins")
+        PluginClass = getattr(plugin_module, plugin_name)
+        plugin_instance = PluginClass(bot.server_address, bot)
+        if plugins_config.has_section(plugin_name):
+            plugin_instance.config = plugins_config[plugin_name]
 
-        for _, name, ispkg in iter_modules([plugins_path]):
-            if not ispkg:
-                continue
-
-            try:
-                plugin_module = import_module(f".{name}", "plugins")
-                PluginClass = getattr(plugin_module, name)
-                plugin_instance: Plugins = PluginClass(bot.server_address, bot)
-                if plugins_config.has_section(name):
-                    plugin_instance.config = plugins_config[name]
-                imported.append(name)
-            except Exception as e:
-                failed.append((name, str(e)))
-
-        assert imported, "未找到任何插件包"
-        assert not failed, f"以下插件导入失败: {failed}"
+        assert plugin_instance is not None
