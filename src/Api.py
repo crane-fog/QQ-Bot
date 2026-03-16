@@ -2,6 +2,9 @@ import json
 
 import requests
 
+from utils.CQHelper import CQHelper
+from utils.CQType import Forward
+
 
 class Api:
     def __init__(self, server_address):
@@ -40,6 +43,13 @@ class Api:
         def send_private_msg(self, user_id, message):
             params = {"user_id": user_id, "message": message}
             response = requests.post(self.api.bot_api_address + "send_private_msg", json=params)
+            return response.json()
+
+        def send_private_forward_msg(self, user_id, forward_message: list):
+            params = {"user_id": user_id, "messages": forward_message}
+            response = requests.post(
+                self.api.bot_api_address + "send_private_forward_msg", json=params
+            )
             return response.json()
 
     class GroupService:
@@ -189,3 +199,26 @@ class Api:
             }
             response = requests.post(self.api.bot_api_address + "get_image", json=params)
             return response.json()
+
+        def get_forward(self, message_id):
+            """使用这个函数得到的结果可以直接由 send_forward_message 发出"""
+            params = {"message_id": message_id}
+            response = requests.post(self.api.bot_api_address + "get_forward_msg", json=params)
+            origin_dict = response.json()
+
+            messages = origin_dict.get("data", {}).get("messages", [])
+
+            return_dict = Forward()
+            for message in messages:
+                msg = message.get("content", None)
+                cq_obj = CQHelper.load_cq(msg)
+                if cq_obj:
+                    if cq_obj.cq_type == "forward":
+                        msg = self.get_forward(cq_obj.id)
+                return_dict.add_node(
+                    type="msg",
+                    uid=message.get("sender", {}).get("user_id", None),
+                    sender_name=message.get("sender", {}).get("nickname", None),
+                    msg=msg,
+                )
+            return return_dict.message

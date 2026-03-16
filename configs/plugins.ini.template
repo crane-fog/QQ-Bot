@@ -102,5 +102,11 @@ enable = True
 [A_Pixiv]
 enable = False
 
+[A_music]
+enable = False
+
+[I_like_you]
+enable = False
+
 [DataImport]
 enable = True

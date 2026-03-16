@@ -1,10 +1,13 @@
+import asyncio
 import os
 import random
 import shutil
-import time
 from pathlib import Path
 
+import aiofiles
+import aiohttp
 import requests
+from aiohttp import ClientTimeout
 from PIL import Image
 
 from plugins import Plugins, plugin_main
@@ -38,7 +41,7 @@ class pixiv_img_get:
             "Accept-Encoding": "",
             "Connection": "keep-alive",
         }
-        origin_folder_path = Path.cwd() / "plugins" / "A_Pixiv" / "image"
+        origin_folder_path = Path(__file__).resolve().parent / "image"
 
         self.folder_path_SFW = origin_folder_path / "SFW" / f"{pid}"
         self.folder_path_NSFW = origin_folder_path / "NSFW" / f"{pid}"
@@ -135,7 +138,13 @@ class pixiv_img_get:
         urls = [url.replace(old_url_head, new_url_head) for url in urls]
         return urls
 
-    def download_img_by_url(self, img_name, url, file_path, retry_times=5):
+    def rotate_img(self, file_path, origin_path):
+        """存在判断:如果存在就不翻转"""
+        if not (os.path.exists(file_path) and os.path.getsize(file_path) > 1000):
+            Image.open(origin_path).rotate(180).save(file_path)
+            print(f"R-18作品翻转完成，位置{file_path}")
+
+    async def download_img_by_url(self, img_name, url, file_path, retry_times=5):
         "url下载器，内置倒转,处理了429情形，增加了最大重试上限"
         if retry_times > 0:
             try:
@@ -146,53 +155,60 @@ class pixiv_img_get:
                     if "预览" not in img_name and self.R_18:
                         origin_path = file_path
                         file_path = os.path.join(self.folder_path_MFSN, f"{img_name}")
-                        "判断好像出问题了，直接就不判得了"
-                        Image.open(origin_path).rotate(180).save(file_path)
+
+                        loop = asyncio.get_event_loop()
+                        await loop.run_in_executor(None, self.rotate_img, origin_path, file_path)
 
                     self.paths.append(file_path)
 
                     return True
                 else:
-                    r = requests.get(url=url, headers=self.ajax_headers, timeout=10)
-                    if r.status_code == 200:
-                        with open(file_path, "wb") as down:
-                            down.write(r.content)
-                        # R-18翻转
-                        if "预览" not in img_name and self.R_18:
-                            origin_path = file_path
-                            file_path = os.path.join(self.folder_path_MFSN, f"{img_name}")
+                    timeout = ClientTimeout(total=10)
+                    """代理设置"""
+                    async with aiohttp.ClientSession(timeout=timeout, trust_env=True) as session:
+                        async with session.get(url, headers=self.ajax_headers) as r:
+                            if r.status == 200:
+                                content = await r.read()
 
-                            Image.open(origin_path).rotate(180).save(file_path)
-                            print(f"R-18作品翻转完成，位置{file_path}")
+                                async with aiofiles.open(file_path, "wb") as down:
+                                    await down.write(content)
+                                # R-18翻转
+                                if "预览" not in img_name and self.R_18:
+                                    origin_path = file_path
+                                    file_path = os.path.join(self.folder_path_MFSN, f"{img_name}")
+                                    loop = asyncio.get_event_loop()
+                                    await loop.run_in_executor(
+                                        None, self.rotate_img, file_path, origin_path
+                                    )
 
-                        # 加入列表
-                        self.paths.append(file_path)
-                        print(f"{img_name} 下载完成,位置为{file_path}")
-                    elif r.status_code == 429:
-                        "429：繁忙，重试"
-                        print("429繁忙，等待4-5秒后重试")
-                        time_layer = random.uniform(3.9, 5.1)
-                        time.sleep(time_layer)
+                                # 加入列表
+                                self.paths.append(file_path)
+                                print(f"{img_name} 下载完成,位置为{file_path}")
+                            elif r.status == 429:
+                                "429：繁忙，重试"
+                                print("429繁忙，等待4-5秒后重试")
+                                time_layer = random.uniform(3.9, 5.1)
+                                await asyncio.sleep(time_layer)
 
-                        return self.download_img_by_url(
-                            img_name=img_name,
-                            url=url,
-                            file_path=file_path,
-                            retry_times=retry_times - 1,
-                        )
+                                return await self.download_img_by_url(
+                                    img_name=img_name,
+                                    url=url,
+                                    file_path=file_path,
+                                    retry_times=retry_times - 1,
+                                )
 
-                    else:
-                        print(f"{img_name} 下载失败, 错误代码 {r.status_code}")
-                        return False
+                            else:
+                                print(f"{img_name} 下载失败, 错误代码 {r.status}")
+                                raise (Exception(f"{r.status}"))
 
-                    time_layer = random.uniform(0.9, 1.4)
-                    time.sleep(time_layer)
-                    return True
+                            time_layer = random.uniform(0.9, 1.4)
+                            await asyncio.sleep(time_layer)
+                            return True
 
             except Exception as e:
                 "超时重试"
                 print(f"{img_name} 下载失败, {e},剩余重试次数{retry_times}")
-                return self.download_img_by_url(
+                return await self.download_img_by_url(
                     img_name=img_name, url=url, file_path=file_path, retry_times=retry_times - 1
                 )
 
@@ -200,26 +216,39 @@ class pixiv_img_get:
             print(f"重试次数达到上限，{img_name}下载失败")
             return False
 
-    def download_img(self, urls):
-        """整体下载器（假设 urls 是纯 URL 列表）"""
+    async def download_img(self, urls):
+        """异步并发下载所有图片"""
         os.makedirs(self.folder_path, exist_ok=True)
         if self.R_18:
             os.makedirs(self.folder_path_MFSN, exist_ok=True)
+        MAX = 1
+        tasks = []
+        semaphore = asyncio.Semaphore(MAX)  # 限制并发数
 
+        async def download_one(i, url):
+            async with semaphore:
+                format = url[-3:]
+                if i == self.page - 1:
+                    file_path = os.path.join(self.folder_path, f"{self.pid}_预览.{format}")
+                    img_name = f"{self.pid}_预览.{format}"
+                else:
+                    file_path = os.path.join(self.folder_path, f"{self.pid}_p{i}.{format}")
+                    img_name = f"{self.pid}_p{i}.{format}"
+
+                success = await self.download_img_by_url(img_name, url, file_path)
+                if not success:
+                    return success
+
+        # 创建所有下载任务
         for i, url in enumerate(urls):
-            "生成名字"
-            self.format = url[-3:]
-            if i == self.page - 1:
-                file_path = os.path.join(self.folder_path, f"{self.pid}_预览.{self.format}")
-                img_name = f"{self.pid}_预览.{self.format}"
-            else:
-                file_path = os.path.join(self.folder_path, f"{self.pid}_p{i}.{self.format}")
-                img_name = f"{self.pid}_p{i}.{self.format}"
-            if not self.download_img_by_url(img_name=img_name, file_path=file_path, url=url):
-                "下载失败直接断进程"
-                return False
+            tasks.append(download_one(i, url))
+        try:
+            await asyncio.gather(*tasks)
+        except Exception as e:
+            print(f"下载过程中出错: {e}")
+            return False
 
-        "预览图位置"
+        # 预览图位置（原逻辑取最后一张）
         self.preview_path = self.paths[-1]
         return True
 
@@ -244,7 +273,8 @@ class A_Pixiv(Plugins):
                                 简易的蓝p图片下载器,同时附带删除的功能
                                 usage: pid+数字，p_clean
                             """
-        self.send_R_18 = False  # 是否发送R-18作品的倒转图
+        self.send_R_18 = True  # 是否发送R-18作品的倒转图
+        self.send_R_18_img_private = True  # 发送给个人
         self.init_status()
 
     @plugin_main(call_word=["pid", "p_clean"], check_call_word=True)
@@ -262,7 +292,7 @@ class A_Pixiv(Plugins):
                 if pixic.error == "no":
                     urls = pixic.get_img_urls_origin()
                     urls = pixic.img_urls(urls=urls)
-                    if pixic.download_img(urls=urls):
+                    if await pixic.download_img(urls=urls):
                         forward_message = pixic.get_forward()
                     else:
                         Log.error("下载失败")
@@ -282,6 +312,14 @@ class A_Pixiv(Plugins):
                             self.api.groupService.send_group_forward_msg(
                                 group_id=event.group_id, forward_message=forward_message
                             )
+                            if self.send_R_18_img_private:
+                                Log.debug("将发送给个人", debug)
+                                self.api.privateService.send_private_msg(
+                                    user_id=event.user_id, message=reply_message
+                                )
+                                self.api.privateService.send_private_forward_msg(
+                                    user_id=event.user_id, forward_message=forward_message
+                                )
                         else:
                             self.api.groupService.send_group_msg(
                                 group_id=event.group_id,

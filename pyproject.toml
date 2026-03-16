@@ -19,6 +19,9 @@ dependencies = [
     "redis==7.1.0",
     "requests>=2.32.4",
     "sqlalchemy>=2.0.46",
+    "aiofiles>=25.1.0",
+    "cryptography>=46.0.5",
+    "qrcode>=8.2",
 ]
 
 [dependency-groups]
