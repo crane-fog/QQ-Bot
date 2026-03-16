@@ -15,8 +15,6 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.CQType import Forward
 
-log = Log()
-
 
 class pixiv_img_get:
     "这个类我尽量不用框架内的东西，这样在外面也能用"
@@ -297,7 +295,7 @@ class A_Pixiv(Plugins):
                     if await pixic.download_img(urls=urls):
                         forward_message = pixic.get_forward()
                     else:
-                        log.error("下载失败")
+                        Log.error("下载失败")
                         self.api.groupService.send_group_msg(
                             group_id=event.group_id, message="下载失败了!请检查日志"
                         )
@@ -315,7 +313,7 @@ class A_Pixiv(Plugins):
                                 group_id=event.group_id, forward_message=forward_message
                             )
                             if self.send_R_18_img_private:
-                                log.debug("将发送给个人")
+                                Log.debug("将发送给个人")
                                 self.api.privateService.send_private_msg(
                                     user_id=event.user_id, message=reply_message
                                 )

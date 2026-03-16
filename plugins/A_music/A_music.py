@@ -9,8 +9,6 @@ from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 
-log = Log()
-
 
 class cookies:
     "非常简单的管理cookies类的方式,因为我懒所以我没有抄项目里关于cookie管理的项"
@@ -133,7 +131,7 @@ class A_music(Plugins):
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
         if "/music" in message[0:6]:
-            log.debug(f"检测到music请求:{message[6:]}")
+            Log.debug(f"检测到music请求:{message[6:]}")
 
             if message[7:].isdecimal():
                 "请求歌曲"
@@ -149,9 +147,9 @@ class A_music(Plugins):
                         group_id=event.group_id, file_path=music.mp3_path
                     )
                 except Exception as e:
-                    log.error(f"插件{self.name}运行时出错，{e}")
+                    Log.error(f"插件{self.name}运行时出错，{e}")
                 else:
-                    log.debug(f"成功向{event.group_id}发送音乐", debug)
+                    Log.debug(f"成功向{event.group_id}发送音乐", debug)
                 return
             else:
                 "请求搜索结果"
@@ -163,8 +161,8 @@ class A_music(Plugins):
                         group_id=event.group_id, message=reply_message
                     )
                 except Exception as e:
-                    log.error(f"插件{self.name}运行时出错，{e}")
+                    Log.error(f"插件{self.name}运行时出错，{e}")
                 else:
-                    log.debug(f"成功向{event.group_id}发送搜索结果", debug)
+                    Log.debug(f"成功向{event.group_id}发送搜索结果", debug)
 
                 return
