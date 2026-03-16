@@ -15,7 +15,7 @@ class cookies:
 
     def __init__(self):
         self.cookie_data = {"MUSIC_U": "", "os": "pc", "appver": "8.9.70"}
-        self.cookie_path = Path.cwd() / "plugins" / "A_music" / "cookies.json"
+        self.cookie_path = Path(__file__).resolve().parent / "cookies.json"
 
     def load_cookies(self):
         "读取cookies"
@@ -62,7 +62,7 @@ class get_music:
             "REFERER": "https://music.163.com/",
         }
         "下载位置"
-        self.music_folder = Path.cwd() / "plugins" / "A_music" / "music"
+        self.music_folder = Path(__file__).resolve().parent / "music"
         os.makedirs(self.music_folder, exist_ok=True)
         "url直接返回mp3文件，我不需要cookie就能直接写入"
 

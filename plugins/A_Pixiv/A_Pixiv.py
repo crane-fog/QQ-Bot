@@ -41,7 +41,7 @@ class pixiv_img_get:
             "Accept-Encoding": "",
             "Connection": "keep-alive",
         }
-        origin_folder_path = Path.cwd() / "plugins" / "A_Pixiv" / "image"
+        origin_folder_path = Path(__file__).resolve().parent / "image"
 
         self.folder_path_SFW = origin_folder_path / "SFW" / f"{pid}"
         self.folder_path_NSFW = origin_folder_path / "NSFW" / f"{pid}"

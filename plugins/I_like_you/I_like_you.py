@@ -5,14 +5,14 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 
 
-class i_like_you(Plugins):
+class I_like_you(Plugins):
     def __init__(self, server_address, bot):
         super().__init__(server_address, bot)
-        self.name = "i_like_you"
+        self.name = "I_like_you"
         self.type = "Group"
         self.author = "cojitaZ"
         self.introduction = """
-                                i_like_you
+                                I_like_you
                                 usage: 我喜欢你，你喜欢我
                             """
         self.init_status()
@@ -24,7 +24,7 @@ class i_like_you(Plugins):
             try:
                 self.api.groupService.send_group_record_msg(
                     group_id=event.group_id,
-                    file_path=Path.cwd() / "plugins" / "i_like_you" / "我喜欢你_你喜欢我.wav",
+                    file_path=Path(__file__).resolve().parent / "我喜欢你_你喜欢我.wav",
                 )
 
             except Exception as e:
@@ -37,7 +37,7 @@ class i_like_you(Plugins):
             try:
                 self.api.groupService.send_group_record_msg(
                     group_id=event.group_id,
-                    file_path=Path.cwd() / "plugins" / "i_like_you" / "我不喜欢你.wav",
+                    file_path=Path(__file__).resolve().parent / "我不喜欢你.wav",
                 )
             except Exception as e:
                 Log.error(f"插件{self.name}运行时出错，{e}")
