@@ -313,7 +313,7 @@ class A_Pixiv(Plugins):
                                 group_id=event.group_id, forward_message=forward_message
                             )
                             if self.send_R_18_img_private:
-                                Log.debug("将发送给个人")
+                                Log.debug("将发送给个人", debug)
                                 self.api.privateService.send_private_msg(
                                     user_id=event.user_id, message=reply_message
                                 )

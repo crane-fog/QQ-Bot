@@ -58,8 +58,8 @@ class get_music:
     def __init__(self):
         "拿到url之后的请求头，其实本来就是这个请求头，意义不大"
         self.headers = {
-            "USER_AGENT": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154",
-            "REFERER": "https://music.163.com/",
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; WOW64) AppleWebKit/537.36 (KHTML, like Gecko) Safari/537.36 Chrome/91.0.4472.164 NeteaseMusicDesktop/2.10.2.200154",
+            "Referer": "https://music.163.com/",
         }
         "下载位置"
         self.music_folder = Path(__file__).resolve().parent / "music"
@@ -131,7 +131,7 @@ class A_music(Plugins):
     async def main(self, event: GroupMessageEventHandler, debug):
         message = event.message
         if "/music" in message[0:6]:
-            Log.debug(f"检测到music请求:{message[6:]}")
+            Log.debug(f"检测到music请求:{message[6:]}", debug)
 
             if message[7:].isdecimal():
                 "请求歌曲"
