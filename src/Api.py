@@ -2,6 +2,9 @@ import json
 
 import requests
 
+from utils.CQHelper import CQHelper
+from utils.CQType import Forward
+
 
 class Api:
     def __init__(self, server_address):
@@ -198,12 +201,10 @@ class Api:
             return response.json()
 
         def get_forward(self, message_id):
-            """使用这个函数得到的结果可以直接由send_forward_message发出,确保完全一致性"""
-            params = {"message_id": str(message_id)}
+            """使用这个函数得到的结果可以直接由 send_forward_message 发出"""
+            params = {"message_id": message_id}
             response = requests.post(self.api.bot_api_address + "get_forward_msg", json=params)
             origin_dict = response.json()
-            from utils.CQHelper import CQHelper
-            from utils.CQType import Forward
 
             messages = origin_dict.get("data", {}).get("messages", [])
 

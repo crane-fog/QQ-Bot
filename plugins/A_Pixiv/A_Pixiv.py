@@ -15,7 +15,9 @@ from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
 from utils.CQType import Forward
 
-log=Log()
+log = Log()
+
+
 class pixiv_img_get:
     "这个类我尽量不用框架内的东西，这样在外面也能用"
 
@@ -288,7 +290,7 @@ class A_Pixiv(Plugins):
             if pid.isdecimal():
                 pixic = pixiv_img_get(pid=pid)
 
-                    # 一套标准流程
+                # 一套标准流程
                 if pixic.error == "no":
                     urls = pixic.get_img_urls_origin()
                     urls = pixic.img_urls(urls=urls)
@@ -306,8 +308,7 @@ class A_Pixiv(Plugins):
                     if pixic.R_18:
                         self.api.groupService.send_group_msg(
                             group_id=event.group_id,
-                            message=reply_message
-                            + "\n由于请求为R-18作品，小孩子还是不要看啦...",
+                            message=reply_message + "\n由于请求为R-18作品，小孩子还是不要看啦...",
                         )
                         if self.send_R_18:
                             self.api.groupService.send_group_forward_msg(
