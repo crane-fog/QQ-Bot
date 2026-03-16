@@ -102,7 +102,7 @@ enable = True
 [A_Pixiv]
 enable = False
 
-[A_Music]
+[A_music]
 enable = False
 
 [I_like_you]
