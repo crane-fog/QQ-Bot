@@ -94,7 +94,7 @@ class GroupApprove(Plugins):
         return flag
 
     def stu_id_conform(self, stu_id: int, strict_flag: bool, semester: int) -> bool:
-        if strict_flag:
+        if not strict_flag:
             i = semester // 10000 - semester % 10  # 252620 -> 25, 252621 -> 24
             i = i * 100000 + 50000
             if stu_id > i and stu_id < i + 7000:

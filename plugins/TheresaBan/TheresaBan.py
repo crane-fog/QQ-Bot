@@ -22,6 +22,8 @@ class TheresaBan(Plugins):
     async def main(self, event: GroupMessageEventHandler, debug: bool):
         message = event.message
         command_list = message.split()
+        black_list: list[int] = list(map(int, self.config.get("black_list").split(",")))
+
         if len(command_list) != 4:
             return
 
@@ -34,7 +36,7 @@ class TheresaBan(Plugins):
                 (event.user_id != self.bot.owner_id)
                 and (event.role not in ["admin", "owner"])
                 and (event.user_id not in self.bot.assistant_list)
-            ):
+            ) or (event.group_id in black_list):
                 return
             else:
                 match = re.search(r"qq=(\d+)", command_list[2])
