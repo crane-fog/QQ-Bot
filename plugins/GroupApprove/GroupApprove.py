@@ -14,7 +14,7 @@ class GroupApprove(Plugins):
         self.type = "GroupRequest"
         self.author = "kiriko / Heai"
         self.introduction = """
-                                自动处理入群申请
+                                自动处理高程入群申请
                                 usage: auto
                             """
         self.init_status()
@@ -26,6 +26,13 @@ class GroupApprove(Plugins):
         self.semester_dict = {
             1082118774: 252620,
             1084322221: 252620,
+            1070607202: 252620,
+            972200687: 252620,
+            1078859289: 252620,
+            1067419462: 252620,
+            972090094: 252620,
+            760848601: 252620,
+            555635776: 252620,
         }
 
     @plugin_main(check_call_word=False, require_db=True)
@@ -41,7 +48,12 @@ class GroupApprove(Plugins):
         flag = event.flag
         full_comment = event.comment
 
-        # 正式进入插件运行部分
+        # 允许助教
+        if event.user_id in self.bot.assistant_list:
+            self.api.groupService.set_group_add_request(flag=flag)
+            Log.debug(f"{self.name}:{group_id}助教入群申请{flag}批准", debug)
+            return
+
         requests = full_comment.split("\n答案：")
         real_answer = requests[1]
         if not self.format_check(real_answer):
@@ -94,7 +106,7 @@ class GroupApprove(Plugins):
         return flag
 
     def stu_id_conform(self, stu_id: int, strict_flag: bool, semester: int) -> bool:
-        if strict_flag:
+        if not strict_flag:
             i = semester // 10000 - semester % 10  # 252620 -> 25, 252621 -> 24
             i = i * 100000 + 50000
             if stu_id > i and stu_id < i + 7000:
@@ -122,3 +134,4 @@ class GroupApprove(Plugins):
         semester = Column(Integer, primary_key=True)
         stu_id = Column(Integer, primary_key=True)
         name = Column(Text)
+        class_ = Column("class", Integer)

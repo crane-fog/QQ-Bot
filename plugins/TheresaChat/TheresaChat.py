@@ -2,6 +2,7 @@ import datetime
 import json
 import os
 import random
+import re
 import time
 from collections import deque
 
@@ -79,7 +80,7 @@ class TheresaChat(Plugins):
         group_id = event.group_id
         face_flag = False
 
-        clean_message = message.strip()
+        clean_message = re.sub(r"\[CQ:.*?\]", "", message).strip()
         if not clean_message:
             return  # 忽略空消息
 
@@ -138,6 +139,7 @@ class TheresaChat(Plugins):
                 owner_id=self.bot.owner_id,
                 current_time=datetime.datetime.now().time(),
                 group_name=event.group_name,
+                group_id=group_id,
             )
 
             context_messages = await self.load_context_from_db(group_id, self.context_length)
@@ -193,7 +195,7 @@ class TheresaChat(Plugins):
                     context.append(
                         {
                             "role": "user",
-                            "content": f"{row.user_nickname}(群名片：{row.user_card})说：{msg}",
+                            "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{msg}",
                         }
                     )
         return context
