@@ -16,7 +16,7 @@ class DataImport(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 导入求刀、行数、名单数据
-                                usage: DataImport scores/linecounts/stulists <学期课程编号>
+                                usage: DataImport scores/linecounts/stulists/stulists_detail <学期课程编号>
                             """
         self.init_status()
         self.models = {}
@@ -40,6 +40,7 @@ class DataImport(Plugins):
                 rank = Column(Integer, nullable=False)
             elif table_name == "stulists":
                 name = Column(Text, nullable=False)
+                class_ = Column("class", Integer, nullable=True, default=0)
 
         self.models[table_name] = DynamicModel
         return DynamicModel
@@ -52,10 +53,10 @@ class DataImport(Plugins):
             return
 
         table_name = message.split(" ")[1]
-        if table_name not in ["scores", "linecounts", "stulists"]:
+        if table_name not in ["scores", "linecounts", "stulists", "stulists_detail"]:
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
-                message="表名错误，请使用 scores、linecounts 或 stulists",
+                message="表名错误，请使用 scores、linecounts、stulists 或 stulists_detail",
             )
             return
         semester = int(message.split(" ")[2])
@@ -74,7 +75,11 @@ class DataImport(Plugins):
             message=f"正在向表 {table_name} 导入学期 {semester} 的 {len(lines)} 条数据",
         )
 
-        model = self.get_model(table_name)
+        model = (
+            self.get_model(table_name)
+            if table_name != "stulists_detail"
+            else self.get_model("stulists")
+        )
 
         delimiter = "\t" if "\t" in lines[0] else " "
         async with self.session_factory() as session:
@@ -101,7 +106,17 @@ class DataImport(Plugins):
                 elif table_name == "stulists":
                     for line in lines:
                         stu_id, name = line.strip().split(delimiter)
-                        stulist_info = model(semester=semester, stu_id=int(stu_id), name=name)
+                        stulist_info = model(
+                            semester=semester, stu_id=int(stu_id), name=name, class_=0
+                        )
+                        await session.merge(stulist_info)
+                elif table_name == "stulists_detail":
+                    for line in lines:
+                        class_raw, stu_id, name = line.strip().split(delimiter)
+                        class_ = int(class_raw[-2:])
+                        stulist_info = model(
+                            semester=semester, stu_id=int(stu_id), name=name, class_=class_
+                        )
                         await session.merge(stulist_info)
         return
 

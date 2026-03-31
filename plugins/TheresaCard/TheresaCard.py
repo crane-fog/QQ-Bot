@@ -17,7 +17,8 @@ class StuList(Base):
 
     semester = Column(Integer, primary_key=True)
     stu_id = Column(Integer, primary_key=True)
-    name = Column(Text, nullable=False)
+    name = Column(Text)
+    class_ = Column("class")
 
 
 class TheresaCard(Plugins):
@@ -39,6 +40,23 @@ class TheresaCard(Plugins):
             893688452: 252620,
             1082118774: 252620,
             1084322221: 252620,
+            1070607202: 252620,
+            972200687: 252620,
+            1078859289: 252620,
+            1067419462: 252620,
+            972090094: 252620,
+            760848601: 252620,
+            555635776: 252620,
+        }
+
+        self.class_dict = {
+            1070607202: 1,
+            972200687: 2,
+            1078859289: 3,
+            1067419462: 4,
+            972090094: 5,
+            760848601: 6,
+            555635776: 7,
         }
 
         self.init_status()
@@ -63,6 +81,7 @@ class TheresaCard(Plugins):
         strict_flag = "strict" in event.message
         unenter_flag = "unenter" in event.message
         check_time_flag = False
+        check_class_flag = event.group_id in self.class_dict
         if event.message.split(" ")[-1].isdigit():
             time_limit_hours = int(event.message.split(" ")[-1])
             time_limit_seconds = time_limit_hours * 3600
@@ -118,7 +137,11 @@ class TheresaCard(Plugins):
         if strict_flag or unenter_flag:
             stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
         if strict_flag and strict_candidates:
-            db_name_map = await self.check_in_list_batch(semester, stu_ids)
+            if check_class_flag:
+                class_ = self.class_dict[event.group_id]
+                db_name_map = await self.check_in_list_batch(semester, stu_ids, class_=class_)
+            else:
+                db_name_map = await self.check_in_list_batch(semester, stu_ids)
             for user_id, stu_id, _, card in strict_candidates:
                 if db_name_map.get(stu_id) is None:  # != name:
                     not_allowed_ids.append(user_id)
@@ -194,7 +217,7 @@ class TheresaCard(Plugins):
         return True, stu_id, name
 
     async def check_in_list_batch(
-        self, semester: int, stu_ids: set[int], reverse: bool = False
+        self, semester: int, stu_ids: set[int], reverse: bool = False, class_: int = None
     ) -> dict[int, str]:
         async with self.session_factory() as session:
             if reverse:
@@ -207,6 +230,8 @@ class TheresaCard(Plugins):
                     StuList.semester == semester,
                     StuList.stu_id.in_(stu_ids),
                 )
+            if class_ is not None:
+                stmt = stmt.where(StuList.class_ == class_)
             result = await session.execute(stmt)
 
             return {stu_id: name for stu_id, name in result.all()}

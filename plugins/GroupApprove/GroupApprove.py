@@ -26,6 +26,13 @@ class GroupApprove(Plugins):
         self.semester_dict = {
             1082118774: 252620,
             1084322221: 252620,
+            1070607202: 252620,
+            972200687: 252620,
+            1078859289: 252620,
+            1067419462: 252620,
+            972090094: 252620,
+            760848601: 252620,
+            555635776: 252620,
         }
 
     @plugin_main(check_call_word=False, require_db=True)
@@ -127,3 +134,4 @@ class GroupApprove(Plugins):
         semester = Column(Integer, primary_key=True)
         stu_id = Column(Integer, primary_key=True)
         name = Column(Text)
+        class_ = Column("class", Integer)
