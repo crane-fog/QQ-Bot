@@ -14,7 +14,7 @@ class GroupApprove(Plugins):
         self.type = "GroupRequest"
         self.author = "kiriko / Heai"
         self.introduction = """
-                                自动处理入群申请
+                                自动处理高程入群申请
                                 usage: auto
                             """
         self.init_status()
@@ -41,7 +41,12 @@ class GroupApprove(Plugins):
         flag = event.flag
         full_comment = event.comment
 
-        # 正式进入插件运行部分
+        # 允许助教
+        if event.user_id in self.bot.assistant_list:
+            self.api.groupService.set_group_add_request(flag=flag)
+            Log.debug(f"{self.name}:{group_id}助教入群申请{flag}批准", debug)
+            return
+
         requests = full_comment.split("\n答案：")
         real_answer = requests[1]
         if not self.format_check(real_answer):
