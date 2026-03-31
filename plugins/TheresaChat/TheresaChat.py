@@ -80,7 +80,7 @@ class TheresaChat(Plugins):
         group_id = event.group_id
         face_flag = False
 
-        clean_message = re.sub(r"\[.*?\]", "", message).strip()
+        clean_message = re.sub(r"\[CQ:.*?\]", "", message).strip()
         if not clean_message:
             return  # 忽略空消息
 

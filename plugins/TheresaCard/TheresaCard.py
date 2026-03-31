@@ -18,7 +18,7 @@ class StuList(Base):
     semester = Column(Integer, primary_key=True)
     stu_id = Column(Integer, primary_key=True)
     name = Column(Text)
-    class_ = Column("class")
+    class_ = Column("class", Integer)
 
 
 class TheresaCard(Plugins):
@@ -217,7 +217,7 @@ class TheresaCard(Plugins):
         return True, stu_id, name
 
     async def check_in_list_batch(
-        self, semester: int, stu_ids: set[int], reverse: bool = False, class_: int = None
+        self, semester: int, stu_ids: set[int], reverse: bool = False, class_: int | None = None
     ) -> dict[int, str]:
         async with self.session_factory() as session:
             if reverse:
