@@ -2,8 +2,12 @@
 import configparser
 import os
 from functools import wraps
+from typing import TYPE_CHECKING
 
 from src.Api import Api
+
+if TYPE_CHECKING:
+    from src.Bot import Bot
 
 
 def plugin_main(check_call_word=True, call_word: list = None, check_group=True, require_db=False):
@@ -55,7 +59,7 @@ class Plugins:
     def __init__(self, server_address: str, bot):
         self.server_address = server_address
         self.api: Api = Api(server_address)
-        self.bot = bot
+        self.bot: Bot = bot
         self.name = "name"
         self.type = "type"
         self.author = "xxx"
