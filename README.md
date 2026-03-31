@@ -81,7 +81,9 @@ some_special_config = 123
 TODO:
 
 - 重写 WebController
-- config 现代化
+- config toml
+- 为 Api 引入 TypedDict
+- 统一数据库模型
 
 ---
 
