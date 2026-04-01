@@ -110,3 +110,9 @@ enable = False
 
 [DataImport]
 enable = True
+
+[AskForward]
+enable = True
+broadcast_target_group = 12345
+answer_group = 12345
+ask_groups = 12345,67890
