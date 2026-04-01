@@ -99,17 +99,18 @@ class Event:
             await asyncio.gather(*tasks, return_exceptions=True)
 
     async def run_plugins_by_types(self, event, allowed_types: set[str]):
-        for plugin in self.plugins_list:
-            plugin_type = plugin.type
-            if plugin_type in allowed_types:
-                try:
-                    plugin.load_effected_groups()
-                    await plugin.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
-                    plugin.set_status("error", error_info)
-                    Log.error(error_info)
+        plugins_to_run = [plugin for plugin in self.plugins_list if plugin.type in allowed_types]
+        plugins_to_run.sort(key=lambda plugin: 0 if plugin.type == "Record" else 1)
+
+        for plugin in plugins_to_run:
+            try:
+                plugin.load_effected_groups()
+                await plugin.main(event, self.debug)
+            except Exception as e:
+                traceback_info = traceback.format_exc()
+                error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
+                plugin.set_status("error", error_info)
+                Log.error(error_info)
 
     async def run_private_plugins(self, event):
         await self.run_plugins_by_types(event, {"Private"})

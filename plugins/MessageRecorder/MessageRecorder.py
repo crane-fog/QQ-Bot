@@ -63,14 +63,16 @@ class MessageRecorder(Plugins):
             return
 
         async with self.session_factory() as session:
-            async with session.begin():
-                resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))
-                new_msg = Message(
-                    user_id=event.user_id,
-                    group_id=event.group_id,
-                    msg=resolved_message,
-                    msg_id=event.message_id,
-                    user_nickname=event.nickname,
-                    user_card=event.card,
-                )
-                session.add(new_msg)
+            resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))
+            new_msg = Message(
+                user_id=event.user_id,
+                group_id=event.group_id,
+                msg=resolved_message,
+                msg_id=event.message_id,
+                user_nickname=event.nickname,
+                user_card=event.card,
+            )
+            session.add(new_msg)
+            await session.flush()
+            event.sql_id = new_msg.id
+            await session.commit()
