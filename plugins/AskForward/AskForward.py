@@ -1,6 +1,8 @@
 import re
+from datetime import datetime, timedelta
 
 from sqlalchemy import BigInteger, Column, DateTime, Integer, Text, func, select
+from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -17,7 +19,7 @@ class AskMessage(Base):
 
     id = Column(BigInteger, primary_key=True, autoincrement=True)
     discussion_id = Column(Integer, nullable=False)
-    id_of_message = Column(BigInteger, nullable=False)
+    id_of_message = Column(BigInteger, nullable=False, unique=True)
 
 
 class Message(Base):
@@ -69,9 +71,26 @@ class AskForward(Plugins):
                 session.add(ask_message)
                 await session.commit()
 
+            msgs = await self.find_message(sender_id=event.user_id, group_id=event.group_id)
+            forward_msg: Forward = Forward()
+            async with self.session_factory() as session:
+                for msg in msgs[:-1]:
+                    forward_msg.add_node(
+                        type="msg",
+                        msg=msg.msg,
+                        sender_name=msg.user_nickname,
+                        uid=msg.user_id,
+                    )
+                    ask_message = AskMessage(discussion_id=discussion_id, id_of_message=msg.id)
+                    session.add(ask_message)
+                await session.commit()
+
+            self.api.groupService.send_group_forward_msg(
+                group_id=answer_group, forward_message=forward_msg.message
+            )
             self.api.groupService.send_group_msg(
                 group_id=answer_group,
-                message=f"#{discussion_id} {event.sql_id} from {event.group_name}\n{event.message}",
+                message=f"#{discussion_id} {event.sql_id} from {event.group_name}\n{event.card}\n{event.message}",
             )
         # 回答
         elif event.group_id == answer_group and event.message.startswith("[CQ:reply,"):
@@ -138,9 +157,32 @@ class AskForward(Plugins):
                 session.add(ask_message)
                 await session.commit()
 
+            msgs = await self.find_message(
+                sender_id=event.user_id, group_id=event.group_id, last_message_id=origin_message_id
+            )
+            forward_msg: Forward = Forward()
+            async with self.session_factory() as session:
+                for msg in msgs[:-1]:
+                    forward_msg.add_node(
+                        type="msg",
+                        msg=msg.msg,
+                        sender_name=msg.user_nickname,
+                        uid=msg.user_id,
+                    )
+                    stmt = (
+                        insert(AskMessage)
+                        .values(discussion_id=discussion_id, id_of_message=msg.id)
+                        .on_conflict_do_nothing()
+                    )
+                    await session.execute(stmt)
+                await session.commit()
+
+            self.api.groupService.send_group_forward_msg(
+                group_id=answer_group, forward_message=forward_msg.message
+            )
             self.api.groupService.send_group_msg(
                 group_id=answer_group,
-                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id} from {event.group_name}\n{event.message.split(']', 1)[1]}",
+                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id} from {event.group_name}\n{event.card}\n{event.message.split(']', 1)[1]}",
             )
         # 广播
         elif event.group_id == answer_group and event.message.startswith("Broadcast"):
@@ -170,3 +212,24 @@ class AskForward(Plugins):
                 group_id=broadcast_target_group, forward_message=broadcast_msg.message
             )
         return
+
+    async def find_message(
+        self, sender_id: int, group_id: int, time: int = 1, last_message_id: int = None
+    ) -> list[Message]:
+        """
+        寻找指定时间（1分钟）内发送的消息
+        """
+        async with self.session_factory() as session:
+            start_time = datetime.now() - timedelta(minutes=time)
+            result = await session.execute(
+                select(Message)
+                .where(
+                    Message.user_id == sender_id,
+                    Message.group_id == group_id,
+                    Message.send_time >= start_time,
+                    Message.id > last_message_id if last_message_id else True,
+                )
+                .order_by(Message.send_time.asc())
+            )
+            rows = result.scalars().all()
+            return rows
