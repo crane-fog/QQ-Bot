@@ -98,12 +98,15 @@ class AskForward(Plugins):
                 cqs = CQHelper.loads_cq(event.message)
                 for cq in cqs:
                     if cq.cq_type == "reply":
-                        reply_id = int(cq.id)
-                        result = await session.execute(
-                            select(Message).where(Message.msg_id == reply_id)
-                        )
-                        row = result.scalars().one_or_none()
-                        id_data = row.msg.split("#", 1)[1].split(" from ", 1)[0]
+                        try:
+                            reply_id = int(cq.id)
+                            result = await session.execute(
+                                select(Message).where(Message.msg_id == reply_id)
+                            )
+                            row = result.scalars().one_or_none()
+                            id_data = row.msg.split("#", 1)[1].split(" from ", 1)[0]
+                        except Exception:
+                            return
 
                 discussion_id = int(id_data.split(" ", 1)[0])
                 origin_message_id = int(id_data.split(" ", 1)[1])
