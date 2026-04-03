@@ -14,7 +14,7 @@ from .event_handler.SendEventHandler import SendEvent
 from .PrintLog import Log
 
 
-def create_event_app(event_controller: "Event"):
+def create_event_app(event_controller: "Event") -> FastAPI:
     app = FastAPI(title="Event Controller")
 
     @app.api_route("/onebot", methods=["POST", "GET"], status_code=200)
@@ -69,7 +69,7 @@ class Event:
         self.tasks: set[asyncio.Task] = set()
         self.server = None
 
-    def schedule_task(self, coro):
+    def schedule_task(self, coro) -> None:
         task = asyncio.create_task(coro)
         self.tasks.add(task)
 
@@ -82,13 +82,13 @@ class Event:
 
         task.add_done_callback(on_done)
 
-    async def run(self, ip, port):
+    async def run(self, ip, port) -> None:
         app = create_event_app(self)
         config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
         self.server = uvicorn.Server(config)
         await self.server.serve()
 
-    async def stop(self):
+    async def stop(self) -> None:
         if self.server is not None:
             self.server.should_exit = True
 
@@ -98,33 +98,34 @@ class Event:
                 task.cancel()
             await asyncio.gather(*tasks, return_exceptions=True)
 
-    async def run_plugins_by_types(self, event, allowed_types: set[str]):
-        for plugin in self.plugins_list:
-            plugin_type = plugin.type
-            if plugin_type in allowed_types:
-                try:
-                    plugin.load_effected_groups()
-                    await plugin.main(event, self.debug)
-                except Exception as e:
-                    traceback_info = traceback.format_exc()
-                    error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
-                    plugin.set_status("error", error_info)
-                    Log.error(error_info)
+    async def run_plugins_by_types(self, event, allowed_types: set[str]) -> None:
+        plugins_to_run = [plugin for plugin in self.plugins_list if plugin.type in allowed_types]
+        plugins_to_run.sort(key=lambda plugin: 0 if plugin.type == "Record" else 1)
 
-    async def run_private_plugins(self, event):
+        for plugin in plugins_to_run:
+            try:
+                plugin.load_effected_groups()
+                await plugin.main(event, self.debug)
+            except Exception as e:
+                traceback_info = traceback.format_exc()
+                error_info = f"插件：{plugin.name}运行时出错：{e}，请联系该插件的作者：{plugin.author}\n详细信息：\n{traceback_info}"
+                plugin.set_status("error", error_info)
+                Log.error(error_info)
+
+    async def run_private_plugins(self, event) -> None:
         await self.run_plugins_by_types(event, {"Private"})
 
-    async def run_group_plugins(self, event):
+    async def run_group_plugins(self, event) -> None:
         await self.run_plugins_by_types(event, {"Group", "GroupRecall", "Record"})
 
-    async def run_group_recall(self, event):
+    async def run_group_recall(self, event) -> None:
         await self.run_plugins_by_types(event, {"GroupRecall"})
 
-    async def run_group_request(self, event):
+    async def run_group_request(self, event) -> None:
         await self.run_plugins_by_types(event, {"GroupRequest"})
 
-    async def run_group_poke(self, event):
+    async def run_group_poke(self, event) -> None:
         await self.run_plugins_by_types(event, {"Poke"})
 
-    async def run_send_event(self, event):
+    async def run_send_event(self, event) -> None:
         await self.run_plugins_by_types(event, {"Send", "Record"})

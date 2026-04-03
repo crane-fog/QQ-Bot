@@ -2,10 +2,10 @@ import os
 
 from openai import AsyncOpenAI
 
-DPSK_KEY = os.environ["DPSK_KEY"]
-DMXAPI_KEY = os.environ["DMXAPI_KEY"]
-DPSK_BASE_URL = "https://api.deepseek.com"
-DMXAPI_BASE_URL = "https://www.dmxapi.cn/v1"
+DPSK_KEY: str = os.environ["DPSK_KEY"]
+DMXAPI_KEY: str = os.environ["DMXAPI_KEY"]
+DPSK_BASE_URL: str = "https://api.deepseek.com"
+DMXAPI_BASE_URL: str = "https://www.dmxapi.cn/v1"
 
 
 async def get_dpsk_response(

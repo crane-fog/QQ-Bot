@@ -6,7 +6,7 @@ from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
 
-from sqlalchemy.ext.asyncio import create_async_engine
+from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from plugins import Plugins
@@ -46,7 +46,7 @@ class Bot:
         self.plugins_list: list[Plugins] = []
 
         # 初始化数据库连接对象
-        self.database = None
+        self.database: None | AsyncEngine = None
 
         # 通过 ConfigParser 加载其他初始化参数
         Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
@@ -75,18 +75,18 @@ class Bot:
             raise ValueError(f"参数不全，以下配置项未成功加载：{', '.join(missing_configs)}")
 
         # 将配置值分配给实例变量
-        self.server_address = required_configs["server_address"]
-        self.client_address = required_configs["client_address"]
-        self.web_controller_address = required_configs["web_controller_address"]
-        self.bot_name = required_configs["bot_name"]
-        self.debug = required_configs["debug"]
-        self.database_enable = required_configs["database_enable"]
-        self.database_username = required_configs["database_username"]
-        self.database_address = required_configs["database_address"]
-        self.database_passwd = required_configs["database_passwd"]
-        self.database_name = required_configs["database_name"]
-        self.owner_id = required_configs["owner_id"]
-        self.assistant_group = required_configs["assistant_group"]
+        self.server_address: str = required_configs["server_address"]
+        self.client_address: str = required_configs["client_address"]
+        self.web_controller_address: str = required_configs["web_controller_address"]
+        self.bot_name: str = required_configs["bot_name"]
+        self.debug: bool = required_configs["debug"]
+        self.database_enable: bool = required_configs["database_enable"]
+        self.database_username: str = required_configs["database_username"]
+        self.database_address: str = required_configs["database_address"]
+        self.database_passwd: str = required_configs["database_passwd"]
+        self.database_name: str = required_configs["database_name"]
+        self.owner_id: int = required_configs["owner_id"]
+        self.assistant_group: int = required_configs["assistant_group"]
 
         Log.info("成功加载配置文件")
         Log.info("加载的bot初始化配置信息如下：")
@@ -94,16 +94,18 @@ class Bot:
             Log.info(str(item))
 
         # 初始化api接口对象
-        self.api = Api(self.server_address)
+        self.api: Api = Api(self.server_address)
 
         self.assistant_list: set[int] = set()
 
-    def initialize(self):
+    def initialize(self) -> None:
         try:
             self.api.botSelfInfo.get_login()
         except Exception as e:
             raise ConnectionError(f"无法连接到Bot服务端，请确认监听端配置：{e}") from None
-        self.bot_id = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
+        self.bot_id: int = (
+            self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
+        )
         if self.bot_id is None:
             raise ValueError("无法获取Bot登录信息")
         Log.info(f"获取到Bot的登录信息：{self.bot_id}")
@@ -112,14 +114,14 @@ class Bot:
         self.init_plugins()
         Log.info("Bot初始化成功！")
 
-    def init_database(self):
+    def init_database(self) -> None:
         if not self.database_enable:
             Log.info("初始化配置{database_enable}项为：False，将不尝试连接数据库")
-            self.database = None
+            self.database: None | AsyncEngine = None
             return
         Log.info("开始创建与数据库之间的连接")
         try:
-            self.database = create_async_engine(
+            self.database: AsyncEngine = create_async_engine(
                 f"postgresql+asyncpg://"
                 f"{self.database_username}:{self.database_passwd}@{self.database_address}/{self.database_name}",
                 poolclass=NullPool,
@@ -129,18 +131,18 @@ class Bot:
             Log.error(f"连接到数据库时失败：{e}")
             raise e
 
-    def init_assistant_list(self):
+    def init_assistant_list(self) -> None:
         if self.assistant_group == 123456789:
             Log.warning("未设置助教群ID，跳过加载助教列表")
             return
 
-        assistants = self.api.groupService.get_group_member_list(group_id=self.assistant_group).get(
-            "data"
-        )
+        assistants: list = self.api.groupService.get_group_member_list(
+            group_id=self.assistant_group
+        ).get("data")
         for member in assistants:
             self.assistant_list.add(member["user_id"])
 
-    def init_plugins(self):
+    def init_plugins(self) -> None:
         Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
@@ -181,7 +183,7 @@ class Bot:
                 Log.error(f"加载插件{name}失败：{e}")
                 raise e
 
-    async def run(self):
+    async def run(self) -> None:
         event = Event(self.plugins_list, self.debug)
         event_ip, event_port = self.client_address.split(":")
         Log.info(f"启动监听服务 {event_ip}:{event_port}")
