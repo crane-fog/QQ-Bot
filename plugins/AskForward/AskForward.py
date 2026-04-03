@@ -120,7 +120,7 @@ class AskForward(Plugins):
                 )
                 source_message_id = await session.scalar(
                     select(Message.msg_id)
-                    .where(Message.id == origin_message_id and Message.group_id == source_group_id)
+                    .where(Message.id == origin_message_id, Message.group_id == source_group_id)
                     .order_by(Message.id.desc())
                 )
 
@@ -210,7 +210,6 @@ class AskForward(Plugins):
                         sender_name=row.user_nickname,
                         uid=row.user_id,
                     )
-                print(broadcast_msg.message)
             self.api.groupService.send_group_forward_msg(
                 group_id=broadcast_target_group, forward_message=broadcast_msg.message
             )
