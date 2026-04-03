@@ -72,28 +72,28 @@ file_logger = setup_file_logger()
 
 class Log:
     @classmethod
-    def debug(cls, message, debug=False):
+    def debug(cls, message: str, debug: bool = False) -> None:
         if debug:
             console_logger.debug(message)
             file_logger.debug(message)
 
     @classmethod
-    def info(cls, message):
+    def info(cls, message: str) -> None:
         console_logger.info(message)
         file_logger.info(message)
 
     @classmethod
-    def warning(cls, message):
+    def warning(cls, message: str) -> None:
         console_logger.warning(message)
         file_logger.warning(message)
 
     @classmethod
-    def error(cls, message):
+    def error(cls, message: str) -> None:
         console_logger.error(message)
         file_logger.error(message)
 
     @classmethod
-    def start_logging(cls):
+    def start_logging(cls) -> None:
         with open(log_file_path, "w"):
             ...
 

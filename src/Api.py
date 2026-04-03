@@ -18,9 +18,9 @@ class Api:
 
     class BotSelfInfo:
         def __init__(self, api_instance):
-            self.api = api_instance  # 保存对Api类实例的引用
+            self.api: Api = api_instance  # 保存对Api类实例的引用
 
-        def get_login(self):
+        def get_login(self) -> str:
             """
             获取bot服务端是否在线
             :return: bot服务端返回的信息
@@ -28,7 +28,7 @@ class Api:
             response = requests.get(self.api.bot_api_address)
             return response.text
 
-        def get_login_info(self):
+        def get_login_info(self) -> dict:
             """
             获取bot自身的登录信息
             :return: bot的QQ号和昵称
@@ -38,14 +38,14 @@ class Api:
 
     class PrivateService:
         def __init__(self, api_instance):
-            self.api = api_instance  # 保存对Api类实例的引用
+            self.api: Api = api_instance  # 保存对Api类实例的引用
 
-        def send_private_msg(self, user_id, message):
+        def send_private_msg(self, user_id: int, message: str) -> dict:
             params = {"user_id": user_id, "message": message}
             response = requests.post(self.api.bot_api_address + "send_private_msg", json=params)
             return response.json()
 
-        def send_private_forward_msg(self, user_id, forward_message: list):
+        def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
             params = {"user_id": user_id, "messages": forward_message}
             response = requests.post(
                 self.api.bot_api_address + "send_private_forward_msg", json=params
@@ -54,28 +54,28 @@ class Api:
 
     class GroupService:
         def __init__(self, api_instance):
-            self.api = api_instance  # 保存对Api类实例的引用
+            self.api: Api = api_instance  # 保存对Api类实例的引用
 
-        def get_group_member_list(self, group_id, no_cache=True):
+        def get_group_member_list(self, group_id: int, no_cache: bool = True) -> dict:
             params = {"group_id": group_id, "no_cache": no_cache}
             response = requests.post(
                 self.api.bot_api_address + "get_group_member_list", json=params
             )
             return response.json()
 
-        def get_group_member_info(self, group_id, user_id, no_cache=True):
+        def get_group_member_info(self, group_id: int, user_id: int, no_cache: bool = True) -> dict:
             params = {"group_id": group_id, "user_id": user_id, "no_cache": no_cache}
             response = requests.post(
                 self.api.bot_api_address + "get_group_member_info", json=params
             )
             return response.json()
 
-        def send_group_msg(self, group_id, message):
+        def send_group_msg(self, group_id: int, message: str) -> dict:
             params = {"group_id": group_id, "message": message}
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
-        def send_group_record_msg(self, group_id, file_path):
+        def send_group_record_msg(self, group_id: int, file_path: str) -> dict:
             params = {
                 "group_id": group_id,
                 "message": [{"type": "record", "data": {"file": f"file://{file_path}"}}],
@@ -83,14 +83,14 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
-        def send_group_forward_msg(self, group_id, forward_message: list):
+        def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
             params = {"group_id": group_id, "messages": forward_message}
             response = requests.post(
                 self.api.bot_api_address + "send_group_forward_msg", json=params
             )
             return response.json()
 
-        def send_group_img(self, group_id, image_path):
+        def send_group_img(self, group_id: int, image_path: str) -> dict:
             params = {
                 "group_id": group_id,
                 "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
@@ -98,7 +98,7 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
-        def send_group_msg_with_img(self, group_id, message, image_path):
+        def send_group_msg_with_img(self, group_id: int, message: str, image_path: str) -> dict:
             params = {
                 "group_id": group_id,
                 "message": [
@@ -109,7 +109,9 @@ class Api:
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
 
-        def send_group_file(self, group_id, file_path, name, folder_id=None):
+        def send_group_file(
+            self, group_id: int, file_path: str, name: str, folder_id: str = None
+        ) -> dict:
             if folder_id:
                 params = json.dumps(
                     {
@@ -131,7 +133,7 @@ class Api:
             )
             return response.json()
 
-        def set_group_ban(self, group_id, user_id, duration):
+        def set_group_ban(self, group_id: int, user_id: int, duration: int) -> dict:
             params = {
                 "group_id": group_id,
                 "user_id": user_id,
@@ -140,7 +142,7 @@ class Api:
             response = requests.post(self.api.bot_api_address + "set_group_ban", json=params)
             return response.json()
 
-        def set_group_kick(self, group_id, user_id):
+        def set_group_kick(self, group_id: int, user_id: int) -> dict:
             params = {
                 "group_id": group_id,
                 "user_id": user_id,
@@ -148,14 +150,14 @@ class Api:
             response = requests.post(self.api.bot_api_address + "set_group_kick", json=params)
             return response.json()
 
-        def delete_msg(self, message_id):
+        def delete_msg(self, message_id: int) -> dict:
             params = {
                 "message_id": message_id,
             }
             response = requests.post(self.api.bot_api_address + "delete_msg", json=params)
             return response.json()
 
-        def set_group_add_request(self, flag, approve="true", reason=""):
+        def set_group_add_request(self, flag: str, approve: bool = True, reason: str = "") -> dict:
             params = {
                 "flag": flag,
                 "sub_type": "add",
@@ -167,40 +169,40 @@ class Api:
             )
             return response.json()
 
-        def get_group_info(self, group_id):
+        def get_group_info(self, group_id: int) -> dict:
             params = {"group_id": group_id}
             response = requests.post(self.api.bot_api_address + "get_group_info", json=params)
             return response.json()
 
-        def set_msg_emoji_like(self, message_id, emoji_id):
+        def set_msg_emoji_like(self, message_id: int, emoji_id: int) -> dict:
             params = {"message_id": message_id, "emoji_id": emoji_id}
             response = requests.post(self.api.bot_api_address + "set_msg_emoji_like", json=params)
             return response.json()
 
-        def send_group_poke(self, group_id, user_id):
+        def send_group_poke(self, group_id: int, user_id: int) -> dict:
             params = {"group_id": group_id, "user_id": user_id}
             response = requests.post(self.api.bot_api_address + "group_poke", json=params)
             return response.json()
 
     class MessageService:
         def __init__(self, api_instance):
-            self.api = api_instance  # 保存对Api类实例的引用
+            self.api: Api = api_instance  # 保存对Api类实例的引用
 
-        def get_msg(self, message_id):
+        def get_msg(self, message_id: int) -> dict:
             params = {
                 "message_id": message_id,
             }
             response = requests.post(self.api.bot_api_address + "get_msg", json=params)
             return response.json()
 
-        def get_image(self, file_name):
+        def get_image(self, file_name: str) -> dict:
             params = {
                 "file": file_name,
             }
             response = requests.post(self.api.bot_api_address + "get_image", json=params)
             return response.json()
 
-        def get_forward(self, message_id):
+        def get_forward(self, message_id: int) -> list:
             """使用这个函数得到的结果可以直接由 send_forward_message 发出"""
             params = {"message_id": message_id}
             response = requests.post(self.api.bot_api_address + "get_forward_msg", json=params)

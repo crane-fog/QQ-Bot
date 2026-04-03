@@ -36,7 +36,6 @@ class CQHelper:
     @classmethod
     def loads_cq(cls, message: str) -> list[Any]:
         """
-
         :param message:
         :return:
         """
