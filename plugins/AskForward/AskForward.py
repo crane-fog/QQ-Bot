@@ -43,7 +43,7 @@ class AskForward(Plugins):
         self.author = "Heai"
         self.introduction = """
                                 转发高程班级群消息至答疑群，转发回答
-                                usage: 提问：以 #Q# 开头\n回答/追问：回复 bot 消息
+                                usage: 提问：以 #Q# 开头\n回答/追问：「回复」（引用）bot 转发的消息\n注意：bot 仅抓取触发「前」 1 分钟内的内容，请先发送图片（如需要），最后再发送带有 #Q# 或「回复」的消息（或者将图文放在一条消息中发送），以免漏转。
                             """
         self.init_status()
         self.session_factory: sessionmaker = sessionmaker(
@@ -56,10 +56,9 @@ class AskForward(Plugins):
         answer_group: int = self.config.getint("answer_group")
         ask_groups: list[int] = list(map(int, self.config.get("ask_groups").split(",")))
 
-        if event.message.startswith("[CQ:image,"):
-            check_message = event.message.split("]", 1)[1]
-        else:
-            check_message = event.message
+        check_message = event.message
+        while check_message.startswith("[CQ:image,"):
+            check_message = check_message.split("]", 1)[1]
 
         # 提问
         if event.group_id in ask_groups and check_message.startswith("#Q#"):
@@ -130,7 +129,7 @@ class AskForward(Plugins):
 
             self.api.groupService.send_group_msg(
                 group_id=source_group_id,
-                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id}\n{event.message.split(']', 1)[1]}",
+                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id}\n{clean_at(event.message.split(']', 1)[1], True)}",
             )
         # 追问
         elif event.group_id in ask_groups and event.message.startswith("[CQ:reply,"):
@@ -185,7 +184,7 @@ class AskForward(Plugins):
             )
             self.api.groupService.send_group_msg(
                 group_id=answer_group,
-                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id} from {event.group_name}\n{event.card}\n{event.message.split(']', 1)[1]}",
+                message=f"{Reply(id=source_message_id)}#{discussion_id} {event.sql_id} from {event.group_name}\n{event.card}\n{clean_at(event.message.split(']', 1)[1], True)}",
             )
         # 广播
         elif event.group_id == answer_group and event.message.startswith("Broadcast"):
@@ -198,16 +197,15 @@ class AskForward(Plugins):
                     .where(AskMessage.discussion_id == discussion_id)
                     .order_by(AskMessage.id_of_message.asc())
                 )
-                rows = result.scalars().all()
+                rows: list[Message] = result.scalars().all()
                 for row in rows:
                     msg = row.msg.split("]", 1)[1] if row.msg.startswith("[CQ:reply,") else row.msg
-                    pattern = r"\[CQ:at,[^\]]*name=([^,\]]+)[^\]]*\]"
-                    msg = re.sub(pattern, r"@\1", msg)
+                    msg = clean_at(msg, True)
 
                     broadcast_msg.add_node(
                         type="msg",
                         msg=msg,
-                        sender_name=row.user_nickname,
+                        sender_name=row.user_card,
                         uid=row.user_id,
                     )
             self.api.groupService.send_group_forward_msg(
@@ -235,3 +233,11 @@ class AskForward(Plugins):
             )
             rows = result.scalars().all()
             return rows
+
+
+def clean_at(msg: str, move: bool = False) -> str:
+    pattern = r"\[CQ:at,[^\]]*name=([^,\]]+)[^\]]*\]"
+    if move:
+        return re.sub(pattern, r"", msg).strip()
+    else:
+        return re.sub(pattern, r"@\1", msg)
