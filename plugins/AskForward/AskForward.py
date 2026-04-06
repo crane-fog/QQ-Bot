@@ -56,9 +56,9 @@ class AskForward(Plugins):
         answer_group: int = self.config.getint("answer_group")
         ask_groups: list[int] = list(map(int, self.config.get("ask_groups").split(",")))
 
-        check_message = event.message
+        check_message = event.message.strip()
         while check_message.startswith("[CQ:image,"):
-            check_message = check_message.split("]", 1)[1]
+            check_message = check_message.split("]", 1)[1].strip()
 
         # 提问
         if event.group_id in ask_groups and check_message.startswith("#Q#"):
@@ -210,6 +210,16 @@ class AskForward(Plugins):
                     )
             self.api.groupService.send_group_forward_msg(
                 group_id=broadcast_target_group, forward_message=broadcast_msg.message
+            )
+        # fallback
+        elif event.group_id in ask_groups and event.user_id not in self.bot.assistant_list:
+            self.api.groupService.send_group_msg(
+                group_id=answer_group,
+                message=f"未归类消息 from {event.group_name}\n{event.card}",
+            )
+            self.api.groupService.send_group_msg(
+                group_id=answer_group,
+                message=event.message,
             )
         return
 
