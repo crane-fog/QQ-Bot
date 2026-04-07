@@ -309,7 +309,7 @@ class A_Pixiv(Plugins):
                             message=reply_message + "\n由于请求为R-18作品，小孩子还是不要看啦...",
                         )
                         if self.send_R_18:
-                            self.api.groupService.send_group_forward_msg(
+                            await self.api.groupService.send_group_forward_msg(
                                 group_id=event.group_id, forward_message=forward_message
                             )
                             if self.send_R_18_img_private:
@@ -317,7 +317,7 @@ class A_Pixiv(Plugins):
                                 self.api.privateService.send_private_msg(
                                     user_id=event.user_id, message=reply_message
                                 )
-                                self.api.privateService.send_private_forward_msg(
+                                await self.api.privateService.send_private_forward_msg(
                                     user_id=event.user_id, forward_message=forward_message
                                 )
                         else:
@@ -326,12 +326,12 @@ class A_Pixiv(Plugins):
                                 message="基于本群的bot设置,R-18图像的倒转将不会被发出",
                             )
                     else:
-                        self.api.groupService.send_group_msg_with_img(
+                        await self.api.groupService.send_group_msg_with_img(
                             group_id=event.group_id,
                             message=reply_message,
                             image_path=pixic.preview_path,
                         )
-                        self.api.groupService.send_group_forward_msg(
+                        await self.api.groupService.send_group_forward_msg(
                             group_id=event.group_id, forward_message=forward_message
                         )
                 else:

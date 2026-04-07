@@ -85,7 +85,7 @@ class AskForward(Plugins):
                     session.add(ask_message)
                 await session.commit()
 
-            self.api.groupService.send_group_forward_msg(
+            await self.api.groupService.send_group_forward_msg(
                 group_id=answer_group, forward_message=forward_msg.message
             )
             self.api.groupService.send_group_msg(
@@ -180,7 +180,7 @@ class AskForward(Plugins):
                     await session.execute(stmt)
                 await session.commit()
 
-            self.api.groupService.send_group_forward_msg(
+            await self.api.groupService.send_group_forward_msg(
                 group_id=answer_group, forward_message=forward_msg.message
             )
             self.api.groupService.send_group_msg(
@@ -210,7 +210,7 @@ class AskForward(Plugins):
                         sender_name=row.user_nickname,
                         uid=row.user_id,
                     )
-            self.api.groupService.send_group_forward_msg(
+            await self.api.groupService.send_group_forward_msg(
                 group_id=broadcast_target_group, forward_message=broadcast_msg.message
             )
         return

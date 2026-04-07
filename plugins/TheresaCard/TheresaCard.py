@@ -190,7 +190,7 @@ class TheresaCard(Plugins):
                         type="text", text=f"以下成员已选课但未入群，共{len(not_entered)}人"
                     )
                     forward.add_node(type="text", text="\n".join(not_entered_lines))
-                    self.api.groupService.send_group_forward_msg(
+                    await self.api.groupService.send_group_forward_msg(
                         group_id=event.group_id, forward_message=forward.message
                     )
                 else:

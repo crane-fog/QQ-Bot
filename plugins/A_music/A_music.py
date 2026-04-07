@@ -143,7 +143,7 @@ class A_music(Plugins):
                     self.api.groupService.send_group_msg(
                         group_id=event.group_id, message=reply_message
                     )
-                    self.api.groupService.send_group_record_msg(
+                    await self.api.groupService.send_group_record_msg(
                         group_id=event.group_id, file_path=music.mp3_path
                     )
                 except Exception as e:

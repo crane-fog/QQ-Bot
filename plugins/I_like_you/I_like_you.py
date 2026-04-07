@@ -22,7 +22,7 @@ class I_like_you(Plugins):
         message = event.message
         if "我喜欢你" in message:
             try:
-                self.api.groupService.send_group_record_msg(
+                await self.api.groupService.send_group_record_msg(
                     group_id=event.group_id,
                     file_path=Path(__file__).resolve().parent / "我喜欢你_你喜欢我.wav",
                 )
@@ -35,7 +35,7 @@ class I_like_you(Plugins):
             return
         elif "我不喜欢你" in message:
             try:
-                self.api.groupService.send_group_record_msg(
+                await self.api.groupService.send_group_record_msg(
                     group_id=event.group_id,
                     file_path=Path(__file__).resolve().parent / "我不喜欢你.wav",
                 )

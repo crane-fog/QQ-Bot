@@ -267,5 +267,5 @@ class TheresaDora(Plugins):
 
         generate_img(cmd, path)
 
-        self.api.groupService.send_group_img(group_id=group_id, image_path=path)
+        await self.api.groupService.send_group_img(group_id=group_id, image_path=path)
         return
