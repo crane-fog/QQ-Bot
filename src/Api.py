@@ -1,8 +1,9 @@
 import json
 
+import httpx
 import requests
 from httpx import AsyncClient as client
-import httpx
+
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
 
@@ -17,7 +18,7 @@ class Api:
         self.groupService: Api.GroupService = self.GroupService(self)
         self.messageService: Api.MessageService = self.MessageService(self)
 
-        self.timeout=httpx.Timeout(timeout=60.0)
+        self.timeout = httpx.Timeout(timeout=60.0)
 
     class BotSelfInfo:
         def __init__(self, api_instance):
@@ -45,7 +46,7 @@ class Api:
 
         def send_private_msg(self, user_id: int, message: str) -> dict:
             params = {"user_id": user_id, "message": message}
-            response=requests.post(self.api.bot_api_address + "send_private_msg", json=params)
+            response = requests.post(self.api.bot_api_address + "send_private_msg", json=params)
             return response.json()
 
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
@@ -83,7 +84,9 @@ class Api:
                 "group_id": group_id,
                 "message": [{"type": "record", "data": {"file": f"file://{file_path}"}}],
             }
-            response = await client(timeout=self.api.timeout).post(self.api.bot_api_address + "send_group_msg", json=params)
+            response = await client(timeout=self.api.timeout).post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
         async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
@@ -98,10 +101,14 @@ class Api:
                 "group_id": group_id,
                 "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
             }
-            response = await client(timeout=self.api.timeout).post(self.api.bot_api_address + "send_group_msg", json=params)
+            response = await client(timeout=self.api.timeout).post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
-        async def send_group_msg_with_img(self, group_id: int, message: str, image_path: str) -> dict:
+        async def send_group_msg_with_img(
+            self, group_id: int, message: str, image_path: str
+        ) -> dict:
             params = {
                 "group_id": group_id,
                 "message": [
@@ -109,7 +116,9 @@ class Api:
                     {"type": "image", "data": {"file": f"file://{image_path}"}},
                 ],
             }
-            response = await client(timeout=self.api.timeout).post(self.api.bot_api_address + "send_group_msg", json=params)
+            response = await client(timeout=self.api.timeout).post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
             return response.json()
 
         async def send_group_file(
