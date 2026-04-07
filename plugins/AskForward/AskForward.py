@@ -50,7 +50,7 @@ class AskForward(Plugins):
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
 
-    @plugin_main(call_word=["#Q#", "[CQ:reply,", "Broadcast", "[CQ:image,"], require_db=True)
+    @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         broadcast_target_group: int = self.config.getint("broadcast_target_group")
         answer_group: int = self.config.getint("answer_group")
@@ -137,14 +137,25 @@ class AskForward(Plugins):
                 cqs = CQHelper.loads_cq(event.message)
                 for cq in cqs:
                     if cq.cq_type == "reply":
-                        reply_id = int(cq.id)
-                        result = await session.execute(
-                            select(Message).where(Message.msg_id == reply_id)
-                        )
-                        row = result.scalars().one_or_none()
-                        if row.user_id != self.bot.bot_id:
+                        try:
+                            reply_id = int(cq.id)
+                            result = await session.execute(
+                                select(Message).where(Message.msg_id == reply_id)
+                            )
+                            row = result.scalars().one_or_none()
+                            if row.user_id != self.bot.bot_id:
+                                return
+                            id_data = row.msg.split("#", 1)[1].split("\n", 1)[0]
+                        except Exception:
+                            self.api.groupService.send_group_msg(
+                                group_id=answer_group,
+                                message=f"未归类消息 from {event.group_name}\n{event.card}",
+                            )
+                            self.api.groupService.send_group_msg(
+                                group_id=answer_group,
+                                message=event.message.split("]", 1)[1].strip(),
+                            )
                             return
-                        id_data = row.msg.split("#", 1)[1].split("\n", 1)[0]
 
                 discussion_id = int(id_data.split(" ", 1)[0])
                 origin_message_id = int(id_data.split(" ", 1)[1])
