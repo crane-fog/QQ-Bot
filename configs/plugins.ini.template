@@ -116,6 +116,7 @@ enable = True
 broadcast_target_group = 12345
 answer_group = 12345
 ask_groups = 12345,67890
+special_assistant_list = 12345,67890
 
 [TheresaCardBatch]
 enable = True
