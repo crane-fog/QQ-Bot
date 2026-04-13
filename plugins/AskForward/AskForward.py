@@ -78,11 +78,11 @@ class AskForward(Plugins):
                 for msg in msgs[:-1]:
                     forward_msg.add_node(
                         type="msg",
-                        msg=msg.msg,
+                        msg=msg[1],
                         sender_name=event.nickname,
                         uid=event.user_id,
                     )
-                    ask_message = AskMessage(discussion_id=discussion_id, id_of_message=msg.id)
+                    ask_message = AskMessage(discussion_id=discussion_id, id_of_message=msg[0])
                     session.add(ask_message)
                 await session.commit()
 
@@ -103,7 +103,9 @@ class AskForward(Plugins):
             discussion_id: str = id_data.split(" ", 1)[0]
             origin_message_sql_id: str = id_data.split(" ", 1)[1]
             async with self.session_factory() as session:
-                if origin_message_sql_id != "None":
+                if origin_message_sql_id == "None":
+                    return
+                else:
                     source_group_id, source_message_id = (
                         await session.execute(
                             select(Message.group_id, Message.msg_id).where(
@@ -144,7 +146,7 @@ class AskForward(Plugins):
                     keep_group_name=True,
                 )
             else:
-                origin_message_sql_id = msgs[-2].id
+                origin_message_sql_id = msgs[-2][0]
                 async with self.session_factory() as session:
                     discussion_id = await session.scalar(
                         select(AskMessage.discussion_id).where(
@@ -177,14 +179,14 @@ class AskForward(Plugins):
                     .where(AskMessage.discussion_id == discussion_id)
                     .order_by(AskMessage.id_of_message.asc())
                 )
-                rows: list[Message] = result.scalars().all()
+                rows: list[tuple[str, int, str]] = result.all()
                 for row in rows:
-                    msg = remove_reply(clean_at(row.msg, True))
+                    msg = remove_reply(clean_at(row[0], True))
                     broadcast_msg.add_node(
                         type="msg",
                         msg=msg,
-                        sender_name=row.user_card,
-                        uid=row.user_id,
+                        sender_name=row[2],
+                        uid=row[1],
                     )
             self.api.groupService.send_group_forward_msg(
                 group_id=broadcast_target_group, forward_message=broadcast_msg.message
@@ -194,7 +196,7 @@ class AskForward(Plugins):
     # 寻找指定时间（1分钟）内发送的消息
     async def find_message(
         self, sender_id: int, group_id: int, time: int = 1, last_message_id: int = None
-    ) -> list[Message]:
+    ) -> list[tuple[int, str]]:
         async with self.session_factory() as session:
             start_time = datetime.now() - timedelta(minutes=time)
             result = await session.execute(
@@ -207,7 +209,7 @@ class AskForward(Plugins):
                 )
                 .order_by(Message.id.asc())
             )
-            rows = result.scalars().all()
+            rows: list[tuple[int, str]] = result.all()
             return rows
 
     # 带补充信息的转发一条消息
@@ -238,8 +240,8 @@ class AskForward(Plugins):
                             .where(Message.msg_id == reply_id)
                             .order_by(Message.id.desc())
                         )
-                        row = result.scalars().one_or_none()
-                        return row.msg.split("#", 1)[1].split(" from ", 1)[0]
+                        msg = result.scalars().one_or_none()
+                        return msg.split("#", 1)[1].split(" from ", 1)[0]
                     except Exception:
                         return "None None"
         return "None None"
