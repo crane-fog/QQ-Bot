@@ -79,8 +79,8 @@ class AskForward(Plugins):
                     forward_msg.add_node(
                         type="msg",
                         msg=msg.msg,
-                        sender_name=msg.user_nickname,
-                        uid=msg.user_id,
+                        sender_name=event.nickname,
+                        uid=event.user_id,
                     )
                     ask_message = AskMessage(discussion_id=discussion_id, id_of_message=msg.id)
                     session.add(ask_message)
@@ -172,7 +172,7 @@ class AskForward(Plugins):
             discussion_id = int(event.message.split(" ", 1)[1])
             async with self.session_factory() as session:
                 result = await session.execute(
-                    select(Message)
+                    select(Message.msg, Message.user_id, Message.user_card)
                     .join(AskMessage, Message.id == AskMessage.id_of_message)
                     .where(AskMessage.discussion_id == discussion_id)
                     .order_by(AskMessage.id_of_message.asc())
@@ -198,14 +198,14 @@ class AskForward(Plugins):
         async with self.session_factory() as session:
             start_time = datetime.now() - timedelta(minutes=time)
             result = await session.execute(
-                select(Message)
+                select(Message.id, Message.msg)
                 .where(
                     Message.user_id == sender_id,
                     Message.group_id == group_id,
                     Message.send_time >= start_time,
                     Message.id > last_message_id if last_message_id else True,
                 )
-                .order_by(Message.send_time.asc())
+                .order_by(Message.id.asc())
             )
             rows = result.scalars().all()
             return rows
@@ -234,7 +234,7 @@ class AskForward(Plugins):
                     try:
                         reply_id = int(cq.id)
                         result = await session.execute(
-                            select(Message)
+                            select(Message.msg)
                             .where(Message.msg_id == reply_id)
                             .order_by(Message.id.desc())
                         )
