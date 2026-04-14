@@ -1,6 +1,8 @@
 import json
 
 import requests
+from httpx import AsyncClient as client
+from httpx import Timeout
 
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
@@ -15,6 +17,7 @@ class Api:
         self.privateService: Api.PrivateService = self.PrivateService(self)
         self.groupService: Api.GroupService = self.GroupService(self)
         self.messageService: Api.MessageService = self.MessageService(self)
+        self.asyncService: Api.AsyncService = self.AsyncService(self)
 
     class BotSelfInfo:
         def __init__(self, api_instance):
@@ -182,6 +185,49 @@ class Api:
         def send_group_poke(self, group_id: int, user_id: int) -> dict:
             params = {"group_id": group_id, "user_id": user_id}
             response = requests.post(self.api.bot_api_address + "group_poke", json=params)
+            return response.json()
+
+    class AsyncService:
+        def __init__(self, api_instance):
+            self.api: Api = api_instance
+            self.timeout = Timeout(180)
+
+        async def send_group_file(
+            self, group_id: int, file_path: str, name: str, folder_id: str = None
+        ) -> dict:
+            if folder_id:
+                params = json.dumps(
+                    {
+                        "group_id": group_id,
+                        "file": f"file://{file_path}",
+                        "name": name,
+                        "folder_id": folder_id,
+                    }
+                )
+            else:
+                params = json.dumps(
+                    {"group_id": group_id, "file": f"file://{file_path}", "name": name}
+                )
+            headers = {"Content-Type": "application/json"}
+            response = await client(timeout=self.timeout).post(
+                self.api.bot_api_address + "upload_group_file",
+                data=params,
+                headers=headers,
+            )
+            return response.json()
+
+        async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
+            params = {"group_id": group_id, "messages": forward_message}
+            response = await client(timeout=self.timeout).post(
+                self.api.bot_api_address + "send_group_forward_msg", json=params
+            )
+            return response.json()
+
+        async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
+            params = {"user_id": user_id, "messages": forward_message}
+            response = await client(timeout=self.timeout).post(
+                self.api.bot_api_address + "send_private_forward_msg", json=params
+            )
             return response.json()
 
     class MessageService:
