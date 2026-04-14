@@ -121,3 +121,6 @@ special_assistant_list = 12345,67890
 [TheresaCardBatch]
 enable = True
 target_groups = 12345,67890
+
+[Configset]
+enable=True
