@@ -255,15 +255,15 @@ class Bot:
                     ]
                     for k in keys_to_remove:
                         del sys.modules[k]
-                    plugin_module = import_module(f".{name}", "plugins")
-                    # 获取子包中的插件类，假设类名与模块名相同
-                    PluginClass = getattr(plugin_module, name)
-                    # 实例化插件
-                    plugin_instance: Plugins = PluginClass(self.server_address, self)
-                    # 传递插件配置
-                    plugin_instance.config = plugins_config[name]
-                    # 添加到插件列表
                     if oi:
+                        plugin_module = import_module(f".{name}", "plugins")
+                        # 获取子包中的插件类，假设类名与模块名相同
+                        PluginClass = getattr(plugin_module, name)
+                        # 实例化插件
+                        plugin_instance: Plugins = PluginClass(self.server_address, self)
+                        # 传递插件配置
+                        plugin_instance.config = plugins_config[name]
+                        # 添加到插件列表
                         self.plugins_list.append(plugin_instance)
                         Log.info(
                             f"成功热重载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
