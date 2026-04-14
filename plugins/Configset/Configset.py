@@ -46,16 +46,34 @@ class Configset(Plugins):
                                 group_id=event.group_id, message="未选择插件"
                             )
                             return
-                        elif len(plugin) > 1:
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="选择插件过多,将会只处理第一个"
-                            )
+
                         else:
+                            if len(plugin) > 1:
+                                self.api.groupService.send_group_msg(
+                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
+                                )
                             for group_id in group_ids:
                                 status = self.bot.reload_plugins(
                                     plugin_name=plugin[0], group_id=group_id, oi=True
                                 )
                                 status_list.append((group_id, status))
+                    else:
+                        if plugin == []:
+                            self.api.groupService.send_group_msg(
+                                group_id=event.group_id, message="未选择插件"
+                            )
+                            return
+                        else:
+                            if len(plugin) > 1:
+                                self.api.groupService.send_group_msg(
+                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
+                                )
+                            for group_id in group_ids:
+                                status = self.bot.reload_plugins(
+                                    plugin_name=plugin[0], group_id=group_id, oi=True
+                                )
+                                status_list.append((group_id, status))
+
                     reply_message = "当前修正状态"
                     for statue in status_list:
                         reply_message += "\n"
@@ -80,10 +98,7 @@ class Configset(Plugins):
                                 group_id=event.group_id, message="未选择插件"
                             )
                             return
-                        elif len(plugin) > 1:
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="选择插件过多,将会只处理第一个"
-                            )
+
                         elif plugin[0] == "TheresaHelp":
                             self.api.groupService.send_group_msg(
                                 group_id=event.group_id,
@@ -97,6 +112,10 @@ class Configset(Plugins):
                             )
                             return
                         else:
+                            if len(plugin) > 1:
+                                self.api.groupService.send_group_msg(
+                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
+                                )
                             for group_id in group_ids:
                                 status = self.bot.reload_plugins(
                                     plugin_name=plugin[0], group_id=group_id, oi=False
