@@ -214,6 +214,7 @@ class Api:
                 data=params,
                 headers=headers,
             )
+            response.aclose()
             return response.json()
 
         async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
@@ -221,6 +222,7 @@ class Api:
             response = await client(timeout=self.timeout).post(
                 self.api.bot_api_address + "send_group_forward_msg", json=params
             )
+            response.aclose()
             return response.json()
 
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
@@ -228,6 +230,7 @@ class Api:
             response = await client(timeout=self.timeout).post(
                 self.api.bot_api_address + "send_private_forward_msg", json=params
             )
+            response.aclose()
             return response.json()
 
     class MessageService:
