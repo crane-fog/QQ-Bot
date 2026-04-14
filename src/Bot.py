@@ -2,6 +2,7 @@ import asyncio
 import configparser
 import logging
 import os
+import sys
 from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
@@ -182,6 +183,108 @@ class Bot:
             except Exception as e:
                 Log.error(f"加载插件{name}失败：{e}")
                 raise e
+
+    def reload_plugins(self, plugin_name, group_id=None, oi=True) -> bool:
+        """
+        热重载指定插件。
+
+        :param plugin_name: 插件名称
+        :param group_id: 群号，可选
+        :param oi: True 为启用，False 为禁用
+        :return: 是否成功
+        """
+
+        Log.info(f"开始插件{plugin_name}的热重载")
+
+        plugins_config = configparser.ConfigParser()
+        plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
+        with open(plugins_config_path, encoding="utf-8") as f:
+            plugins_config.read_file(f)
+
+        enable = False  # 是否存在插件实现
+
+        for _, name, ispkg in iter_modules([self.plugins_path]):
+            if not ispkg:
+                continue  # 如果不是插件包就跳过
+
+            # 对plugins.ini和groups.ini状态的改变
+
+            if name == plugin_name:
+                if plugins_config.has_section(plugin_name):
+                    if oi:
+                        plugins_config[plugin_name]["enable"] = "True"
+                    else:
+                        plugins_config[plugin_name]["enable"] = "False"
+                else:
+                    plugins_config.add_section(plugin_name)
+                    if oi:
+                        plugins_config[plugin_name]["enable"] = "True"
+                    else:
+                        plugins_config[plugin_name]["enable"] = "False"
+
+                with open(plugins_config_path, "w", encoding="utf-8") as f:
+                    plugins_config.write(f)
+
+                if group_id:
+                    groups_config = configparser.ConfigParser()
+                    groups_config_path = os.path.join(self.configs_path, "groups.ini")
+                    groups_config.read(groups_config_path, encoding="utf-8")
+                    if groups_config.has_section(group_id):
+                        if oi:
+                            groups_config[group_id][plugin_name] = "True"
+                        else:
+                            groups_config[group_id][plugin_name] = "False"
+                    else:
+                        groups_config.add_section(group_id)
+                        if oi:
+                            groups_config[group_id][plugin_name] = "True"
+                        else:
+                            groups_config[group_id][plugin_name] = "False"
+
+                    with open(groups_config_path, "w", encoding="utf-8") as f:
+                        groups_config.write(f)
+
+                self.plugins_list[:] = [p for p in self.plugins_list if p.name != plugin_name]
+
+                try:
+                    # 从plugins包动态导入子包
+                    keys_to_remove = [
+                        k
+                        for k in sys.modules
+                        if k == f"plugins.{name}" or k.startswith(f"plugins.{name}.")
+                    ]
+                    for k in keys_to_remove:
+                        del sys.modules[k]
+                    plugin_module = import_module(f".{name}", "plugins")
+                    # 获取子包中的插件类，假设类名与模块名相同
+                    PluginClass = getattr(plugin_module, name)
+                    # 实例化插件
+                    plugin_instance: Plugins = PluginClass(self.server_address, self)
+                    # 传递插件配置
+                    plugin_instance.config = plugins_config[name]
+                    # 添加到插件列表
+                    if oi:
+                        self.plugins_list.append(plugin_instance)
+                        Log.info(
+                            f"成功热重载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
+                        )
+                    else:
+                        Log.info(
+                            f"成功关闭插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
+                        )
+                except Exception as e:
+                    Log.error(f"加载插件{name}失败：{e}")
+                    return False
+
+                enable = True
+                return True
+
+            else:
+                continue
+
+        if not enable:
+            Log.error(f"热重载插件{plugin_name}失败:没有对应的实现")
+            return False
 
     async def run(self) -> None:
         event = Event(self.plugins_list, self.debug)
