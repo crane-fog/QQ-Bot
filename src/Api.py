@@ -209,29 +209,30 @@ class Api:
                     {"group_id": group_id, "file": f"file://{file_path}", "name": name}
                 )
             headers = {"Content-Type": "application/json"}
-            response = await client(timeout=self.timeout).post(
-                self.api.bot_api_address + "upload_group_file",
-                data=params,
-                headers=headers,
-            )
-            response.aclose()
-            return response.json()
+            async with client(timeout=self.timeout) as r:
+                response = await r.post(
+                    self.api.bot_api_address + "upload_group_file",
+                    data=params,
+                    headers=headers,
+                )
+
+                return response.json()
 
         async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
             params = {"group_id": group_id, "messages": forward_message}
-            response = await client(timeout=self.timeout).post(
-                self.api.bot_api_address + "send_group_forward_msg", json=params
-            )
-            response.aclose()
-            return response.json()
+            async with client(timeout=self.timeout) as r:
+                response = await r.post(
+                    self.api.bot_api_address + "send_group_forward_msg", json=params
+                )
+                return response.json()
 
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
             params = {"user_id": user_id, "messages": forward_message}
-            response = await client(timeout=self.timeout).post(
-                self.api.bot_api_address + "send_private_forward_msg", json=params
-            )
-            response.aclose()
-            return response.json()
+            async with client(timeout=self.timeout) as r:
+                response = await r.post(
+                    self.api.bot_api_address + "send_private_forward_msg", json=params
+                )
+                return response.json()
 
     class MessageService:
         def __init__(self, api_instance):
