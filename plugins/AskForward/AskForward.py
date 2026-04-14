@@ -78,7 +78,7 @@ class AskForward(Plugins):
                 for msg in msgs[:-1]:
                     forward_msg.add_node(
                         type="msg",
-                        msg=msg[1],
+                        msg=remove_reply(clean_at(msg[1], True)),
                         sender_name=event.nickname,
                         uid=event.user_id,
                     )
