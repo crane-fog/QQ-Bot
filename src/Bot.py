@@ -269,11 +269,9 @@ class Bot:
                             f"成功热重载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
                         )
                     else:
-                        Log.info(
-                            f"成功关闭插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
-                        )
+                        Log.info(f"成功关闭插件：{name}")
                 except Exception as e:
-                    Log.error(f"加载插件{name}失败：{e}")
+                    Log.error(f"修改插件{name}失败：{e}")
                     return False
 
                 enable = True
