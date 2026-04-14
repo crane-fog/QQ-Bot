@@ -41,38 +41,22 @@ class Configset(Plugins):
                     status_list = []
                     if group_ids == []:
                         group_ids.append(str(event.group_id))
-                        if plugin == []:
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="未选择插件"
-                            )
-                            return
+                    if plugin == []:
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id, message="未选择插件"
+                        )
+                        return
 
-                        else:
-                            if len(plugin) > 1:
-                                self.api.groupService.send_group_msg(
-                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
-                                )
-                            for group_id in group_ids:
-                                status = self.bot.reload_plugins(
-                                    plugin_name=plugin[0], group_id=group_id, oi=True
-                                )
-                                status_list.append((group_id, status))
                     else:
-                        if plugin == []:
+                        if len(plugin) > 1:
                             self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="未选择插件"
+                                group_id=event.group_id, message="选择插件过多,将会只处理第一个"
                             )
-                            return
-                        else:
-                            if len(plugin) > 1:
-                                self.api.groupService.send_group_msg(
-                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
-                                )
-                            for group_id in group_ids:
-                                status = self.bot.reload_plugins(
-                                    plugin_name=plugin[0], group_id=group_id, oi=True
-                                )
-                                status_list.append((group_id, status))
+                        for group_id in group_ids:
+                            status = self.bot.reload_plugins(
+                                plugin_name=plugin[0], group_id=group_id, oi=True
+                            )
+                            status_list.append((group_id, status))
 
                     reply_message = "当前修正状态"
                     for statue in status_list:
@@ -93,34 +77,35 @@ class Configset(Plugins):
                     status_list = []
                     if group_ids == []:
                         group_ids.append(str(event.group_id))
-                        if plugin == []:
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id, message="未选择插件"
-                            )
-                            return
+                    if plugin == []:
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id, message="未选择插件"
+                        )
+                        return
 
-                        elif plugin[0] == "TheresaHelp":
+                    elif plugin[0] == "TheresaHelp":
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id,
+                            message="我不建议将提示信息关闭，这样可能导致无法明确看到当前插件运行的状态",
+                        )
+                        return
+                    elif plugin[0] == "Configset":
+                        self.api.groupService.send_group_msg(
+                            group_id=event.group_id,
+                            message="就算是你也不能将这个插件关掉，我不会允许",
+                        )
+                        return
+                    else:
+                        if len(plugin) > 1:
                             self.api.groupService.send_group_msg(
-                                group_id=event.group_id,
-                                message="我不建议将提示信息关闭，这样可能导致无法明确看到当前插件运行的状态",
+                                group_id=event.group_id, message="选择插件过多,将会只处理第一个"
                             )
-                            return
-                        elif plugin[0] == "Configset":
-                            self.api.groupService.send_group_msg(
-                                group_id=event.group_id,
-                                message="就算是你也不能将这个插件关掉，我不会允许",
+                        for group_id in group_ids:
+                            status = self.bot.reload_plugins(
+                                plugin_name=plugin[0], group_id=group_id, oi=False
                             )
-                            return
-                        else:
-                            if len(plugin) > 1:
-                                self.api.groupService.send_group_msg(
-                                    group_id=event.group_id, message="选择插件过多,将会只处理第一个"
-                                )
-                            for group_id in group_ids:
-                                status = self.bot.reload_plugins(
-                                    plugin_name=plugin[0], group_id=group_id, oi=False
-                                )
-                                status_list.append((group_id, status))
+                            status_list.append((group_id, status))
+
                     reply_message = "当前修正状态"
                     for statue in status_list:
                         reply_message += "\n"
