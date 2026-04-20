@@ -11,3 +11,5 @@ database_passwd = <passwd>
 database_name = bot
 owner_id = 123456789
 assistant_group = 123456789
+enable_webhook_handler = False
+webhook_handler_address = 127.0.0.1:8000
