@@ -106,7 +106,6 @@ class TheresaChat(Plugins):
                 "PRTS Runtime Error 0x5343: Debug Assertion Failed at File: /src/arknights/battle/scene/scene_main.cpp, Line: 2432",
             ]
             msg = random.choice(msg_list)
-            await self.save_bot_reply_to_db(group_id, msg)
             self.api.groupService.send_group_msg(group_id=group_id, message=msg)
             Log.debug(
                 f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
