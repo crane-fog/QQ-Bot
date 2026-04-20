@@ -3,6 +3,7 @@ import json
 import uvicorn
 from fastapi import FastAPI, Request
 
+from ..Api import Api
 from .Models import GiteaIssueCommentEvent, GiteaIssueLabelEvent, GiteaIssuesEvent, GiteaPushEvent
 
 app = FastAPI(title="Webhook Handler")
@@ -49,7 +50,8 @@ async def receive_post(request: Request):
 
 
 class WebhookHandler:
-    def __init__(self):
+    def __init__(self, api: Api):
+        self.api: Api = api
         self.server = None
 
     async def run(self, ip, port) -> None:

@@ -202,7 +202,7 @@ class Bot:
         # web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
         # Log.info("web controller 服务启动成功！")
         if self.enable_webhook_handler:
-            webhook_handler = WebhookHandler()
+            webhook_handler = WebhookHandler(self.api)
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
             Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")
             webhook_server = asyncio.create_task(webhook_handler.run(webhook_ip, int(webhook_port)))
