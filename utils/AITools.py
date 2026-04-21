@@ -8,8 +8,10 @@ from src.Api import Api
 
 DPSK_KEY: str = os.environ["DPSK_KEY"]
 DMXAPI_KEY: str = os.environ["DMXAPI_KEY"]
+MNAPI_KEY: str = os.environ["MNAPI_KEY"]
 DPSK_BASE_URL: str = "https://api.deepseek.com"
 DMXAPI_BASE_URL: str = "https://www.dmxapi.cn/v1"
+MNAPI_BASE_URL: str = "https://api.mnapi.com/v1"
 
 
 class LlmModels(Enum):
@@ -58,7 +60,7 @@ async def get_llm_response(
     api: Api = None,
 ) -> str:
     if model == LlmModels.GEMINI_3_FLASH_PREVIEW:
-        client = AsyncOpenAI(api_key=DMXAPI_KEY, base_url=DMXAPI_BASE_URL)
+        client = AsyncOpenAI(api_key=MNAPI_KEY, base_url=MNAPI_BASE_URL)
     elif model == LlmModels.DEEPSEEK_CHAT or model == LlmModels.DEEPSEEK_REASONER:
         client = AsyncOpenAI(api_key=DPSK_KEY, base_url=DPSK_BASE_URL)
     else:

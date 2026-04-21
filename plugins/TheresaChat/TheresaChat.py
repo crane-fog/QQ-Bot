@@ -1,3 +1,4 @@
+import base64
 import datetime
 import json
 import os
@@ -141,7 +142,9 @@ class TheresaChat(Plugins):
                 group_id=group_id,
             )
 
-            context_messages = await self.load_context_from_db(group_id, self.context_length)
+            context_messages = await self.load_context_from_db(
+                group_id, self.context_length, resolve_imgs=True
+            )
             response = await get_llm_response(
                 [
                     {"role": "system", "content": persona},
@@ -156,7 +159,23 @@ class TheresaChat(Plugins):
                 self.group_cooldown[group_id] = time.time()
                 self.api.groupService.send_group_msg(group_id=group_id, message=response)
 
-    async def resolve_msg(self, session: AsyncSession, message: str) -> str:
+    async def resolve_img(self, message: str) -> list[dict]:
+        cqs = CQHelper.loads_cq(message)
+        msgs = []
+        for cq in cqs:
+            if cq.cq_type == "image":
+                msgs.append(
+                    {
+                        "type": "image_url",
+                        "image_url": {"url": encode_image(cq.path)},
+                    }
+                )
+                message = message.replace(str(cq), "")
+        if message.strip():
+            msgs.insert(0, {"type": "text", "text": message.strip()})
+        return msgs
+
+    async def resolve_reply(self, session: AsyncSession, message: str) -> str:
         cqs = CQHelper.loads_cq(message)
         for cq in cqs:
             if cq.cq_type == "reply":
@@ -171,7 +190,9 @@ class TheresaChat(Plugins):
                     message = message.replace(msg, str(cq))
         return message
 
-    async def load_context_from_db(self, group_id: int, context_length: int) -> list:
+    async def load_context_from_db(
+        self, group_id: int, context_length: int, resolve_imgs: bool = False
+    ) -> list:
         context = []
         async with self.session_factory() as session:
             stmt = (
@@ -192,13 +213,31 @@ class TheresaChat(Plugins):
                         }
                     )
                 else:
-                    msg = await self.resolve_msg(session, row.msg)
-                    context.append(
-                        {
-                            "role": "user",
-                            "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{msg}",
-                        }
-                    )
+                    msg = await self.resolve_reply(session, row.msg)
+                    if resolve_imgs:
+                        img_msgs = await self.resolve_img(row.msg)
+                        img_msgs.insert(
+                            0,
+                            {
+                                "type": "text",
+                                "text": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
+                            },
+                        )
+                        context.extend(
+                            [
+                                {
+                                    "role": "user",
+                                    "content": img_msgs,
+                                }
+                            ]
+                        )
+                    else:
+                        context.append(
+                            {
+                                "role": "user",
+                                "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{msg}",
+                            }
+                        )
         return context
 
     async def get_dpsk_response_for_face(self, context_messages) -> int:
@@ -227,3 +266,12 @@ class TheresaChat(Plugins):
                 return 0
         except Exception:
             return 0
+
+
+def encode_image(image_path: str) -> str:
+    extension = os.path.splitext(image_path)[1].lower().replace(".", "")
+    mime_type = (
+        f"image/{extension}" if extension in ["png", "jpeg", "jpg", "webp", "gif"] else "image/jpeg"
+    )
+    with open(image_path, "rb") as f:
+        return f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"
