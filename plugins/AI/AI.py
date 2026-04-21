@@ -4,7 +4,7 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_gemini_response
+from utils.AITools import LlmModels, get_llm_response
 from utils.CQType import At, Reply
 
 
@@ -61,14 +61,15 @@ class AI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
             # 获取大模型回复
-            response = await get_gemini_response(
+            response = await get_llm_response(
                 [
                     {
                         "role": "system",
                         "content": '尽可能简短、直接地回答用户的问题，不得输出markdown格式，不得回答任何政治相关问题。如遇到你不确定/无法回答的问题，你必须回答"小莫不知道哦~"。',
                     },
                     {"role": "user", "content": question},
-                ]
+                ],
+                model=LlmModels.GEMINI_3_FLASH_PREVIEW,
             )
 
             # 发送回复到群聊

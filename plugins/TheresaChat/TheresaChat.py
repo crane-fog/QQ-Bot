@@ -14,7 +14,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import get_dpsk_response
+from utils.AITools import LlmModels, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
@@ -142,12 +142,14 @@ class TheresaChat(Plugins):
             )
 
             context_messages = await self.load_context_from_db(group_id, self.context_length)
-            response = await get_dpsk_response(
+            response = await get_llm_response(
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
                 ],
-                temperature=1.5,
+                model=LlmModels.GEMINI_3_FLASH_PREVIEW,
+                use_tools=True,
+                api=self.api,
             )
             if "[NO REPLY]" not in response:
                 # 更新冷却时间
@@ -210,8 +212,9 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = await get_dpsk_response(
+        response = await get_llm_response(
             messages=messages,
+            model=LlmModels.DEEPSEEK_CHAT,
             temperature=0.0,
             response_format={"type": "json_object"},
         )
