@@ -1,6 +1,6 @@
 import json
 import os
-from enum import Enum
+from typing import Literal
 
 from openai import AsyncOpenAI
 
@@ -12,12 +12,6 @@ MNAPI_KEY: str = os.environ["MNAPI_KEY"]
 DPSK_BASE_URL: str = "https://api.deepseek.com"
 DMXAPI_BASE_URL: str = "https://www.dmxapi.cn/v1"
 MNAPI_BASE_URL: str = "https://api.mnapi.com/v1"
-
-
-class LlmModels(Enum):
-    GEMINI_3_FLASH_PREVIEW = "gemini-3-flash-preview"
-    DEEPSEEK_CHAT = "deepseek-chat"
-    DEEPSEEK_REASONER = "deepseek-reasoner"
 
 
 tool_def: list[dict] = [
@@ -53,25 +47,30 @@ tool_def: list[dict] = [
 
 async def get_llm_response(
     messages: list[dict],
-    model: LlmModels = None,
+    *,
+    model: Literal["gemini-3-flash-preview", "deepseek-v4-pro", "deepseek-v4-flash"] = None,
     temperature: float = 1.0,
     response_format: dict = None,
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] = "xhigh",
+    thinking_enabled: bool = True,
     use_tools: bool = False,
     api: Api = None,
 ) -> str:
-    if model == LlmModels.GEMINI_3_FLASH_PREVIEW:
+    if model == "gemini-3-flash-preview":
         client = AsyncOpenAI(api_key=MNAPI_KEY, base_url=MNAPI_BASE_URL)
-    elif model == LlmModels.DEEPSEEK_CHAT or model == LlmModels.DEEPSEEK_REASONER:
+    elif model == "deepseek-v4-pro" or model == "deepseek-v4-flash":
         client = AsyncOpenAI(api_key=DPSK_KEY, base_url=DPSK_BASE_URL)
     else:
         raise ValueError("Unsupported model")
 
     response = await client.chat.completions.create(
-        model=model.value,
+        model=model,
         messages=messages,
         temperature=temperature,
         response_format=response_format,
+        reasoning_effort=reasoning_effort,
         tools=tool_def if use_tools else None,
+        extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
     )
     if response.choices:
         print(response.choices[0].message)
@@ -96,10 +95,12 @@ async def get_llm_response(
                         }
                     )
             response = await client.chat.completions.create(
-                model=model.value,
+                model=model,
                 messages=messages,
                 temperature=temperature,
                 response_format=response_format,
+                reasoning_effort=reasoning_effort,
+                extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
             )
         return response.choices[0].message.content
     else:

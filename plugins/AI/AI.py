@@ -4,7 +4,7 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import LlmModels, get_llm_response
+from utils.AITools import get_llm_response
 from utils.CQType import At, Reply
 
 
@@ -69,7 +69,7 @@ class AI(Plugins):
                     },
                     {"role": "user", "content": question},
                 ],
-                model=LlmModels.GEMINI_3_FLASH_PREVIEW,
+                model="gemini-3-flash-preview",
             )
 
             # 发送回复到群聊

@@ -5,7 +5,7 @@ import re
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import LlmModels, get_llm_response
+from utils.AITools import get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import At, Reply
 
@@ -52,7 +52,7 @@ class TheresaImage(Plugins):
                                 ],
                             },
                         ],
-                        model=LlmModels.GEMINI_3_FLASH_PREVIEW,
+                        model="gemini-3-flash-preview",
                     )
                     reply_message = Reply(id=event.message_id) + response
                     self.api.groupService.send_group_msg(

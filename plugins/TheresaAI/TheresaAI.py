@@ -8,7 +8,7 @@ from jinja2 import Template
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import LlmModels, get_llm_response
+from utils.AITools import get_llm_response
 from utils.CQType import At, Reply
 
 
@@ -82,7 +82,7 @@ class TheresaAI(Plugins):
                     {"role": "system", "content": persona},
                     {"role": "user", "content": question_full},
                 ],
-                model=LlmModels.GEMINI_3_FLASH_PREVIEW,
+                model="gemini-3-flash-preview",
             )
 
             # 发送回复到群聊

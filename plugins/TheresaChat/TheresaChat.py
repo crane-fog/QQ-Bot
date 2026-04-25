@@ -15,7 +15,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import LlmModels, get_llm_response
+from utils.AITools import get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
@@ -150,7 +150,7 @@ class TheresaChat(Plugins):
                     {"role": "system", "content": persona},
                     *context_messages,
                 ],
-                model=LlmModels.GEMINI_3_FLASH_PREVIEW,
+                model="gemini-3-flash-preview",
                 use_tools=True,
                 api=self.api,
             )
@@ -253,7 +253,7 @@ class TheresaChat(Plugins):
 
         response = await get_llm_response(
             messages=messages,
-            model=LlmModels.DEEPSEEK_CHAT,
+            model="deepseek-v4-flash",
             temperature=0.0,
             response_format={"type": "json_object"},
         )

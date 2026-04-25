@@ -5,7 +5,7 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
 from src.PrintLog import Log
-from utils.AITools import LlmModels, get_llm_response
+from utils.AITools import get_llm_response
 from utils.CQType import At
 
 
@@ -70,8 +70,7 @@ class TheresaMathAI(Plugins):
                     {"role": "system", "content": "You are a professional math prover."},
                     {"role": "user", "content": question},
                 ],
-                model=LlmModels.DEEPSEEK_REASONER,
-                temperature=0.0,
+                model="deepseek-v4-pro",
             )
 
             asker_qq = event.user_id
