@@ -1,5 +1,6 @@
-import html
-import subprocess
+from asyncio import create_subprocess_shell
+from html import unescape
+from subprocess import PIPE
 
 from plugins import Plugins, plugin_main
 from src.event_handler import GroupMessageEventHandler
@@ -19,23 +20,24 @@ class Theresac(Plugins):
 
     @plugin_main(check_group=False, call_word=["Theresac"])
     async def main(self, event: GroupMessageEventHandler, debug: bool):
-        message = html.unescape(event.message)
+        message = unescape(event.message)
 
         if not event.user_id == self.bot.owner_id:
             self.api.groupService.send_group_msg(group_id=event.group_id, message="无权限")
             return
 
         cmd = " ".join(message.split(" ")[1:])
-        result = subprocess.run(cmd, capture_output=True, text=True, shell=True)
+        result = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
+        stdout, stderr = await result.communicate()
 
         msg = ""
 
-        if result.stdout:
-            msg += f"stdout:\n{result.stdout}\n"
-            if result.stderr:
+        if stdout:
+            msg += f"stdout:\n{stdout.decode(errors='ignore')}\n"
+            if stderr:
                 msg += "------\n"
-        if result.stderr:
-            msg += f"stderr:\n{result.stderr}\n"
+        if stderr:
+            msg += f"stderr:\n{stderr.decode(errors='ignore')}\n"
 
         msg = msg.replace("[CQ:", "\\CQ:").strip()
 
