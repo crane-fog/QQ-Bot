@@ -1,6 +1,6 @@
 import os
 
-from sqlalchemy import Column, Integer, Text
+from sqlalchemy import Column, Integer, Text, delete, insert
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -80,44 +80,51 @@ class DataImport(Plugins):
             if table_name != "stulists_detail"
             else self.get_model("stulists")
         )
-
+        rows: list[dict] = []
         delimiter = "\t" if "\t" in lines[0] else " "
+
+        if table_name == "scores":
+            for line in lines:
+                _, stu_id, score = line.strip().split(delimiter)
+                rows.append({"semester": semester, "stu_id": int(stu_id), "score": int(score)})
+        elif table_name == "linecounts":
+            data_list = []
+            for line in lines:
+                stu_id, count = line.strip().split(delimiter)
+                data_list.append({"stu_id": int(stu_id), "count": int(count)})
+            data_list.sort(key=lambda x: x["count"])
+            for index, data in enumerate(data_list):
+                rows.append(
+                    {
+                        "semester": semester,
+                        "stu_id": data["stu_id"],
+                        "count": data["count"],
+                        "rank": index,
+                    }
+                )
+        elif table_name == "stulists":
+            for line in lines:
+                stu_id, name = line.strip().split(delimiter)
+                rows.append(
+                    {"semester": semester, "stu_id": int(stu_id), "name": name, "class_": 0}
+                )
+        elif table_name == "stulists_detail":
+            for line in lines:
+                class_raw, stu_id, name = line.strip().split(delimiter)
+                class_ = int(class_raw[-2:])
+                rows.append(
+                    {
+                        "semester": semester,
+                        "stu_id": int(stu_id),
+                        "name": name,
+                        "class_": class_,
+                    }
+                )
+
         async with self.session_factory() as session:
             async with session.begin():
-                if table_name == "scores":
-                    for line in lines:
-                        _, stu_id, score = line.strip().split(delimiter)
-                        score_info = model(semester=semester, stu_id=int(stu_id), score=int(score))
-                        await session.merge(score_info)
-                elif table_name == "linecounts":
-                    data_list = []
-                    for line in lines:
-                        stu_id, count = line.strip().split(delimiter)
-                        data_list.append({"stu_id": int(stu_id), "count": int(count)})
-                    data_list.sort(key=lambda x: x["count"])
-                    for index, data in enumerate(data_list):
-                        count_info = model(
-                            semester=semester,
-                            stu_id=data["stu_id"],
-                            count=data["count"],
-                            rank=index,
-                        )
-                        await session.merge(count_info)
-                elif table_name == "stulists":
-                    for line in lines:
-                        stu_id, name = line.strip().split(delimiter)
-                        stulist_info = model(
-                            semester=semester, stu_id=int(stu_id), name=name, class_=0
-                        )
-                        await session.merge(stulist_info)
-                elif table_name == "stulists_detail":
-                    for line in lines:
-                        class_raw, stu_id, name = line.strip().split(delimiter)
-                        class_ = int(class_raw[-2:])
-                        stulist_info = model(
-                            semester=semester, stu_id=int(stu_id), name=name, class_=class_
-                        )
-                        await session.merge(stulist_info)
+                await session.execute(delete(model).where(model.semester == semester))
+                await session.execute(insert(model), rows)
         return
 
     Basement = declarative_base()
