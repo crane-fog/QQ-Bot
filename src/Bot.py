@@ -10,11 +10,11 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
 from plugins import Plugins
-from web.WebController import WebController
 
 from .Api import Api
 from .EventController import Event
 from .PrintLog import Log
+from .webhook_handler.WebhookHandler import WebhookHandler
 
 # 设置 SQLAlchemy 相关的所有日志为 CRITICAL
 logging.getLogger("sqlalchemy").setLevel(logging.CRITICAL)
@@ -67,6 +67,15 @@ class Bot:
             "database_name": self.config.get("Init", "database_name", fallback=None),
             "owner_id": self.config.getint("Init", "owner_id", fallback=None),
             "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
+            "enable_webhook_handler": self.config.getboolean(
+                "Init", "enable_webhook_handler", fallback=None
+            ),
+            "webhook_handler_address": self.config.get(
+                "Init", "webhook_handler_address", fallback=None
+            ),
+            "webhook_response_group": self.config.getint(
+                "Init", "webhook_response_group", fallback=None
+            ),
         }
 
         # 检查哪些关键配置项是空的
@@ -87,7 +96,9 @@ class Bot:
         self.database_name: str = required_configs["database_name"]
         self.owner_id: int = required_configs["owner_id"]
         self.assistant_group: int = required_configs["assistant_group"]
-
+        self.enable_webhook_handler: bool = required_configs["enable_webhook_handler"]
+        self.webhook_handler_address: str = required_configs["webhook_handler_address"]
+        self.webhook_response_group: int = required_configs["webhook_response_group"]
         Log.info("成功加载配置文件")
         Log.info("加载的bot初始化配置信息如下：")
         for item in required_configs.items():
@@ -186,21 +197,29 @@ class Bot:
     async def run(self) -> None:
         event = Event(self.plugins_list, self.debug)
         event_ip, event_port = self.client_address.split(":")
-        Log.info(f"启动监听服务 {event_ip}:{event_port}")
+        Log.info(f"启动监听服务 {self.client_address}")
         event_server = asyncio.create_task(event.run(event_ip, int(event_port)))
-        Log.info("监听服务启动成功！")
-
-        web_controller = WebController(self)
-        web_ip, web_port = self.web_controller_address.split(":")
-        Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
-        web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
-        Log.info("web controller 服务启动成功！")
-
-        try:
-            await asyncio.gather(event_server, web_server)
-        finally:
-            await event.stop()
-            await web_controller.stop()
+        ## web controller 暂时弃用
+        # web_controller = WebController(self)
+        # web_ip, web_port = self.web_controller_address.split(":")
+        # Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
+        # web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
+        # Log.info("web controller 服务启动成功！")
+        if self.enable_webhook_handler:
+            webhook_handler = WebhookHandler(self.api, self.webhook_response_group)
+            webhook_ip, webhook_port = self.webhook_handler_address.split(":")
+            Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")
+            webhook_server = asyncio.create_task(webhook_handler.run(webhook_ip, int(webhook_port)))
+            try:
+                await asyncio.gather(event_server, webhook_server)
+            finally:
+                await event.stop()
+                await webhook_handler.stop()
+        else:
+            try:
+                await event_server
+            finally:
+                await event.stop()
 
 
 def check_config_files(configs_path: str) -> None:

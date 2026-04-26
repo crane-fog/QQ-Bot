@@ -1,48 +1,99 @@
+import json
 import os
+from typing import Literal
 
 from openai import AsyncOpenAI
 
-DPSK_KEY: str = os.environ["DPSK_KEY"]
-DMXAPI_KEY: str = os.environ["DMXAPI_KEY"]
-DPSK_BASE_URL: str = "https://api.deepseek.com"
-DMXAPI_BASE_URL: str = "https://www.dmxapi.cn/v1"
+from src.Api import Api
+
+tool_def: list[dict] = [
+    {
+        "type": "function",
+        "function": {
+            "name": "set_group_ban",
+            "strict": False,
+            "description": "Ban a user in a group, the user will not be able to send messages in the group for a certain period of time. You can unset the ban by use duration 0. You should prudently use this tool.",
+            "parameters": {
+                "type": "object",
+                "properties": {
+                    "user_id": {
+                        "type": "integer",
+                        "description": "The user ID of the person to ban.",
+                    },
+                    "group_id": {
+                        "type": "integer",
+                        "description": "The group ID where the ban will be applied.",
+                    },
+                    "duration": {
+                        "type": "integer",
+                        "description": "The duration of the ban in seconds. Must be in the range of 0 to 2592000.",
+                    },
+                },
+                "required": ["user_id", "group_id", "duration"],
+                "additionalProperties": False,
+            },
+        },
+    }
+]
 
 
-async def get_dpsk_response(
+async def get_llm_response(
     messages: list[dict],
-    model: str = "deepseek-chat",
+    *,
+    model: Literal["gemini-3-flash-preview", "deepseek-v4-pro", "deepseek-v4-flash"] = None,
     temperature: float = 1.0,
     response_format: dict = None,
+    reasoning_effort: Literal["low", "medium", "high", "xhigh", "max"] = "xhigh",
+    thinking_enabled: bool = True,
+    use_tools: bool = False,
+    api: Api = None,
 ) -> str:
-    client = AsyncOpenAI(api_key=DPSK_KEY, base_url=DPSK_BASE_URL)
-
-    response = await client.chat.completions.create(
-        model=model,
-        messages=messages,
-        temperature=temperature,
-        response_format=response_format,
-    )
-    if response.choices:
-        return response.choices[0].message.content
+    if model == "gemini-3-flash-preview":
+        client = AsyncOpenAI(api_key=os.environ["MNAPI_KEY"], base_url="https://api.mnapi.com/v1")
+    elif model == "deepseek-v4-pro" or model == "deepseek-v4-flash":
+        client = AsyncOpenAI(api_key=os.environ["DPSK_KEY"], base_url="https://api.deepseek.com")
     else:
-        return "[NO REPLY]"
-
-
-async def get_gemini_response(
-    messages: list[dict],
-    model: str = "gemini-3-flash-preview",
-    temperature: float = 1.0,
-    response_format: dict = None,
-) -> str:
-    client = AsyncOpenAI(api_key=DMXAPI_KEY, base_url=DMXAPI_BASE_URL)
+        raise ValueError("Unsupported model")
 
     response = await client.chat.completions.create(
         model=model,
         messages=messages,
         temperature=temperature,
         response_format=response_format,
+        reasoning_effort=reasoning_effort,
+        tools=tool_def if use_tools else None,
+        extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
     )
     if response.choices:
+        print(response.choices[0].message)
+        tools_used = response.choices[0].message.tool_calls if use_tools else None
+        if tools_used:
+            messages.append(response.choices[0].message)
+            for tool_call in tools_used:
+                if tool_call.function.name == "set_group_ban":
+                    print(f"{tool_call.function}")
+                    args = json.loads(tool_call.function.arguments)
+                    user_id = args["user_id"]
+                    group_id = args["group_id"]
+                    duration = args["duration"]
+                    result = api.groupService.set_group_ban(
+                        group_id=group_id, user_id=user_id, duration=duration
+                    )
+                    messages.append(
+                        {
+                            "role": "tool",
+                            "tool_call_id": tool_call.id,
+                            "content": f"{result}",
+                        }
+                    )
+            response = await client.chat.completions.create(
+                model=model,
+                messages=messages,
+                temperature=temperature,
+                response_format=response_format,
+                reasoning_effort=reasoning_effort,
+                extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
+            )
         return response.choices[0].message.content
     else:
         return "[NO REPLY]"

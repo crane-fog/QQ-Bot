@@ -66,7 +66,12 @@ class Repeater(Plugins):
                         reply_message = self.config.get("special_message")
                     else:
                         return
-            if (event.user_id in ignored_ids) or (event.role in ["admin", "owner"]):
+            if event.user_id in ignored_ids:
+                return
+            if event.role in ["admin", "owner"]:
+                self.api.groupService.send_group_msg(
+                    group_id=group_id, message="管理员带头复读，当罚"
+                )
                 return
 
             Log.debug(

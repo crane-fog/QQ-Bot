@@ -4,8 +4,6 @@
 
 一款由 Python 编写的基于 onebot 协议的 qq 机器人后端框架，使用面向对象的思想实现了便于插件管理和开发的框架环境，部分插件主要用于高级语言程序设计课程群聊管理
 
-框架自带运行日志输出系统，同时配备了由原作者编写的 web 控制面板方便远程管理 bot 的运行情况与监测运行日志
-
 ## 在开发插件之前，你需要做哪些准备？
 - 本项目使用 uv 进行依赖管理 [uv安装文档](https://docs.astral.sh/uv/getting-started/installation/)
 - 拉取项目代码及初始化
@@ -40,7 +38,7 @@
 ------|----
 server_address | 监听端的监听地址（即 bot 上报事件的地址）
 client_address | 监听端的事件上报的地址（即 bot 接收事件的地址）
-web_controller_address | bot web 控制面板的监听地址
+web_controller_address | bot web 控制面板的监听地址，目前弃用
 bot_name | bot 的名字（目前似乎没有什么用）
 debug | 是否开启日志调试模式（True/False）
 database_enable | 是否启用数据库（True/False）（建议使用 PostgreSQL）
@@ -50,6 +48,10 @@ database_passwd | 数据库密码
 database_name | 数据库名
 owner_id | 机器人所有者QQ号
 assistant_group | 助教群号（用于部分插件）
+enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），用于高程 Gitea 处理
+webhook_handler_address | Webhook Handler 服务监听地址
+webhook_response_group | Webhook Handler 发送消息的群号
+
 
 ### `configs/groups.ini` 群聊插件启用信息配置
 ```ini
@@ -80,7 +82,7 @@ some_special_config = 123
 
 TODO:
 
-- 重写 WebController
+- 重写 WebController，目前弃用
 - config toml
 - 为 Api 引入 TypedDict
 - 统一数据库模型
