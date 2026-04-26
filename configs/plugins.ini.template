@@ -1,25 +1,25 @@
 [AI]
-enable = True
+enable = False
 
 [DontPoke]
-enable = True
+enable = False
 repoke_frequency = 50
 ban_time = 00:00:00-24:00:00
 cooldown_time = 60
 
 [EmojiLike]
-enable = True
+enable = False
 ignored_ids = 123,456
 frequency = 1
 
 [GroupApprove]
-enable = True
+enable = False
 parts = 2
 reject = False
 strict = False
 
 [RecallPrevent]
-enable = True
+enable = False
 ban = True
 for_everyone = True
 for_administer = False
@@ -30,7 +30,7 @@ port = 6379
 db = 0
 
 [Repeater]
-enable = True
+enable = False
 threshold = 2
 ban = True
 recall = True
@@ -44,60 +44,60 @@ ignored_ids = 123,456
 enable = False
 
 [TheresaCard]
-enable = True
+enable = False
 ignored_ids = 123,456
 permission_ids = 123,456
 
 [TheresaAI]
-enable = True
+enable = False
 
 [TheresaBan]
-enable = True
+enable = False
 
 [Theresac]
-enable = True
+enable = False
 
 [TheresaDora]
-enable = True
+enable = False
 
 [TheresaGoodMorning]
-enable = True
+enable = False
 
 [TheresaMathAI]
 enable = False
 
 [TheresaWithdraw]
-enable = True
+enable = False
 
 [TheresaHelp]
-enable = True
+enable = False
 
 [TheresaLuck]
-enable = True
+enable = False
 
 [TheresaChat]
-enable = True
+enable = False
 context_length = 200
 context_length_for_face = 20
 
 [MoeGoe]
-enable = True
+enable = False
 url = http://127.0.0.1:8080/tts
 
 [GetStuId]
-enable = True
+enable = False
 
 [QiuDao]
-enable = True
+enable = False
 
 [LineCount]
-enable = True
+enable = False
 
 [MessageRecorder]
-enable = True
+enable = False
 
 [TheresaImage]
-enable = True
+enable = False
 
 [A_Pixiv]
 enable = False
@@ -109,15 +109,15 @@ enable = False
 enable = False
 
 [DataImport]
-enable = True
+enable = False
 
 [AskForward]
-enable = True
+enable = False
 broadcast_target_group = 12345
 answer_group = 12345
 ask_groups = 12345,67890
 special_assistant_list = 12345,67890
 
 [TheresaCardBatch]
-enable = True
+enable = False
 target_groups = 12345,67890

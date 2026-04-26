@@ -15,9 +15,6 @@ plugins_config_path = os.path.join(configs_path, "plugins.ini")
 plugins_template_config_path = os.path.join(configs_path, "plugins.ini.template")
 groups_config_path = os.path.join(configs_path, "groups.ini")
 
-os.environ.setdefault("DMXAPI_KEY", "testkey")
-os.environ.setdefault("DPSK_KEY", "testkey")
-
 
 def get_plugin_names():
     return [name for _, name, ispkg in iter_modules([plugins_path]) if ispkg]

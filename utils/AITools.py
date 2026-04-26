@@ -6,14 +6,6 @@ from openai import AsyncOpenAI
 
 from src.Api import Api
 
-DPSK_KEY: str = os.environ["DPSK_KEY"]
-DMXAPI_KEY: str = os.environ["DMXAPI_KEY"]
-MNAPI_KEY: str = os.environ["MNAPI_KEY"]
-DPSK_BASE_URL: str = "https://api.deepseek.com"
-DMXAPI_BASE_URL: str = "https://www.dmxapi.cn/v1"
-MNAPI_BASE_URL: str = "https://api.mnapi.com/v1"
-
-
 tool_def: list[dict] = [
     {
         "type": "function",
@@ -57,9 +49,9 @@ async def get_llm_response(
     api: Api = None,
 ) -> str:
     if model == "gemini-3-flash-preview":
-        client = AsyncOpenAI(api_key=MNAPI_KEY, base_url=MNAPI_BASE_URL)
+        client = AsyncOpenAI(api_key=os.environ["MNAPI_KEY"], base_url="https://api.mnapi.com/v1")
     elif model == "deepseek-v4-pro" or model == "deepseek-v4-flash":
-        client = AsyncOpenAI(api_key=DPSK_KEY, base_url=DPSK_BASE_URL)
+        client = AsyncOpenAI(api_key=os.environ["DPSK_KEY"], base_url="https://api.deepseek.com")
     else:
         raise ValueError("Unsupported model")
 

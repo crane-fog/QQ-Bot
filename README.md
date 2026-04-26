@@ -50,6 +50,7 @@ owner_id | 机器人所有者QQ号
 assistant_group | 助教群号（用于部分插件）
 enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），用于高程 Gitea 处理
 webhook_handler_address | Webhook Handler 服务监听地址
+webhook_response_group | Webhook Handler 发送消息的群号
 
 
 ### `configs/groups.ini` 群聊插件启用信息配置
