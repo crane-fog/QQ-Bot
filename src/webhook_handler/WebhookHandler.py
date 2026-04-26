@@ -58,6 +58,9 @@ class WebhookHandler:
 
     async def resolve_issues(self, data: GiteaIssuesEvent) -> None:
         print("Received issues event")
+
+        if data.issue.body is None:
+            data.issue.body = ""
         image_urls: list[str] = []
         for pic in data.issue.assets:
             image_urls.append(pic.browser_download_url)
