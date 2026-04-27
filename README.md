@@ -16,27 +16,29 @@
 
 ## 暂时建议使用 LLBot 作为监听端
 
-- 安装 LLBot
+#### 安装 LLBot
 
 参考 [LLBot文档](https://llonebot.apifox.cn/)
 
 其中 systemd 服务脚本需要自行编写，后续会补充。
 
-- 在WebUI中进入 OneBot 11 选项页面进行配置
+### 在 WebUI 中进入 OneBot 11 选项页面进行配置
 
 一般安装完之后 WebUI 为 localhost:3080，由于没有转发到局域网，仅限本机访问，建议在本机使用 nginx 配置转发。
 
-点击“HTTP服务”  
-启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 server_address  
-消息格式选择“CQ码”  
-保存  
+---
+- 点击“HTTP服务”
+- 启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 server_address
+- 消息格式选择“CQ码”
+- 保存
 
-点击“HTTP上报”  
-启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 client_address  
-消息格式选择“CQ码”  
-保存  
+---
+- 点击“HTTP上报”
+- 启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 client_address
+- 消息格式选择“CQ码”
+- 保存
 
-- 配置 configs/*.ini
+### 配置 configs/*.ini
 
 ```bash
 cp configs/bot.ini.template configs/bot.ini
@@ -94,7 +96,7 @@ some_special_config = 123
 
 - 启动 bot
     ```bash
-    uv run main.py
+    uv run python main.py
     ```
 
 > 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
