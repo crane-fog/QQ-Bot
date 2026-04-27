@@ -4,7 +4,7 @@
 
 一款由 Python 编写的基于 onebot 协议的 qq 机器人后端框架，使用面向对象的思想实现了便于插件管理和开发的框架环境，部分插件主要用于高级语言程序设计课程群聊管理
 
-## 在开发插件之前，你需要做哪些准备？
+## 启动准备
 - 本项目使用 uv 进行依赖管理 [uv安装文档](https://docs.astral.sh/uv/getting-started/installation/)
 - 拉取项目代码及初始化
     ```bash
@@ -13,24 +13,38 @@
     uv sync
     uv run pre-commit install
     ```
-- 安装并正确配置运行 bot 的 qq 监听端（详见后文），建议使用 [LLBot](https://github.com/LLOneBot/LuckyLilliaBot)
-- 启动 bot
-    ```bash
-    uv run main.py
-    ```
 
-## 监听端配置
-- 启用HTTP服务
-- 设置“HTTP服务监听端口”，例：5700（对应 `bot.ini` 中的 server_address 端口）（端口可任意指定）
-- 勾选“启用HTTP事件上报”
-- 设置上报地址，例：http://127.0.0.1:5701/onebot （其端口对应 `bot.ini` 中的 client_address 端口）（端口可任意指定）
-- 以CQ码格式接收消息
+## 暂时建议使用 LLBot 作为监听端
 
-> 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
+- 安装 LLBot
 
-## 配置文件说明
+参考 [LLBot文档](https://llonebot.apifox.cn/)
 
-> 在 clone 项目后，对于 `configs` 文件夹下的每个配置文件，需要复制一份去掉 `.template` 后缀的文件，并根据需要修改配置项，bot 启动时如无法找到配置文件会自动复制模板文件
+其中 systemd 服务脚本需要自行编写，后续会补充。
+
+- 在WebUI中进入 OneBot 11 选项页面进行配置
+
+一般安装完之后 WebUI 为 localhost:3080，由于没有转发到局域网，仅限本机访问，建议在本机使用 nginx 配置转发。
+
+点击“HTTP服务”  
+启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 server_address  
+消息格式选择“CQ码”  
+保存  
+
+点击“HTTP上报”  
+启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 client_address  
+消息格式选择“CQ码”  
+保存  
+
+- 配置 configs/*.ini
+
+```bash
+cp configs/bot.ini.template configs/bot.ini
+cp configs/groups.ini.template configs/groups.ini
+cp configs/plugins.ini.template configs/plugins.ini
+```
+
+> 自行配置各个配置文件。 bot 启动时如无法找到配置文件会自动复制模板文件
 
 ### `configs/bot.ini` bot 基础信息配置
 
@@ -78,14 +92,12 @@ some_special_config = 123
 
 其余可包含插件需要读取的特殊配置项，建议将插件中需要可变的配置项写入此文件
 
----
+- 启动 bot
+    ```bash
+    uv run main.py
+    ```
 
-TODO:
-
-- 重写 WebController，目前弃用
-- config toml
-- 为 Api 引入 TypedDict
-- 统一数据库模型
+> 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
 
 ---
 
