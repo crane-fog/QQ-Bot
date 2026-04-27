@@ -101,6 +101,16 @@ some_special_config = 123
 
 > 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
 
+## 开发提交
+
+PR 提交 dev 分支，一次提交尽量只包含一个功能点或修复一个 bug
+
+提交大量文件之前可以先进行测试，确保 pre-commit CI 能够通过
+
+```bash
+uv run pre-commit run --all-files
+```
+
 ---
 
 该项目曾为 [JustMon1ka/QQ-Bot-New](https://github.com/JustMon1ka/QQ-Bot-New) 的 Fork
