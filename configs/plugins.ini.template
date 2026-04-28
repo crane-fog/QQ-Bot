@@ -55,7 +55,7 @@ enable = False
 enable = False
 
 [Theresac]
-enable = False
+enable = True
 
 [TheresaDora]
 enable = False
@@ -70,7 +70,7 @@ enable = False
 enable = False
 
 [TheresaHelp]
-enable = False
+enable = True
 
 [TheresaLuck]
 enable = False
@@ -121,3 +121,6 @@ special_assistant_list = 12345,67890
 [TheresaCardBatch]
 enable = False
 target_groups = 12345,67890
+
+[Configset]
+enable = True

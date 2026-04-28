@@ -2,6 +2,7 @@ import asyncio
 import configparser
 import logging
 import os
+import sys
 from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
@@ -159,8 +160,7 @@ class Bot:
         # 读取统一的插件配置文件
         plugins_config = configparser.ConfigParser()
         plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
-        with open(plugins_config_path, encoding="utf-8") as f:
-            plugins_config.read_file(f)
+        plugins_config.read(plugins_config_path, encoding="utf-8")
 
         for _, name, ispkg in iter_modules([self.plugins_path]):
             if not ispkg:
@@ -177,15 +177,7 @@ class Bot:
                 continue
 
             try:
-                # 从plugins包动态导入子包
-                plugin_module = import_module(f".{name}", "plugins")
-                # 获取子包中的插件类，假设类名与模块名相同
-                PluginClass = getattr(plugin_module, name)
-                # 实例化插件
-                plugin_instance: Plugins = PluginClass(self.server_address, self)
-                # 传递插件配置
-                plugin_instance.config = plugins_config[name]
-                # 添加到插件列表
+                plugin_instance = self.create_plugin_instance(name, plugins_config)
                 self.plugins_list.append(plugin_instance)
                 Log.info(
                     f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
@@ -193,6 +185,95 @@ class Bot:
             except Exception as e:
                 Log.error(f"加载插件{name}失败：{e}")
                 raise e
+
+    def modify_plugin(self, plugin_name: str, group_ids: list[str], enable: bool) -> bool:
+        """
+        调整指定插件在多群聊的启动状态，并热重载。
+
+        :param plugin_name: 插件名称
+        :param group_ids: 群号列表
+        :param enable: 在群聊中启用还是禁用
+        :return: 是否成功
+        """
+        for _, name, ispkg in iter_modules([self.plugins_path]):
+            if name == plugin_name and ispkg:
+                break
+        else:
+            Log.error(f"没有找到插件{plugin_name}")
+            return False
+
+        groups_config = configparser.ConfigParser()
+        groups_config_path = os.path.join(self.configs_path, "groups.ini")
+        groups_config.optionxform = str  # 保持大小写
+        groups_config.read(groups_config_path, encoding="utf-8")
+        for gid in group_ids:
+            if not gid.isdigit():
+                Log.error(f"无效的群号：{gid}")
+                return False
+        for gid in group_ids:
+            if not groups_config.has_section(gid):
+                groups_config.add_section(gid)
+            groups_config[gid][plugin_name] = "True" if enable else "False"
+        with open(groups_config_path, "w", encoding="utf-8") as f:
+            groups_config.write(f)
+
+        return self.reload_plugin(plugin_name)
+
+    def reload_plugin(self, name: str) -> bool:
+        """
+        热重载指定插件
+        """
+        Log.info(f"开始插件{name}的热重载")
+
+        plugins_config = configparser.ConfigParser()
+        plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
+        plugins_config.read(plugins_config_path, encoding="utf-8")
+        if not plugins_config.has_section(name):
+            Log.error(f"插件{name}的配置不存在，无法热重载")
+            return False
+        elif not plugins_config.getboolean(name, "enable", fallback=False):
+            Log.info(f"插件{name}未启用，无法热重载")
+            return False
+
+        keys_to_remove = [
+            k for k in sys.modules if k == f"plugins.{name}" or k.startswith(f"plugins.{name}.")
+        ]
+
+        old_modules = {k: sys.modules[k] for k in keys_to_remove}
+
+        try:
+            for k in keys_to_remove:
+                del sys.modules[k]
+            plugin_instance = self.create_plugin_instance(name, plugins_config)
+        except Exception as e:
+            keys_to_remove = [
+                k for k in sys.modules if k == f"plugins.{name}" or k.startswith(f"plugins.{name}.")
+            ]
+            for k in keys_to_remove:
+                del sys.modules[k]
+            sys.modules.update(old_modules)
+            Log.error(f"热重载插件{name}失败：{e}")
+            return False
+
+        self.plugins_list[:] = [p for p in self.plugins_list if p.name != name]
+        self.plugins_list.append(plugin_instance)
+        Log.info(
+            f"成功热重载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
+        )
+        return True
+
+    def create_plugin_instance(
+        self, name: str, plugins_config: configparser.ConfigParser
+    ) -> Plugins:
+        # 从plugins包动态导入子包
+        plugin_module = import_module(f".{name}", "plugins")
+        # 获取子包中的插件类，假设类名与模块名相同
+        PluginClass = getattr(plugin_module, name)
+        # 实例化插件
+        plugin_instance: Plugins = PluginClass(self.server_address, self)
+        # 传递插件配置
+        plugin_instance.config = plugins_config[name]
+        return plugin_instance
 
     async def run(self) -> None:
         event = Event(self.plugins_list, self.debug)
