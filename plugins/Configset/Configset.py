@@ -15,7 +15,7 @@ class Configset(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["/open", "/close"], check_group=False)
-    async def main(self, event: GroupMessageEvent, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         messages: list[str] = event.message.replace("&amp;", "&").split(" ")
         cmd: str = messages[0]
         plugin_name: str = messages[1].strip() if len(messages) > 1 else None

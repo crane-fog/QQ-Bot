@@ -13,7 +13,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.AITools import get_llm_response
 from utils.CQHelper import CQHelper
@@ -72,7 +72,7 @@ class TheresaChat(Plugins):
             self.persona_face_template = Template(f.read())
 
     @plugin_main(check_call_word=False, require_db=True)
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         # 从数据库读取的上下文消息条数
         self.context_length = self.config.getint("context_length")
         self.context_length_for_face = self.config.getint("context_length_for_face")

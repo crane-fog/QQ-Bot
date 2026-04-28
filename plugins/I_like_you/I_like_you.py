@@ -1,7 +1,7 @@
 from pathlib import Path
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 
 
@@ -18,7 +18,7 @@ class I_like_you(Plugins):
         self.init_status()
 
     @plugin_main()
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
         if "我喜欢你" in message:
             try:

@@ -3,7 +3,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import declarative_base, sessionmaker
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 
 
 class GetStuId(Plugins):
@@ -22,7 +22,7 @@ class GetStuId(Plugins):
         )
 
     @plugin_main(call_word=["GetStuId"], require_db=True)
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
 
         if not event.user_id == self.bot.owner_id:

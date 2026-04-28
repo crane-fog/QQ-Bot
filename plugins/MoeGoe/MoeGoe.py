@@ -4,7 +4,7 @@ import time
 import requests
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 
 
 class MoeGoe(Plugins):
@@ -20,7 +20,7 @@ class MoeGoe(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["moegoe"])
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         msg_parts = event.message.split(" ", maxsplit=3)
         if len(msg_parts) < 4:
             self.api.groupService.send_group_msg(

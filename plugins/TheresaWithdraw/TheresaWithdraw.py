@@ -1,5 +1,5 @@
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 
 
 class TheresaWithdraw(Plugins):
@@ -15,7 +15,7 @@ class TheresaWithdraw(Plugins):
         self.init_status()
 
     @plugin_main(call_word=["[CQ:reply,"])
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
 
         if "Twithdraw" not in message:

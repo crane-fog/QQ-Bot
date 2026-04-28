@@ -1,7 +1,7 @@
 from random import randint
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 
 
@@ -24,7 +24,7 @@ class EmojiLike(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=False)
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
         if event.user_id in ignored_ids:
             return

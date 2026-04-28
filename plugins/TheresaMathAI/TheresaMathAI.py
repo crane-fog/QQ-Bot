@@ -3,7 +3,7 @@ import re
 import time
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.AITools import get_llm_response
 from utils.CQType import At
@@ -31,7 +31,7 @@ class TheresaMathAI(Plugins):
         self.cooldown_time = 60  # 冷却时间（秒）
 
     @plugin_main(call_word=["math ask"])
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
         message = event.message
 

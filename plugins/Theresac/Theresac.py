@@ -3,7 +3,7 @@ from html import unescape
 from subprocess import PIPE
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 
 
 class Theresac(Plugins):
@@ -19,7 +19,7 @@ class Theresac(Plugins):
         self.init_status()
 
     @plugin_main(check_group=False, call_word=["Theresac"])
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = unescape(event.message)
 
         if not event.user_id == self.bot.owner_id:

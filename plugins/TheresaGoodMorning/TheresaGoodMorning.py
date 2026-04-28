@@ -6,7 +6,7 @@ import time
 from jinja2 import Template
 
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.AITools import get_llm_response
 from utils.CQType import At, Reply
@@ -37,7 +37,7 @@ class TheresaGoodMorning(Plugins):
             self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
-    async def main(self, event: GroupMessageEventHandler, debug: bool):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
 
         # 冷却检查

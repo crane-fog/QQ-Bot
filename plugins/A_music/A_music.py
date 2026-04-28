@@ -6,7 +6,7 @@ import requests
 
 import plugins.A_music.music_api
 from plugins import Plugins, plugin_main
-from src.event_handler import GroupMessageEventHandler
+from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 
 
@@ -128,7 +128,7 @@ class A_music(Plugins):
         self.init_status()
 
     @plugin_main(check_call_word=True, call_word=["/music"])
-    async def main(self, event: GroupMessageEventHandler, debug):
+    async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
         if "/music" in message[0:6]:
             Log.debug(f"检测到music请求:{message[6:]}", debug)
