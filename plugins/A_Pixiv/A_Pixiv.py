@@ -273,7 +273,7 @@ class A_Pixiv(Plugins):
                                 简易的蓝p图片下载器,同时附带删除的功能
                                 usage: pid+数字，p_clean
                             """
-        self.send_R_18 = True  # 是否发送R-18作品的倒转图
+        self.send_R_18 = False  # 是否发送R-18作品的倒转图
         self.send_R_18_img_private = True  # 发送给个人
         self.init_status()
 
@@ -309,7 +309,7 @@ class A_Pixiv(Plugins):
                             message=reply_message + "\n由于请求为R-18作品，小孩子还是不要看啦...",
                         )
                         if self.send_R_18:
-                            self.api.groupService.send_group_forward_msg(
+                            await self.api.asyncService.send_group_forward_msg(
                                 group_id=event.group_id, forward_message=forward_message
                             )
                             if self.send_R_18_img_private:
@@ -317,7 +317,7 @@ class A_Pixiv(Plugins):
                                 self.api.privateService.send_private_msg(
                                     user_id=event.user_id, message=reply_message
                                 )
-                                self.api.privateService.send_private_forward_msg(
+                                await self.api.asyncService.send_private_forward_msg(
                                     user_id=event.user_id, forward_message=forward_message
                                 )
                         else:
@@ -331,7 +331,7 @@ class A_Pixiv(Plugins):
                             message=reply_message,
                             image_path=pixic.preview_path,
                         )
-                        self.api.groupService.send_group_forward_msg(
+                        await self.api.asyncService.send_group_forward_msg(
                             group_id=event.group_id, forward_message=forward_message
                         )
                 else:
