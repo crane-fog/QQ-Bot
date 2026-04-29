@@ -36,7 +36,7 @@ class TheresaBan(Plugins):
                 (event.user_id != self.bot.owner_id)
                 and (event.role not in ["admin", "owner"])
                 and (event.user_id not in self.bot.assistant_list)
-            ) or (event.group_id in black_list):
+            ) or (event.user_id in black_list):
                 return
             else:
                 match = re.search(r"qq=(\d+)", command_list[2])

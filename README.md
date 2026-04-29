@@ -124,6 +124,10 @@ uv run python main.py
 
 PR 提交 dev 分支，一次提交尽量只包含一个功能点或修复一个 bug
 
+## 插件文档
+
+[插件文档](docs/plugins.md)
+
 ## 项目开发路线图
 
 [ROADMAP.md](ROADMAP.md)
