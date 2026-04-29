@@ -53,6 +53,7 @@ enable = False
 
 [TheresaBan]
 enable = False
+black_list = 123,456
 
 [Theresac]
 enable = True
