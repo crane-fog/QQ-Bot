@@ -180,19 +180,68 @@ def test_push_payload_missing_commit_details_logs_warning():
     api.groupService.send_group_msg.assert_called_once()
 
 
-def test_send_group_msg_failure_logs_error():
+def test_send_plain_text_failure_logs_error():
     """
     QQ 消息发送失败应被记录，但不应让 webhook handler 继续向外抛异常。
+    """
+    event = GiteaIssueCommentEvent.model_validate(issue_comment_payload())
+    api = Mock()
+    api.groupService.send_group_msg.side_effect = RuntimeError("network down")
+
+    with patch("src.webhook_handler.NotificationService.Log.error") as error:
+        WebhookHandler(api, 123).resolve(event, "issue_comment")
+
+    error.assert_called_once()
+    assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
+
+
+def test_issues_event_sends_three_node_forward_message():
+    """
+    issues 类事件应先发送一条摘要，再发送三条节点的合并转发消息。
+    """
+    payload = issues_payload()
+    payload["issue"]["body"] = "long body\n" + ("x" * 600)
+    event = GiteaIssuesEvent.model_validate(payload)
+    api = Mock()
+
+    WebhookHandler(api, 123).resolve(event, "issues")
+
+    api.groupService.send_group_msg.assert_called_once_with(
+        group_id=123,
+        message="[Gitea] issues #1 opened in org/repo",
+    )
+    api.groupService.send_group_forward_msg.assert_called_once()
+    forward_message = api.groupService.send_group_forward_msg.call_args.kwargs["forward_message"]
+
+    assert len(forward_message) == 3
+    assert forward_message[0]["type"] == "node"
+    assert forward_message[0]["data"]["name"] == "Gitea"
+    assert (
+        "issues #1 opened in org/repo" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    )
+    assert "title: Fix webhook" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert "labels: bug" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert "long body\n" + ("x" * 600) == forward_message[1]["data"]["content"][0]["data"]["text"]
+    assert (
+        "url: https://gitea.example.com/org/repo/issues/1"
+        == forward_message[2]["data"]["content"][0]["data"]["text"]
+    )
+
+
+def test_issues_summary_failure_skips_forward_and_logs_error():
+    """
+    issues 摘要发送失败时应记录错误，并且不继续发送合并转发。
     """
     event = GiteaIssuesEvent.model_validate(issues_payload())
     api = Mock()
     api.groupService.send_group_msg.side_effect = RuntimeError("network down")
 
-    with patch("src.webhook_handler.WebhookHandler.Log.error") as error:
+    with patch("src.webhook_handler.NotificationService.Log.error") as error:
         WebhookHandler(api, 123).resolve(event, "issues")
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
+    api.groupService.send_group_forward_msg.assert_not_called()
 
 
 def test_issue_label_uses_issue_payload_model():

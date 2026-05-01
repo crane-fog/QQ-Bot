@@ -5,6 +5,7 @@ from src.gitea.Models import (
     GiteaPushEvent,
     GiteaWebhookEvent,
 )
+from utils.CQType import Forward
 
 
 def _limit_text(text: str, limit: int = 500) -> str:
@@ -29,6 +30,11 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
     for attachment in attachments:
         lines.append(f"{attachment.name}: {attachment.browser_download_url}")
     return lines
+
+
+def _label_text(event: GiteaIssuesEvent) -> str:
+    labels = [label.name for label in event.issue.labels if label.name]
+    return ", ".join(labels) if labels else "none"
 
 
 class GiteaEventFormatter:
@@ -68,16 +74,49 @@ class GiteaEventFormatter:
         body = event.issue.body or ""
         content = _limit_text(body)
 
-        event_name = event_type or "issues"
         lines = [
-            f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
-            event.issue.title,
+            self.issues_summary(event, event_type),
+            f"[Author]: {event.issue.original_author}",
+            f"[Title]: {event.issue.title}",
         ]
         if content:
             lines.append(content)
         lines.extend(_attachment_lines(event.issue.assets))
-        lines.append(f"url: {event.issue.html_url}")
+        lines.append(f"\nurl: {event.issue.html_url}")
         return "\n".join(lines)
+
+    def issues_summary(self, event: GiteaIssuesEvent, event_type: str = "") -> str:
+        event_name = event_type or "issues"
+        return (
+            f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}"
+        )
+
+    def issues_forward(self, event: GiteaIssuesEvent, event_type: str = "") -> list:
+        event_name = event_type or "issues"
+        forward = Forward()
+
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text="\n".join(
+                [
+                    f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
+                    f"title: {event.issue.title}",
+                    f"labels: {_label_text(event)}",
+                ]
+            ),
+        )
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text=event.issue.body or "(empty body)",
+        )
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text=f"url: {event.issue.html_url}",
+        )
+        return forward.message
 
     def issue_comment(self, event: GiteaIssueCommentEvent, event_type: str = "") -> str:
         body = event.comment.body or ""
@@ -92,5 +131,5 @@ class GiteaEventFormatter:
         if content:
             lines.append(content)
         lines.extend(_attachment_lines(event.comment.assets))
-        lines.append(f"url: {event.comment.html_url}")
+        lines.append(f"\nurl: {event.comment.html_url}")
         return "\n".join(lines)

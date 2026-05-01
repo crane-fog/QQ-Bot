@@ -3,7 +3,6 @@ from fastapi import FastAPI, Request
 from pydantic import ValidationError
 
 from src.Api import Api
-from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import (
     GiteaIssueCommentEvent,
     GiteaIssuesEvent,
@@ -11,6 +10,7 @@ from src.gitea.Models import (
     GiteaWebhookEvent,
 )
 from src.PrintLog import Log
+from src.webhook_handler.NotificationService import NotificationService
 
 app = FastAPI(title="Webhook Handler")
 
@@ -64,25 +64,13 @@ class WebhookHandler:
     def __init__(self, api: Api, response_group: int):
         self.api: Api = api
         self.response_group: int = response_group
-        self.formatter = GiteaEventFormatter()
+        self.notification_service = NotificationService(api, response_group)
         self.server = None
         app.state.handler = self
 
     def resolve(self, data: GiteaWebhookEvent, event_type: str) -> None:
         log_recoverable_payload_anomalies(data, event_type)
-
-        message = self.formatter.plain_text(data, event_type)
-        if not message:
-            Log.warning(f"Empty Gitea webhook message for {event_type}")
-            return
-
-        try:
-            self.api.groupService.send_group_msg(
-                group_id=self.response_group,
-                message=message,
-            )
-        except Exception as e:
-            Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
+        self.notification_service.send(data, event_type)
 
     async def run(self, ip, port) -> None:
         config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
