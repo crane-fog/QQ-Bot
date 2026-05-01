@@ -219,8 +219,9 @@ def test_issues_event_sends_three_node_forward_message():
     assert (
         "issues #1 opened in org/repo" in forward_message[0]["data"]["content"][0]["data"]["text"]
     )
-    assert "title: Fix webhook" in forward_message[0]["data"]["content"][0]["data"]["text"]
-    assert "labels: bug" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert "Title: Fix webhook" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert "Labels: bug" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert "Author: None" in forward_message[0]["data"]["content"][0]["data"]["text"]
     assert "long body\n" + ("x" * 600) == forward_message[1]["data"]["content"][0]["data"]["text"]
     assert (
         "url: https://gitea.example.com/org/repo/issues/1"

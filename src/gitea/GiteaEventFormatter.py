@@ -101,8 +101,9 @@ class GiteaEventFormatter:
             text="\n".join(
                 [
                     f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
-                    f"title: {event.issue.title}",
-                    f"labels: {_label_text(event)}",
+                    f"Title: {event.issue.title}",
+                    f"Labels: {_label_text(event)}",
+                    f"Author: {event.issue.original_author}",
                 ]
             ),
         )
