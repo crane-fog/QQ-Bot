@@ -221,6 +221,26 @@ def test_parse_issue_comment_event():
     assert "comment body" in message
 
 
+def test_issue_comment_null_list_fields_are_treated_as_empty_lists():
+    """
+    Gitea 未初始化的 Go slice 会被编码为 null，返回给 Webhook 客户端
+    模型应将其按空列表处理。
+    """
+    payload = issue_comment_payload()
+    payload["issue"]["assets"] = None
+    payload["issue"]["labels"] = None
+    payload["issue"]["assignees"] = None
+    payload["comment"]["assets"] = None
+
+    event = parse_gitea_event("issue_comment", payload)
+
+    assert isinstance(event, GiteaIssueCommentEvent)
+    assert event.issue.assets == []
+    assert event.issue.labels == []
+    assert event.issue.assignees == []
+    assert event.comment.assets == []
+
+
 def test_issue_formatter_keeps_body_and_lists_attachments_separately():
     """
     附件是独立 assets 列表，formatter 不改写正文，只额外列出附件 URL。

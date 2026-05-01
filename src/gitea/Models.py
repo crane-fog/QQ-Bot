@@ -1,6 +1,6 @@
 from datetime import datetime
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 
 class GiteaBaseModel(BaseModel):
@@ -206,6 +206,11 @@ class Issue(GiteaBaseModel):
     pin_order: int | None = None
     content_version: int | None = None
 
+    @field_validator("assets", "labels", "assignees", mode="before")
+    @classmethod
+    def none_list_as_empty(cls, value):
+        return [] if value is None else value
+
 
 class Comment(GiteaBaseModel):
     id: int
@@ -220,6 +225,11 @@ class Comment(GiteaBaseModel):
     created_at: datetime
     updated_at: datetime
 
+    @field_validator("assets", mode="before")
+    @classmethod
+    def none_list_as_empty(cls, value):
+        return [] if value is None else value
+
 
 class ChangesFromPayload(GiteaBaseModel):
     # from 是 Python 关键字，模型里用 from_，但仍然接收 JSON 中的 from 字段。
@@ -232,6 +242,11 @@ class ChangesPayload(GiteaBaseModel):
     ref: ChangesFromPayload | None = None
     added_labels: list[Label] = Field(default_factory=list)
     removed_labels: list[Label] = Field(default_factory=list)
+
+    @field_validator("added_labels", "removed_labels", mode="before")
+    @classmethod
+    def none_list_as_empty(cls, value):
+        return [] if value is None else value
 
 
 class PRBranchInfo(GiteaBaseModel):
@@ -276,6 +291,11 @@ class PullRequest(GiteaBaseModel):
     closed_at: datetime | None = None
     pin_order: int | None = None
     content_version: int | None = None
+
+    @field_validator("labels", "assignees", "requested_reviewers", mode="before")
+    @classmethod
+    def none_list_as_empty(cls, value):
+        return [] if value is None else value
 
 
 # WebhookHandler 当前支持的根 payload 模型。
