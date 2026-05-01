@@ -37,6 +37,21 @@ def _label_text(event: GiteaIssuesEvent) -> str:
     return ", ".join(labels) if labels else "none"
 
 
+def _issue_author(event: GiteaIssuesEvent) -> str:
+    return event.issue.original_author or event.issue.user.login
+
+
+def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
+    if event.changes is not None:
+        added = [f"+{label.name}" for label in event.changes.added_labels if label.name]
+        removed = [f"-{label.name}" for label in event.changes.removed_labels if label.name]
+        changes = added + removed
+        if changes:
+            return ", ".join(changes)
+
+    return _label_text(event)
+
+
 class GiteaEventFormatter:
     def plain_text(self, event: GiteaWebhookEvent, event_type: str = "") -> str:
         # case 的时候不会真正构造对象，只是判断是否匹配类型
@@ -44,6 +59,8 @@ class GiteaEventFormatter:
             case GiteaPushEvent():
                 return self.push(event)
             case GiteaIssuesEvent():
+                if event_type == "issue_label":
+                    return self.issue_label(event, event_type)
                 return self.issues(event, event_type)
             case GiteaIssueCommentEvent():
                 return self.issue_comment(event, event_type)
@@ -89,6 +106,15 @@ class GiteaEventFormatter:
         event_name = event_type or "issues"
         return (
             f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}"
+        )
+
+    def issue_label(self, event: GiteaIssuesEvent, event_type: str = "") -> str:
+        return "\n".join(
+            [
+                self.issues_summary(event, event_type),
+                f"Author: {_issue_author(event)}",
+                f"Label: {_issue_label_change_text(event)}",
+            ]
         )
 
     def issues_forward(self, event: GiteaIssuesEvent, event_type: str = "") -> list:

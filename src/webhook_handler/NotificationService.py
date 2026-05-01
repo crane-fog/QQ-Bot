@@ -12,7 +12,7 @@ class NotificationService:
 
     def send(self, data: GiteaWebhookEvent, event_type: str) -> None:
         try:
-            if isinstance(data, GiteaIssuesEvent):
+            if isinstance(data, GiteaIssuesEvent) and event_type == "issues":
                 self._send_issues_notification(data, event_type)
             else:
                 self._send_plain_text(data, event_type)

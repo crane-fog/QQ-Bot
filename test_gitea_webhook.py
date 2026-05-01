@@ -245,6 +245,25 @@ def test_issues_summary_failure_skips_forward_and_logs_error():
     api.groupService.send_group_forward_msg.assert_not_called()
 
 
+def test_issue_assign_sends_plain_text_without_forward_message():
+    """
+    只有 issues 事件发送合并转发；其他 IssuePayload 事件走普通文本。
+    """
+    payload = issues_payload()
+    payload["action"] = "assigned"
+    event = GiteaIssuesEvent.model_validate(payload)
+    api = Mock()
+
+    WebhookHandler(api, 123).resolve(event, "issue_assign")
+
+    api.groupService.send_group_msg.assert_called_once()
+    assert (
+        "issue_assign #1 assigned in org/repo"
+        in api.groupService.send_group_msg.call_args.kwargs["message"]
+    )
+    api.groupService.send_group_forward_msg.assert_not_called()
+
+
 def test_issue_label_uses_issue_payload_model():
     """
     Gitea 的 issue_label 事件和 issues 事件共用同一套 IssuePayload 结构。
@@ -254,9 +273,32 @@ def test_issue_label_uses_issue_payload_model():
     assert isinstance(event, GiteaIssuesEvent)
     message = GiteaEventFormatter().plain_text(event, "issue_label")
     assert "issue_label #1 opened in org/repo" in message
-    assert "body ![img](/attachments/uuid)" in message
-    assert "attachments:" in message
-    assert "https://gitea.example.com/attachments/uuid" in message
+
+
+def test_issue_label_sends_summary_author_and_label_only():
+    """
+    issue_label 事件只需要一条包含摘要、作者和变更标签的普通消息。
+    """
+    payload = issues_payload()
+    payload["action"] = "label_updated"
+    payload["changes"] = {
+        "added_labels": [{"id": 2, "name": "priority/high", "color": "00ff00"}],
+        "removed_labels": [{"id": 1, "name": "bug", "color": "ff0000"}],
+    }
+    event = GiteaIssuesEvent.model_validate(payload)
+    api = Mock()
+
+    WebhookHandler(api, 123).resolve(event, "issue_label")
+
+    api.groupService.send_group_msg.assert_called_once_with(
+        group_id=123,
+        message=(
+            "[Gitea] issue_label #1 label_updated in org/repo\n"
+            "Author: alice\n"
+            "Label: +priority/high, -bug"
+        ),
+    )
+    api.groupService.send_group_forward_msg.assert_not_called()
 
 
 def test_parse_issue_comment_event():
