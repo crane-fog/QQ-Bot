@@ -64,6 +64,9 @@ class TheresaChat(Plugins):
         # 滑动窗口记录最近发送的表情id，用于降低重复度
         self.recent_faces = deque(maxlen=10)
 
+        # 输入缓存优化
+        self.marked_sql_id: dict[int, int] = {}
+
         with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
             self.persona_template = Template(f.read())
         with open(
@@ -75,6 +78,7 @@ class TheresaChat(Plugins):
     async def main(self, event: GroupMessageEvent, debug: bool):
         # 从数据库读取的上下文消息条数
         self.context_length = self.config.getint("context_length")
+        self.extra_context = self.config.getint("extra_context")
         self.context_length_for_face = self.config.getint("context_length_for_face")
 
         message = event.message
@@ -137,20 +141,21 @@ class TheresaChat(Plugins):
         else:
             persona = self.persona_template.render(
                 owner_id=self.bot.owner_id,
-                current_time=datetime.datetime.now().time(),
                 group_name=event.group_name,
                 group_id=group_id,
             )
 
             context_messages = await self.load_context_from_db(
-                group_id, self.context_length, resolve_imgs=True
+                group_id, self.context_length, resolve_imgs=False, enable_context_optimization=True
             )
+
             response = await get_llm_response(
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
+                    {"role": "system", "content": f"当前时间为{datetime.datetime.now().time()}"},
                 ],
-                model="gemini-3-flash-preview",
+                model="deepseek-v4-pro",
                 use_tools=True,
                 api=self.api,
             )
@@ -191,18 +196,38 @@ class TheresaChat(Plugins):
         return message
 
     async def load_context_from_db(
-        self, group_id: int, context_length: int, resolve_imgs: bool = False
+        self,
+        group_id: int,
+        context_length: int,
+        resolve_imgs: bool = False,
+        enable_context_optimization: bool = False,
     ) -> list:
         context = []
         async with self.session_factory() as session:
-            stmt = (
-                select(Message)
-                .where(Message.group_id == group_id)
-                .order_by(desc(Message.send_time))
-                .limit(context_length)
-            )
-            result = await session.execute(stmt)
-            rows = result.scalars().all()
+            if enable_context_optimization:
+                stmt = (
+                    select(Message)
+                    .where(
+                        Message.group_id == group_id,
+                        Message.id >= self.marked_sql_id.get(group_id, 0),
+                    )
+                    .order_by(desc(Message.id))
+                    .limit(context_length + self.extra_context)
+                )
+                result = await session.execute(stmt)
+                rows = result.scalars().all()
+                if len(rows) >= context_length + self.extra_context:
+                    self.marked_sql_id[group_id] = rows[context_length - 1].id
+                    rows = rows[:context_length]
+            else:
+                stmt = (
+                    select(Message)
+                    .where(Message.group_id == group_id)
+                    .order_by(desc(Message.id))
+                    .limit(context_length)
+                )
+                result = await session.execute(stmt)
+                rows = result.scalars().all()
 
             for row in reversed(rows):
                 if row.user_id == 0:

@@ -79,6 +79,7 @@ enable = False
 [TheresaChat]
 enable = False
 context_length = 200
+extra_context = 100
 context_length_for_face = 20
 
 [MoeGoe]

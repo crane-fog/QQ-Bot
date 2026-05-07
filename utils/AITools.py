@@ -65,7 +65,6 @@ async def get_llm_response(
         extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
     )
     if response.choices:
-        print(response.choices[0].message)
         tools_used = response.choices[0].message.tool_calls if use_tools else None
         if tools_used:
             messages.append(response.choices[0].message)
