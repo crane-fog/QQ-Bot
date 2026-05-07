@@ -187,9 +187,9 @@ class TheresaCard(Plugins):
                     not_entered_lines = [f"{stu_id} {name}" for stu_id, name in not_entered.items()]
                     forward = Forward()
                     forward.add_node(
-                        type="text", text=f"以下成员已选课但未入群，共{len(not_entered)}人"
+                        type="text", msg=f"以下成员已选课但未入群，共{len(not_entered)}人"
                     )
-                    forward.add_node(type="text", text="\n".join(not_entered_lines))
+                    forward.add_node(type="text", msg="\n".join(not_entered_lines))
                     self.api.groupService.send_group_forward_msg(
                         group_id=event.group_id, forward_message=forward.message
                     )

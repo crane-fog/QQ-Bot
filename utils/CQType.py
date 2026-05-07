@@ -1,3 +1,6 @@
+from typing import Literal
+
+
 class CQMessage:
     def __init__(self):
         self.cq_type = self.__class__.__name__.lower()
@@ -93,18 +96,25 @@ class Reply(CQMessage):
 
 class Forward:
     def __init__(self):
-        self.message = []
+        self.message: list[dict] = []
 
-    def add_node(self, type, uid=None, sender_name=None, file_path=None, text=None, msg=None):
+    def add_node(
+        self,
+        type: Literal["image", "file", "text", "msg"],
+        uid: None | int = None,
+        sender_name: None | str = None,
+        file_path: None | str = None,
+        msg: None | str = None,
+    ):
         """
         为合并转发消息添加一个节点
-        :param type: 消息类型，可能的值：image、file、text、msg
+        :param type: 消息类型
         """
         node = {"type": "node", "data": {"content": [{"type": type, "data": {}}]}}
         if type == "image" or type == "file":
             node["data"]["content"][0]["data"]["file"] = file_path
         elif type == "text":
-            node["data"]["content"][0]["data"]["text"] = text
+            node["data"]["content"][0]["data"]["text"] = msg
         elif type == "msg":
             node["data"]["content"] = msg
 
