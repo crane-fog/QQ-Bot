@@ -126,3 +126,7 @@ target_groups = 12345,67890
 
 [Configset]
 enable = True
+
+[GroupSum]
+enable = False
+max_length = 1000
