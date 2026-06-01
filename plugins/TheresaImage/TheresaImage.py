@@ -1,11 +1,9 @@
-import base64
-import os
 import re
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
+from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import At, Reply
 
@@ -75,12 +73,3 @@ class TheresaImage(Plugins):
         if result is not None:
             return self.api.messageService.get_image(file_name=result.file).get("data").get("file")
         return None
-
-
-def encode_image(image_path: str) -> str:
-    extension = os.path.splitext(image_path)[1].lower().replace(".", "")
-    mime_type = (
-        f"image/{extension}" if extension in ["png", "jpeg", "jpg", "webp", "gif"] else "image/jpeg"
-    )
-    with open(image_path, "rb") as f:
-        return f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"

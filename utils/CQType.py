@@ -104,7 +104,7 @@ class Forward:
         uid: None | int = None,
         sender_name: None | str = None,
         file_path: None | str = None,
-        msg: None | str = None,
+        msg: None | str | list[dict] = None,
     ):
         """
         为合并转发消息添加一个节点
