@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 from datetime import timedelta, timezone
@@ -11,7 +10,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
+from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
 
@@ -130,8 +129,10 @@ class GroupSum(Plugins):
         for cq in cqs:
             if cq.cq_type == "reply":
                 reply_id = int(cq.id)
-                result = await session.execute(select(Message).where(Message.msg_id == reply_id))
-                row = result.scalars().one_or_none()
+                result = await session.execute(
+                    select(Message).where(Message.msg_id == reply_id).order_by(desc(Message.id))
+                )
+                row = result.scalars().first()
                 if row is not None:
                     msg = str(cq)
                     cq.content = row.msg
@@ -194,12 +195,3 @@ class GroupSum(Plugins):
                             }
                         )
         return context
-
-
-def encode_image(image_path: str) -> str:
-    extension = os.path.splitext(image_path)[1].lower().replace(".", "")
-    mime_type = (
-        f"image/{extension}" if extension in ["png", "jpeg", "jpg", "webp", "gif"] else "image/jpeg"
-    )
-    with open(image_path, "rb") as f:
-        return f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"

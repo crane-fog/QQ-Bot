@@ -1,4 +1,3 @@
-import base64
 import json
 import os
 import random
@@ -15,7 +14,7 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
+from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
@@ -304,12 +303,3 @@ class TheresaChat(Plugins):
                 return 0
         except Exception:
             return 0
-
-
-def encode_image(image_path: str) -> str:
-    extension = os.path.splitext(image_path)[1].lower().replace(".", "")
-    mime_type = (
-        f"image/{extension}" if extension in ["png", "jpeg", "jpg", "webp", "gif"] else "image/jpeg"
-    )
-    with open(image_path, "rb") as f:
-        return f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"

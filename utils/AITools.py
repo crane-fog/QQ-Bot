@@ -1,3 +1,4 @@
+import base64
 import json
 import os
 from typing import Literal
@@ -36,6 +37,10 @@ tool_def: list[dict] = [
     }
 ]
 
+# 角色设定原作者：zaqa_07352@Discord
+with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
+    persona = f.read()
+
 
 async def get_llm_response(
     messages: list[dict],
@@ -57,9 +62,6 @@ async def get_llm_response(
         raise ValueError("Unsupported model")
 
     if insert_persona:
-        # 角色设定原作者：zaqa_07352@Discord
-        with open("utils/persona.j2") as f:
-            persona = f.read()
         messages.insert(0, {"role": "system", "content": persona})
 
     response = await client.chat.completions.create(
@@ -103,3 +105,13 @@ async def get_llm_response(
         return response.choices[0].message.content
     else:
         return "[NO REPLY]"
+
+
+def encode_image(image_path: str) -> str:
+    extension = os.path.splitext(image_path)[1].lower().replace(".", "")
+    if extension in ["png", "webp", "gif"]:
+        mime_type = f"image/{extension}"
+    else:
+        mime_type = "image/jpeg"
+    with open(image_path, "rb") as f:
+        return f"data:{mime_type};base64,{base64.b64encode(f.read()).decode('utf-8')}"
