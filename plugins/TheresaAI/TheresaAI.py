@@ -33,7 +33,7 @@ class TheresaAI(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
 
-        with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(__file__), "prompt.j2"), encoding="utf-8") as f:
             self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Theresa ask"])
@@ -83,6 +83,7 @@ class TheresaAI(Plugins):
                     {"role": "user", "content": question_full},
                 ],
                 model="deepseek-v4-pro",
+                insert_persona=True,
             )
 
             # 发送回复到群聊

@@ -1,7 +1,7 @@
 import base64
-import datetime
 import json
 import os
+from datetime import timedelta, timezone
 
 from jinja2 import Template
 from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
@@ -30,6 +30,10 @@ class Message(Base):
     user_nickname = Column(Text, nullable=False, default=" ")
     user_card = Column(Text, nullable=False, default=" ")
 
+    @property
+    def formatted_time(self) -> str:
+        return self.send_time.astimezone(timezone(timedelta(hours=8))).strftime("%H:%M")
+
 
 class GroupSum(Plugins):
     def __init__(self, server_address, bot):
@@ -47,7 +51,7 @@ class GroupSum(Plugins):
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
 
-        with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(__file__), "prompt.j2"), encoding="utf-8") as f:
             self.persona_template = Template(f.read())
 
     @plugin_main(call_word=["Summary"], require_db=True)
@@ -78,12 +82,12 @@ class GroupSum(Plugins):
             [
                 {"role": "system", "content": persona},
                 *context_messages,
-                {"role": "system", "content": f"当前时间为{datetime.datetime.now().time()}"},
             ],
             model="deepseek-v4-pro",
             use_tools=True,
             api=self.api,
             response_format={"type": "json_object"},
+            insert_persona=True,
         )
 
         response_json: dict = json.loads(response)
@@ -154,7 +158,7 @@ class GroupSum(Plugins):
             rows = result.scalars().all()
 
             for row in reversed(rows):
-                if row.user_id == 0:
+                if row.user_id == self.bot.bot_id:
                     context.append(
                         {
                             "role": "assistant",
@@ -169,7 +173,7 @@ class GroupSum(Plugins):
                             0,
                             {
                                 "type": "text",
-                                "text": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
+                                "text": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
                             },
                         )
                         context.extend(
@@ -177,6 +181,7 @@ class GroupSum(Plugins):
                                 {
                                     "role": "user",
                                     "content": img_msgs,
+                                    "name": str(row.user_id),
                                 }
                             ]
                         )
@@ -184,7 +189,8 @@ class GroupSum(Plugins):
                         context.append(
                             {
                                 "role": "user",
-                                "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{msg}",
+                                "content": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
+                                "name": str(row.user_id),
                             }
                         )
         return context

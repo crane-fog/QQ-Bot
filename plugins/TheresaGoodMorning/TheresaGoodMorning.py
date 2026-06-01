@@ -1,9 +1,6 @@
 import datetime
-import os
 import re
 import time
-
-from jinja2 import Template
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
@@ -33,9 +30,6 @@ class TheresaGoodMorning(Plugins):
         self.user_cooldown = {}  # 用户冷却时间记录字典
         self.cooldown_time = 1  # 冷却时间（秒）
 
-        with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
-            self.persona_template = Template(f.read())
-
     @plugin_main(call_word=["Theresa 晚安", "Theresa 早安"])
     async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
@@ -60,12 +54,13 @@ class TheresaGoodMorning(Plugins):
             # 删除CQ码
             question = re.sub(r"\[.*?\]", "", message[len("Theresa ") :]).strip()
 
-            persona = self.persona_template.render(
-                current_time=datetime.datetime.now().time(),
-                group_name=event.group_name,
-            )
+            persona = f"""
+# 你的任务是为用户提供早安/晚安问候。
+当前时间为{datetime.datetime.now().time()}，时间格式为“时:分:秒”，24小时制，你需要根据当前时间返回适当的问候语。
+当前群名称为"{event.group_name}"。
+"""
 
-            question_full = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
+            question_full = f"{event.nickname}(群名片：{event.card})说：\n{question}"
 
             # 获取大模型回复
             response = await get_llm_response(
@@ -74,6 +69,7 @@ class TheresaGoodMorning(Plugins):
                     {"role": "user", "content": question_full},
                 ],
                 model="deepseek-v4-pro",
+                insert_persona=True,
             )
 
             # 发送回复到群聊

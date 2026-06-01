@@ -5,6 +5,7 @@ import random
 import re
 import time
 from collections import deque
+from datetime import datetime, timedelta, timezone
 
 from jinja2 import Template
 from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
@@ -32,6 +33,10 @@ class Message(Base):
     msg_id = Column(BigInteger, nullable=False, default=0)
     user_nickname = Column(Text, nullable=False, default=" ")
     user_card = Column(Text, nullable=False, default=" ")
+
+    @property
+    def formatted_time(self) -> str:
+        return self.send_time.astimezone(timezone(timedelta(hours=8))).strftime("%H:%M")
 
 
 class TheresaChat(Plugins):
@@ -66,7 +71,7 @@ class TheresaChat(Plugins):
         # 输入缓存优化
         self.marked_sql_id: dict[int, int] = {}
 
-        with open(os.path.join(os.path.dirname(__file__), "persona.j2"), encoding="utf-8") as f:
+        with open(os.path.join(os.path.dirname(__file__), "prompt.j2"), encoding="utf-8") as f:
             self.persona_template = Template(f.read())
         with open(
             os.path.join(os.path.dirname(__file__), "persona_face.j2"), encoding="utf-8"
@@ -152,10 +157,16 @@ class TheresaChat(Plugins):
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
+                    {
+                        "role": "user",
+                        "content": f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
+                        "name": "time_info",
+                    },
                 ],
                 model="deepseek-v4-pro",
                 use_tools=True,
                 api=self.api,
+                insert_persona=True,
             )
             if "[NO REPLY]" not in response:
                 # 更新冷却时间
@@ -230,7 +241,7 @@ class TheresaChat(Plugins):
                 rows = result.scalars().all()
 
             for row in reversed(rows):
-                if row.user_id == 0:
+                if row.user_id == self.bot.bot_id:
                     context.append(
                         {
                             "role": "assistant",
@@ -245,7 +256,7 @@ class TheresaChat(Plugins):
                             0,
                             {
                                 "type": "text",
-                                "text": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
+                                "text": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
                             },
                         )
                         context.extend(
@@ -253,6 +264,7 @@ class TheresaChat(Plugins):
                                 {
                                     "role": "user",
                                     "content": img_msgs,
+                                    "name": str(row.user_id),
                                 }
                             ]
                         )
@@ -260,7 +272,8 @@ class TheresaChat(Plugins):
                         context.append(
                             {
                                 "role": "user",
-                                "content": f"{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：{msg}",
+                                "content": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
+                                "name": str(row.user_id),
                             }
                         )
         return context
@@ -279,8 +292,8 @@ class TheresaChat(Plugins):
         response = await get_llm_response(
             messages=messages,
             model="deepseek-v4-flash",
-            temperature=0.0,
             response_format={"type": "json_object"},
+            insert_persona=True,
         )
         try:
             image_id = json.loads(response).get("image_id")

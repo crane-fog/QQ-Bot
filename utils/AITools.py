@@ -47,6 +47,7 @@ async def get_llm_response(
     thinking_enabled: bool = True,
     use_tools: bool = False,
     api: Api = None,
+    insert_persona: bool = False,
 ) -> str:
     if model == "gemini-3-flash-preview":
         client = AsyncOpenAI(api_key=os.environ["MNAPI_KEY"], base_url="https://api.mnapi.com/v1")
@@ -54,6 +55,12 @@ async def get_llm_response(
         client = AsyncOpenAI(api_key=os.environ["DPSK_KEY"], base_url="https://api.deepseek.com")
     else:
         raise ValueError("Unsupported model")
+
+    if insert_persona:
+        # 角色设定原作者：zaqa_07352@Discord
+        with open("utils/persona.j2") as f:
+            persona = f.read()
+        messages.insert(0, {"role": "system", "content": persona})
 
     response = await client.chat.completions.create(
         model=model,
