@@ -82,7 +82,7 @@ class TheresaAI(Plugins):
                     {"role": "system", "content": persona},
                     {"role": "user", "content": question_full},
                 ],
-                model="gemini-3-flash-preview",
+                model="deepseek-v4-pro",
             )
 
             # 发送回复到群聊
