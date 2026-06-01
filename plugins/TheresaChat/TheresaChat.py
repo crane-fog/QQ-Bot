@@ -185,8 +185,10 @@ class TheresaChat(Plugins):
         for cq in cqs:
             if cq.cq_type == "reply":
                 reply_id = int(cq.id)
-                result = await session.execute(select(Message).where(Message.msg_id == reply_id))
-                row = result.scalars().one_or_none()
+                result = await session.execute(
+                    select(Message).where(Message.msg_id == reply_id).order_by(desc(Message.id))
+                )
+                row = result.scalars().first()
                 if row is not None:
                     msg = str(cq)
                     cq.content = row.msg
