@@ -1,5 +1,4 @@
 import base64
-import datetime
 import json
 import os
 import random
@@ -153,7 +152,6 @@ class TheresaChat(Plugins):
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
-                    {"role": "system", "content": f"当前时间为{datetime.datetime.now().time()}"},
                 ],
                 model="deepseek-v4-pro",
                 use_tools=True,
