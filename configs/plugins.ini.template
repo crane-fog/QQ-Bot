@@ -130,3 +130,8 @@ enable = True
 [GroupSum]
 enable = False
 max_length = 1000
+
+[Schedule]
+enable = False
+current_calendar = 121
+first_day = 2026-03-02

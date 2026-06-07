@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body { font-family: "霞鹜文楷","Microsoft YaHei", sans-serif; background-color: #ffffff; width: 450px; } /* 固定宽度 */
+
+        .container {
+            padding: 20px;
+            background: #ffffff;
+            /* 想要圆角背景可以加这里 */
+        }
+
+        /* 顶部标题栏 */
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #a3d2ca; /* 类似图中的青色下划线 */
+            position: relative;
+        }
+        .header h2 { color: #333; letter-spacing: 2px; }
+        .header .time { font-size: 12px; color: #888; margin-top: 5px; }
+
+        /* 用户列表容器 */
+        .user-list { display: flex; flex-direction: column; gap: 15px; }
+
+        /* 单个用户行 Flex 布局 */
+        .user-row { display: flex; align-items: center; gap: 15px; }
+
+        /* 头像 */
+        .avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%; /* 圆形头像 */
+            object-fit: cover;
+            border: 1px solid #eee;
+            flex-shrink: 0;
+        }
+
+        /* 右侧信息区 */
+        .info-area {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            gap: 6px;
+            flex: 1;
+        }
+
+        /* 名字 */
+        .user-name { font-size: 15px; font-weight: bold; color: #333; }
+
+        /* 状态行 Flex 布局，允许超宽时自动换行 */
+        .status-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+
+        /* 状态标签的基础样式 */
+        .badge {
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-size: 12px;
+            color: #fff;
+            white-space: nowrap;
+        }
+
+        /* 不同状态的颜色 (对应你 Python 里的 status_type) */
+        .badge.none { background-color: #8f959e; }     /* 灰色 - 无课程 */
+        .badge.done { background-color: #21a67a; }     /* 绿色 - 已结束 */
+        .badge.next { background-color: #3370ff; }     /* 蓝色 - 下一节 */
+        .badge.current { background-color: #f54a45; }  /* 红色 - 正在上 */
+
+        /* 课程详情文字 */
+        .detail-text { font-size: 13px; color: #444; font-weight: bold; }
+
+        /* 次级文本（时间、地点、老师） */
+        .sub-text { font-size: 12px; color: #777; display: flex; align-items: center; gap: 3px; }
+
+        /* 名言/个性签名样式 (无课时显示) */
+        .quote-text { font-size: 12px; color: #888; font-style: italic; }
+
+    </style>
+</head>
+<body>
+    <div class="container" id="capture-area">
+        <div class="header">
+            <h3>数据时间: {{ current_time }}</h3>
+        </div>
+
+        <div class="user-list">
+            {% for user in users %}
+            <div class="user-row">
+                <!-- 直接调用 QQ 头像 API -->
+                <img class="avatar" src="http://q1.qlogo.cn/g?b=qq&nk={{ user.id }}&s=100" />
+
+                <div class="info-area">
+                    <div class="user-name">{{ user.name }}</div>
+
+                    <!-- 第一行：状态徽章 + 课程名称 -->
+                    <div class="status-row">
+                        <span class="badge {{ user.status_type }}">{{ user.status_text }}</span>
+                        <span class="detail-text">{{ user.course_name }}</span>
+                    </div>
+
+                    <!-- 第二行：地点 + 老师 + 时间 (仅在有课时显示) -->
+                    <div class="status-row">
+                        <span class="sub-text">{{ user.location }}</span>
+                        <span class="sub-text">{{ user.teacher }}</span>
+                        <span class="sub-text">{{ user.time_info }}</span>
+                    </div>
+
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </div>
+</body>
+</html>

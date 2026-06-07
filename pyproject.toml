@@ -22,6 +22,9 @@ dependencies = [
     "aiofiles>=25.1.0",
     "cryptography>=46.0.6",
     "qrcode>=8.2",
+    "psycopg2-binary>=2.9.12",
+    "xlrd>=2.0.2",
+    "playwright>=1.60.0",
 ]
 
 [dependency-groups]

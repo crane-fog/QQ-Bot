@@ -259,6 +259,11 @@ class Api:
             response = requests.post(self.api.bot_api_address + "get_image", json=params)
             return response.json()
 
+        def get_group_file_url(self, group_id: int, file_id: str) -> dict:
+            params = {"group_id": group_id, "file_id": file_id}
+            response = requests.post(self.api.bot_api_address + "get_group_file_url", json=params)
+            return response.json()
+
         def get_forward(self, message_id: int) -> list:
             """使用这个函数得到的结果可以直接由 send_forward_message 发出"""
             params = {"message_id": message_id}
