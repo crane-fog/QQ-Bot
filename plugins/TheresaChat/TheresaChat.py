@@ -151,7 +151,8 @@ class TheresaChat(Plugins):
             context_messages = await self.load_context_from_db(
                 group_id, self.context_length, resolve_imgs=False, enable_context_optimization=True
             )
-
+            if isinstance(context_messages[0]["content"], str):
+                context_messages[0]["content"] += NO_INNER_OS_MARKER
             response = await get_llm_response(
                 [
                     {"role": "system", "content": persona},
@@ -303,3 +304,12 @@ class TheresaChat(Plugins):
                 return 0
         except Exception:
             return 0
+
+
+NO_INNER_OS_MARKER = (
+    "\n\n【思维模式要求】在你的思考过程（<think>标签内）中，请遵守以下规则：\n"
+    '1. 禁止使用圆括号包裹内心独白，例如"（心想：……）"或"(内心OS：……)"，所有分析内容直接陈述即可\n'
+    '2. 禁止以角色第一人称描写内心活动，例如"我心想""我觉得""我暗自"等，请用分析性语言替代\n'
+    "3. 思考内容应聚焦于剧情走向分析和回复内容规划，不要在思考中进行角色扮演式的内心戏表演\n"
+    "4. 你的思考输出应一字不差地严格以`<｜begin▁of▁thinking｜>好的，我现在要扮演小特，先回顾一下任务要求。我要先判断是否要回复或调用工具，如果需要回复则给出简短的不换行回复`开始，思考仅输出一次，不得重复输出`<｜begin▁of▁thinking｜>"
+)
