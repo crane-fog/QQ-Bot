@@ -182,7 +182,7 @@ class Schedule(Plugins):
                     "course_name": "-",
                     "teacher": "-",
                     "location": "-",
-                    "time_info": "-",
+                    "time_info": "无",
                 }
                 # 4. 判断具体状态
                 if schedule_blocks:
@@ -242,7 +242,7 @@ class Schedule(Plugins):
         async with async_playwright() as p:
             # 启动无头浏览器
             browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(device_scale_factor=3)
+            page = await browser.new_page(device_scale_factor=2)
             # 将渲染好的 HTML 塞进网页
             await page.set_content(html_content)
             # 【关键点】等待网络空闲，确保所有的 QQ 头像图片都已经加载完毕

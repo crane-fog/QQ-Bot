@@ -6,6 +6,7 @@ from typing import Literal
 from openai import AsyncOpenAI
 
 from src.Api import Api
+from src.PrintLog import Log
 
 tool_def: list[dict] = [
     {
@@ -74,12 +75,13 @@ async def get_llm_response(
         extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
     )
     if response.choices:
+        Log.info(response)
         tools_used = response.choices[0].message.tool_calls if use_tools else None
         if tools_used:
             messages.append(response.choices[0].message)
             for tool_call in tools_used:
                 if tool_call.function.name == "set_group_ban":
-                    print(f"{tool_call.function}")
+                    Log.info(f"{tool_call.function}")
                     args = json.loads(tool_call.function.arguments)
                     user_id = args["user_id"]
                     group_id = args["group_id"]
@@ -94,14 +96,21 @@ async def get_llm_response(
                             "content": f"{result}",
                         }
                     )
-            response = await client.chat.completions.create(
-                model=model,
-                messages=messages,
-                temperature=temperature,
-                response_format=response_format,
-                reasoning_effort=reasoning_effort,
-                extra_body={"thinking": {"type": "enabled" if thinking_enabled else "disabled"}},
-            )
+            if (
+                response.choices[0].message.content is None
+                or response.choices[0].message.content.strip() == ""
+            ):
+                response = await client.chat.completions.create(
+                    model=model,
+                    messages=messages,
+                    temperature=temperature,
+                    response_format=response_format,
+                    reasoning_effort=reasoning_effort,
+                    extra_body={
+                        "thinking": {"type": "enabled" if thinking_enabled else "disabled"}
+                    },
+                )
+                Log.info(response)
         return response.choices[0].message.content
     else:
         return "[NO REPLY]"

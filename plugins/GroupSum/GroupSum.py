@@ -99,7 +99,7 @@ class GroupSum(Plugins):
         for topic in response_json.get("topics", []):
             message.add_node(
                 type="msg",
-                msg=f"话题：{topic.get('topic', '无')}\n参与者：{', '.join(topic.get('contributors', ['无']))}\n详情：{topic.get('detail', '无')}",
+                msg=f"话题：{topic.get('topic', '无')}\n参与者：{', '.join(map(str, topic.get('contributors', ['无'])))}\n详情：{topic.get('detail', '无')}",
             )
 
         self.api.groupService.send_group_forward_msg(
