@@ -57,7 +57,7 @@ class GroupSum(Plugins):
     async def main(self, event: GroupMessageEvent, debug: bool):
         self.max_length = self.config.getint("max_length")
 
-        msg = event.message.strip().split(" ")
+        msg = event.message.strip().split()
         if len(msg) != 2 or not msg[1].isdigit():
             return
 

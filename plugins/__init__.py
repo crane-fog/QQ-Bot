@@ -28,16 +28,16 @@ def plugin_main(check_call_word=True, call_word: list = None, check_group=True, 
 
             # 检查群权限
             if check_group and hasattr(event, "group_id"):
-                group_id = event.group_id
-                if group_id not in self.effected_groups:
+                if event.group_id not in self.effected_groups:
                     return
 
             # 检查触发词
             if check_call_word and call_word is not None:
                 if not hasattr(event, "message"):
                     return
-                message = event.message
-                if not any(message.startswith(word) for word in call_word):
+                msg_list = event.message.split()
+                msg = " ".join(msg_list)
+                if not any(msg.startswith(word) for word in call_word):
                     return
 
             # 更新运行状态

@@ -82,8 +82,8 @@ class TheresaCard(Plugins):
         unenter_flag = "unenter" in event.message
         check_time_flag = False
         check_class_flag = event.group_id in self.class_dict
-        if event.message.split(" ")[-1].isdigit():
-            time_limit_hours = int(event.message.split(" ")[-1])
+        if event.message.split()[-1].isdigit():
+            time_limit_hours = int(event.message.split()[-1])
             time_limit_seconds = time_limit_hours * 3600
             check_time_flag = True
         if kick_flag and (event.user_id not in permission_ids):

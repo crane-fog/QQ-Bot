@@ -52,14 +52,14 @@ class DataImport(Plugins):
         if not event.user_id == self.bot.owner_id:
             return
 
-        table_name = message.split(" ")[1]
+        table_name = message.split()[1]
         if table_name not in ["scores", "linecounts", "stulists", "stulists_detail"]:
             self.api.groupService.send_group_msg(
                 group_id=event.group_id,
                 message="表名错误，请使用 scores、linecounts、stulists 或 stulists_detail",
             )
             return
-        semester = int(message.split(" ")[2])
+        semester = int(message.split()[2])
         filename = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             "data",

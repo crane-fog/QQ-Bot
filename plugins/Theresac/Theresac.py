@@ -26,7 +26,7 @@ class Theresac(Plugins):
             self.api.groupService.send_group_msg(group_id=event.group_id, message="无权限")
             return
 
-        cmd = " ".join(message.split(" ")[1:])
+        cmd = " ".join(message.split()[1:])
         result = await create_subprocess_shell(cmd, stdout=PIPE, stderr=PIPE)
         stdout, stderr = await result.communicate()
 

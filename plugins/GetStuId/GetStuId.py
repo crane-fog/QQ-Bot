@@ -28,7 +28,7 @@ class GetStuId(Plugins):
         if not event.user_id == self.bot.owner_id:
             return
 
-        group_id = int(message.split(" ")[1])
+        group_id = int(message.split()[1])
         group_member_list = self.api.groupService.get_group_member_list(group_id=group_id).get(
             "data"
         )

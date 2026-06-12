@@ -23,7 +23,7 @@ class TheresaHelp(Plugins):
     @plugin_main(call_word=["Theresa help"])
     async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
-        parts = event.message.split(" ")
+        parts = event.message.split()
         if len(parts) > 2:
             target_plugin_name = parts[2]
             response = f"未找到名为 {target_plugin_name} 的插件"

@@ -93,7 +93,7 @@ class TheresaChat(Plugins):
             return  # 忽略空消息
 
         if event.user_id == self.bot.owner_id and clean_message.startswith("chat stop"):
-            sleep_time = int(clean_message.split(" ")[2])
+            sleep_time = int(clean_message.split()[2])
             self.group_cooldown[group_id] = time.time() + sleep_time  # 停止回复指定时间
             return
 
