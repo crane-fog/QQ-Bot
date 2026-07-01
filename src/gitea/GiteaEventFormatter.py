@@ -93,7 +93,7 @@ class GiteaEventFormatter:
 
         lines = [
             self.issues_summary(event, event_type),
-            f"[Author]: {event.issue.original_author}",
+            f"[Author]: {_issue_author(event)}",
             f"[Title]: {event.issue.title}",
         ]
         if content:
