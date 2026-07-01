@@ -2,6 +2,7 @@ from src.Api import Api
 from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
+from src.webhook_handler.WebhookHandler import EventConfig
 
 
 class NotificationService:
@@ -10,9 +11,13 @@ class NotificationService:
         self.response_group = response_group
         self.formatter = GiteaEventFormatter()
 
-    def send(self, data: GiteaWebhookEvent, event_type: str) -> None:
+    def send(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
         try:
-            if isinstance(data, GiteaIssuesEvent) and event_type == "issues":
+            if config.forward:
+                if not isinstance(data, GiteaIssuesEvent):
+                    raise TypeError(
+                        f"forward=True 要求 GiteaIssuesEvent，但解析得到 {type(data).__name__}"
+                    )
                 self._send_issues_notification(data, event_type)
             else:
                 self._send_plain_text(data, event_type)

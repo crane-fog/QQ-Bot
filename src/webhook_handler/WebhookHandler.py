@@ -1,3 +1,5 @@
+from dataclasses import dataclass
+
 import uvicorn
 from fastapi import FastAPI, Request
 from pydantic import ValidationError
@@ -14,7 +16,21 @@ from src.webhook_handler.NotificationService import NotificationService
 
 app = FastAPI(title="Webhook Handler")
 
-ISSUE_EVENT_TYPES = {"issues", "issue_assign", "issue_label", "issue_milestone"}
+
+@dataclass(frozen=True)
+class EventConfig:
+    model: type[GiteaWebhookEvent]
+    forward: bool = False  # 是否额外发送合并转发消息
+
+
+EVENT_CONFIG: dict[str, EventConfig] = {
+    "push": EventConfig(GiteaPushEvent),
+    "issues": EventConfig(GiteaIssuesEvent, forward=True),
+    "issue_assign": EventConfig(GiteaIssuesEvent),
+    "issue_label": EventConfig(GiteaIssuesEvent),
+    "issue_milestone": EventConfig(GiteaIssuesEvent),
+    "issue_comment": EventConfig(GiteaIssueCommentEvent),
+}
 
 
 @app.post("/api/tjhlp")
@@ -29,29 +45,19 @@ async def receive_post(request: Request):
         "X-Gogs-Event-Type", ""
     )
 
+    config = EVENT_CONFIG.get(event_type)
+    if config is None:
+        Log.warning(f"Unsupported Gitea webhook event type: {event_type}")
+        return {"ok": False, "message": f"Unsupported Gitea webhook event type: {event_type}"}
+
     try:
-        event = parse_gitea_event(event_type, payload)
+        event = config.model.model_validate(payload)
     except ValidationError as e:
         Log.warning(f"Invalid Gitea webhook payload for {event_type}: {e}")
         return {"ok": False, "message": f"Invalid Gitea webhook payload for {event_type}"}
-    except ValueError as e:
-        Log.warning(str(e))
-        return {"ok": False, "message": str(e)}
 
-    handler.resolve(event, event_type)
+    handler.resolve(event, event_type, config)
     return {"ok": True}
-
-
-def parse_gitea_event(event_type: str, payload: dict) -> GiteaWebhookEvent:
-    match event_type:
-        case "push":
-            return GiteaPushEvent.model_validate(payload)
-        case "issue_comment":
-            return GiteaIssueCommentEvent.model_validate(payload)
-        case event_type if event_type in ISSUE_EVENT_TYPES:
-            return GiteaIssuesEvent.model_validate(payload)
-        case _:
-            raise ValueError(f"Unsupported Gitea webhook event type: {event_type}")
 
 
 def log_recoverable_payload_anomalies(data: GiteaWebhookEvent, event_type: str) -> None:
@@ -72,9 +78,9 @@ class WebhookHandler:
         self.server = None
         app.state.handler = self
 
-    def resolve(self, data: GiteaWebhookEvent, event_type: str) -> None:
+    def resolve(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
         log_recoverable_payload_anomalies(data, event_type)
-        self.notification_service.send(data, event_type)
+        self.notification_service.send(data, event_type, config)
 
     async def run(self, ip, port) -> None:
         config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
