@@ -19,7 +19,11 @@ ISSUE_EVENT_TYPES = {"issues", "issue_assign", "issue_label", "issue_milestone"}
 
 @app.post("/api/tjhlp")
 async def receive_post(request: Request):
-    handler: WebhookHandler = app.state.handler
+    handler: WebhookHandler | None = app.state.handler
+    if not isinstance(handler, WebhookHandler):
+        Log.error("WebhookHandler 未初始化")
+        return {"ok": False, "message": "WebhookHandler 未初始化"}
+
     payload = await request.json()
     event_type = request.headers.get("X-Gitea-Event-Type") or request.headers.get(
         "X-Gogs-Event-Type", ""
