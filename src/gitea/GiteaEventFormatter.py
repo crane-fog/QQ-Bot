@@ -1,9 +1,11 @@
 from src.gitea.Models import (
     Attachment,
+    Comment,
     GiteaIssueCommentEvent,
     GiteaIssuesEvent,
     GiteaPushEvent,
     GiteaWebhookEvent,
+    Issue,
 )
 from utils.CQType import Forward
 
@@ -32,13 +34,15 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
     return lines
 
 
-def _label_text(event: GiteaIssuesEvent) -> str:
-    labels = [label.name for label in event.issue.labels if label.name]
+def _label_text(event_or_issue: GiteaIssuesEvent | Issue) -> str:
+    issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
+    labels = [label.name for label in issue.labels if label.name]
     return ", ".join(labels) if labels else "none"
 
 
-def _issue_author(event: GiteaIssuesEvent) -> str:
-    return event.issue.original_author or event.issue.user.login
+def _issue_author(event_or_issue: GiteaIssuesEvent | Issue) -> str:
+    issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
+    return issue.original_author or issue.user.login
 
 
 def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
@@ -61,7 +65,7 @@ class GiteaEventFormatter:
             case GiteaIssuesEvent():
                 if event_type == "issue_label":
                     return self.issue_label(event, event_type)
-                return self.issues(event, event_type)
+                return self.issue_detail(event, event_type)
             case GiteaIssueCommentEvent():
                 return self.issue_comment(event, event_type)
             case _:
@@ -87,7 +91,7 @@ class GiteaEventFormatter:
             lines.append(f"url: {event.compare_url}")
         return "\n".join(lines)
 
-    def issues(self, event: GiteaIssuesEvent, event_type: str = "") -> str:
+    def issue_detail(self, event: GiteaIssuesEvent, event_type: str = "") -> str:
         body = event.issue.body or ""
         content = _limit_text(body)
 
@@ -160,3 +164,50 @@ class GiteaEventFormatter:
         lines.extend(_attachment_lines(event.comment.assets))
         lines.append(f"\nurl: {event.comment.html_url}")
         return "\n".join(lines)
+
+    def issue_comment_forward(
+        self, event: GiteaIssueCommentEvent, comments: list[Comment]
+    ) -> list:
+        forward = Forward()
+
+        target = "pull request" if event.is_pull else "issue"
+        # 节点1: issue 信息
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text="\n".join(
+                [
+                    f"[Gitea] issue_comment on {target} #{event.issue.number}"
+                    f" in {event.repository.full_name}",
+                    f"Title: {event.issue.title}",
+                    f"Author: {_issue_author(event.issue)}",
+                    f"Labels: {_label_text(event.issue)}",
+                ]
+            ),
+        )
+
+        # 节点2: issue 正文
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text=event.issue.body or "(empty body)",
+        )
+
+        # 节点3~N: 每条评论（正序）
+        for comment in comments:
+            author = comment.original_author or comment.user.login
+            body = _limit_text(comment.body or "(empty)")
+            forward.add_node(
+                type="text",
+                sender_name=author,
+                text=body,
+            )
+
+        # 最后: URL
+        forward.add_node(
+            type="text",
+            sender_name="Gitea",
+            text=f"url: {event.issue.html_url}",
+        )
+
+        return forward.message

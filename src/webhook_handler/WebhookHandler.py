@@ -29,7 +29,7 @@ EVENT_CONFIG: dict[str, EventConfig] = {
     "issue_assign": EventConfig(GiteaIssuesEvent),
     "issue_label": EventConfig(GiteaIssuesEvent),
     "issue_milestone": EventConfig(GiteaIssuesEvent),
-    "issue_comment": EventConfig(GiteaIssueCommentEvent),
+    "issue_comment": EventConfig(GiteaIssueCommentEvent, forward=True),
 }
 
 
@@ -56,7 +56,7 @@ async def receive_post(request: Request):
         Log.warning(f"Invalid Gitea webhook payload for {event_type}: {e}")
         return {"ok": False, "message": f"Invalid Gitea webhook payload for {event_type}"}
 
-    handler.resolve(event, event_type, config)
+    await handler.resolve(event, event_type, config)
     return {"ok": True}
 
 
@@ -71,16 +71,18 @@ def log_recoverable_payload_anomalies(data: GiteaWebhookEvent, event_type: str) 
 
 
 class WebhookHandler:
-    def __init__(self, api: Api, response_group: int):
+    def __init__(self, api: Api, response_group: int, gitea_api_url: str, gitea_api_token: str):
         self.api: Api = api
         self.response_group: int = response_group
-        self.notification_service = NotificationService(api, response_group)
+        self.notification_service = NotificationService(
+            api, response_group, gitea_api_url, gitea_api_token
+        )
         self.server = None
         app.state.handler = self
 
-    def resolve(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
+    async def resolve(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
         log_recoverable_payload_anomalies(data, event_type)
-        self.notification_service.send(data, event_type, config)
+        await self.notification_service.send(data, event_type, config)
 
     async def run(self, ip, port) -> None:
         config = uvicorn.Config(app=app, host=ip, port=port, log_level="warning", access_log=False)
