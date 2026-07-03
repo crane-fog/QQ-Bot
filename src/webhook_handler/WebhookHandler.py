@@ -1,36 +1,14 @@
-from dataclasses import dataclass
-
 import uvicorn
 from fastapi import FastAPI, Request
 from pydantic import ValidationError
 
 from src.Api import Api
-from src.gitea.Models import (
-    GiteaIssueCommentEvent,
-    GiteaIssuesEvent,
-    GiteaPushEvent,
-    GiteaWebhookEvent,
-)
+from src.gitea.Models import GiteaPushEvent, GiteaWebhookEvent
 from src.PrintLog import Log
+from src.webhook_handler.EventConfig import EVENT_CONFIG, EventConfig
 from src.webhook_handler.NotificationService import NotificationService
 
 app = FastAPI(title="Webhook Handler")
-
-
-@dataclass(frozen=True)
-class EventConfig:
-    model: type[GiteaWebhookEvent]
-    forward: bool = False  # 是否额外发送合并转发消息
-
-
-EVENT_CONFIG: dict[str, EventConfig] = {
-    "push": EventConfig(GiteaPushEvent),
-    "issues": EventConfig(GiteaIssuesEvent, forward=True),
-    "issue_assign": EventConfig(GiteaIssuesEvent),
-    "issue_label": EventConfig(GiteaIssuesEvent),
-    "issue_milestone": EventConfig(GiteaIssuesEvent),
-    "issue_comment": EventConfig(GiteaIssueCommentEvent, forward=True),
-}
 
 
 @app.post("/api/tjhlp")

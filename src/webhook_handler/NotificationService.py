@@ -4,7 +4,7 @@ from src.Api import Api
 from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
-from src.webhook_handler.WebhookHandler import EventConfig
+from src.webhook_handler.EventConfig import EventConfig
 
 
 class NotificationService:
