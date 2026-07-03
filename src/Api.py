@@ -227,6 +227,13 @@ class Api:
 
             return response.json()
 
+        async def send_group_msg(self, group_id: int, message: str) -> dict:
+            params = {"group_id": group_id, "message": message}
+            response = await self.client.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
         async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
             params = {"group_id": group_id, "messages": forward_message}
             response = await self.client.post(
