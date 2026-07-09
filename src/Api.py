@@ -72,7 +72,7 @@ class Api:
             )
             return response.json()
 
-        def send_group_msg(self, group_id: int, message: str) -> dict:
+        def send_group_msg(self, group_id: int, message: str | list[dict]) -> dict:
             params = {"group_id": group_id, "message": message}
             response = requests.post(self.api.bot_api_address + "send_group_msg", json=params)
             return response.json()
@@ -92,7 +92,7 @@ class Api:
             )
             return response.json()
 
-        def send_group_img(self, group_id: int, image_path: str) -> dict:
+         def send_group_img(self, group_id: int, image_path: str) -> dict:
             params = {
                 "group_id": group_id,
                 "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
@@ -227,8 +227,18 @@ class Api:
 
             return response.json()
 
-        async def send_group_msg(self, group_id: int, message: str) -> dict:
+         async def send_group_msg(self, group_id: int, message: str | list[dict]) -> dict:
             params = {"group_id": group_id, "message": message}
+            response = await self.client.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
+        async def send_group_img(self, group_id: int, image_path: str) -> dict:
+            params = {
+                "group_id": group_id,
+                "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
+            }
             response = await self.client.post(
                 self.api.bot_api_address + "send_group_msg", json=params
             )
