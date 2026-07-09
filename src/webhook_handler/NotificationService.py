@@ -1,13 +1,33 @@
+import asyncio
+import re
+import shutil
+import tempfile
+from collections.abc import Awaitable
+from pathlib import Path
+from typing import Any
+
 from httpx import AsyncClient, Timeout
 
 from src.Api import Api
-from src.gitea.GiteaEventFormatter import GiteaEventFormatter
+from src.gitea.GiteaEventFormatter import (
+    ContentNode,
+    ForwardPlan,
+    GiteaEventFormatter,
+    ImageRef,
+)
 from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
 from src.webhook_handler.EventConfig import EventConfig
+from utils.CQType import Forward
 
 
 class NotificationService:
+    api: Api
+    response_group: int
+    gitea_api_url: str
+    gitea_api_token: str
+    formatter: GiteaEventFormatter
+
     def __init__(self, api: Api, response_group: int, gitea_api_url: str, gitea_api_token: str):
         self.api = api
         self.response_group = response_group
@@ -23,19 +43,14 @@ class NotificationService:
                 elif isinstance(data, GiteaIssuesEvent):
                     self._send_issues_notification(data, event_type)
                 else:
-                    raise TypeError(
-                        f"forward=True 不支持 {type(data).__name__} 类型"
-                    )
+                    raise TypeError(f"forward=True 不支持 {type(data).__name__} 类型")
             else:
                 self._send_plain_text(data, event_type)
         except Exception as e:
             Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
 
     async def _fetch_issue_comments(self, full_name: str, issue_number: int) -> list[Comment]:
-        url = (
-            f"{self.gitea_api_url}/api/v1/repos/{full_name}"
-            f"/issues/{issue_number}/comments"
-        )
+        url = f"{self.gitea_api_url}/api/v1/repos/{full_name}/issues/{issue_number}/comments"
         async with AsyncClient(timeout=Timeout(10)) as client:
             resp = await client.get(
                 url,
