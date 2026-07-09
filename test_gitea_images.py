@@ -46,19 +46,23 @@ def test_parse_comment_segments_preserves_original_order():
 
 
 def test_parse_comment_segments_image_assets_appended_with_dedup():
-    """图片附件追加到末尾，与内联图片按 url 去重。"""
+    """所有附件都作为 FileSegment 追加（图片由 body markdown 处理）。"""
     body = "see ![pic](/attachments/uuid)"
     assets = [_attachment("pic.png", "https://gitea.example.com/attachments/uuid")]
     segments = _parse_comment_segments(body, assets, REPO_HTML_URL)
 
-    # 内联图已存在，附件图片去重后不再追加
+    # body 中的内联图仍是 ImageSegment，assets 中的图片变成 FileSegment
     images = [s for s in segments if isinstance(s, ImageSegment)]
     assert len(images) == 1
     assert images[0].url == "https://gitea.example.com/attachments/uuid"
+    files = [s for s in segments if isinstance(s, FileSegment)]
+    assert len(files) == 1
+    assert files[0].name == "pic.png"
+    assert files[0].download_url == "https://gitea.example.com/attachments/uuid"
 
 
 def test_parse_comment_segments_non_image_assets_as_files():
-    """非图片附件生成 FileSegment 追加到末尾。"""
+    """所有附件统一生成 FileSegment，不再区分图片/非图片。"""
     body = "text"
     assets = [
         _attachment("report.pdf", "https://gitea.example.com/attachments/pdf", size=2048),
@@ -68,11 +72,12 @@ def test_parse_comment_segments_non_image_assets_as_files():
 
     files = [s for s in segments if isinstance(s, FileSegment)]
     images = [s for s in segments if isinstance(s, ImageSegment)]
-    assert len(files) == 1
+    assert len(files) == 2
     assert files[0].name == "report.pdf"
     assert files[0].size == 2048
-    assert len(images) == 1
-    assert images[0].url == "https://gitea.example.com/attachments/shot"
+    assert files[1].name == "shot.png"
+    assert files[1].download_url == "https://gitea.example.com/attachments/shot"
+    assert len(images) == 0
 
 
 def test_parse_comment_segments_multiple_inline_images():
