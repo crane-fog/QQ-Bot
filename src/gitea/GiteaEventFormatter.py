@@ -165,7 +165,8 @@ class GiteaEventFormatter:
                     return self.issue_label(event, event_type)
                 return self.issue_detail(event, event_type)
             case GiteaIssueCommentEvent():
-                return self.issue_comment(event, event_type)
+                text, _ = self.issue_comment_plain(event, event_type)
+                return text
             case _:
                 return ""
 
@@ -246,24 +247,6 @@ class GiteaEventFormatter:
             text=f"url: {event.issue.html_url}",
         )
         return forward.message
-
-    def issue_comment(self, event: GiteaIssueCommentEvent, event_type: str = "") -> str:
-        """issue_comment 的纯文本摘要（不含图片下载），供 plain_text 路径兜底。"""
-        body = event.comment.body or ""
-        content = _limit_text(body)
-
-        event_name = event_type or "issue_comment"
-        target = "pull request" if event.is_pull else "issue"
-        lines = [
-            f"[Gitea] {event_name} on {target} #{event.issue.number} {event.action}"
-            f" in {event.repository.full_name}",
-            event.issue.title,
-        ]
-        if content:
-            lines.append(content)
-        lines.extend(_attachment_lines(event.comment.assets))
-        lines.append(f"\nurl: {event.comment.html_url}")
-        return "\n".join(lines)
 
     def issue_comment_plain(
         self, event: GiteaIssueCommentEvent, event_type: str = ""
