@@ -1,3 +1,9 @@
+import re
+from dataclasses import dataclass, field
+from typing import Any
+from urllib.parse import urljoin
+from utils.TextUtils import format_size
+
 from src.gitea.Models import (
     Attachment,
     Comment,
@@ -9,22 +15,64 @@ from src.gitea.Models import (
 )
 from utils.CQType import Forward
 
+@dataclass
+class TextSegment:
+    """评论正文中的一段纯文本。"""
+
+    text: str
+
+@dataclass
+class ImageSegment:
+    """评论中的一张图片。url 已规范化为绝对 URL，不含 token。"""
+
+    url: str
+    alt: str = ""
+
+@dataclass
+class FileSegment:
+    """非图片附件，仅文本展示（文件名 + 大小 + 下载直链）。"""
+
+    name: str
+    size: int
+    download_url: str
+
+type ContentSegment = TextSegment | ImageSegment | FileSegment
+
+@dataclass
+class ContentNode:
+    """合并转发中单个评论节点的渲染单元，segments 保留原文中文字与图片的交替顺序。"""
+
+    sender_name: str
+    segments: list[ContentSegment] = field(default_factory=list)
+
+@dataclass
+class ForwardPlan:
+    """issue_comment_forward 的产物，把"下载什么/发什么"与发送逻辑解耦。"""
+
+    header_text: str
+    nodes: list[ContentNode]
+    url_text: str
+
+# markdown 图片语法 ![alt](url) 或 ![alt](url "title")
+MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+
+# 按扩展名判定附件是否为图片
+_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"}
 
 def _limit_text(text: str, limit: int = 500) -> str:
-    """
-    限制文本长度，默认为500字符
-    """
+    """将文本截断到指定长度（默认 500 字符），超出部分用 ... 代替。"""
+    # 先去除首尾空白再判断长度
     text = text.strip()
     if len(text) <= limit:
         return text
     return text[: limit - 3].rstrip() + "..."
 
-
 def _branch_name(ref: str) -> str:
+    """去掉 ref 中的 refs/heads/ 或 refs/tags/ 前缀，返回分支名或标签名。"""
     return ref.removeprefix("refs/heads/").removeprefix("refs/tags/")
 
-
 def _attachment_lines(attachments: list[Attachment]) -> list[str]:
+    """将附件列表格式化为文本行，供纯文本摘要使用。"""
     if not attachments:
         return []
 
@@ -33,19 +81,87 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
         lines.append(f"{attachment.name}: {attachment.browser_download_url}")
     return lines
 
+def _is_image(name: str) -> bool:
+    """按扩展名判断文件是否为图片。"""
+    return _suffix_lower(name) in _IMAGE_EXT
+
+def _suffix_lower(name: str) -> str:
+    """取文件名扩展名（小写），不含点则返回空串。"""
+    dot = name.rfind(".")
+    return name[dot:].lower() if dot != -1 else ""
+
+def _resolve_image_url(url: str, repo_html_url: str) -> str:
+    """将 markdown 图片 URL 规范化为绝对 URL：绝对 URL 原样返回，相对路径拼接仓库根地址。"""
+    if url.startswith(("http://", "https://")):
+        return url
+    return urljoin(repo_html_url, url)
+
+def _parse_body_segments(body: str, repo_html_url: str) -> list[ContentSegment]:
+    """把 body 按 markdown 图片切分为 TextSegment / ImageSegment 交替序列。"""
+    segments: list[ContentSegment] = []
+    body = body or ""
+
+    pos = 0
+    for m in MD_IMAGE_RE.finditer(body):
+        before = body[pos : m.start()]
+        if before:
+            segments.append(TextSegment(text=before))
+
+        alt = m.group(1).strip()
+        url = _resolve_image_url(m.group(2).strip(), repo_html_url)
+        segments.append(ImageSegment(url=url, alt=alt))
+        pos = m.end()
+
+    tail = body[pos:]
+    if tail:
+        segments.append(TextSegment(text=tail))
+
+    return segments
+
+def _append_asset_segments(segments: list[ContentSegment], assets: list[Attachment]) -> None:
+    """向 segments 末尾追加 assets 中的图片附件（去重）和非图片附件。"""
+    seen_urls: set[str] = {s.url for s in segments if isinstance(s, ImageSegment)}
+    for asset in assets:
+        if not asset.browser_download_url:
+            continue
+        if _is_image(asset.name):
+            if asset.browser_download_url not in seen_urls:
+                seen_urls.add(asset.browser_download_url)
+                segments.append(ImageSegment(url=asset.browser_download_url, alt=asset.name))
+        else:
+            segments.append(
+                FileSegment(
+                    name=asset.name,
+                    size=asset.size,
+                    download_url=asset.browser_download_url,
+                )
+            )
+
+def _parse_comment_segments(
+    body: str, assets: list[Attachment], repo_html_url: str
+) -> list[ContentSegment]:
+    """解析评论正文与附件，生成有序段落列表。"""
+    segments = _parse_body_segments(body, repo_html_url)
+    _append_asset_segments(segments, assets)
+    return segments
+
+def _extract_images(segments: list[ContentSegment]) -> list[ImageSegment]:
+    """从 segments 中提取所有图片段，供 plain_text 路径发图使用。"""
+    return [s for s in segments if isinstance(s, ImageSegment)]
 
 def _label_text(event_or_issue: GiteaIssuesEvent | Issue) -> str:
+    """提取 issue 的标签，以逗号分隔；无标签返回 "none"。"""
     issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
     labels = [label.name for label in issue.labels if label.name]
     return ", ".join(labels) if labels else "none"
 
-
 def _issue_author(event_or_issue: GiteaIssuesEvent | Issue) -> str:
+    """获取 issue 的原始作者，若原作者为空则回退到当前用户 login。"""
     issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
     return issue.original_author or issue.user.login
 
-
 def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
+    """生成标签变更描述文本，前置 +/- 区分新增/移除；无变更则返回当前标签列表。"""
     if event.changes is not None:
         added = [f"+{label.name}" for label in event.changes.added_labels if label.name]
         removed = [f"-{label.name}" for label in event.changes.removed_labels if label.name]
@@ -54,7 +170,6 @@ def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
             return ", ".join(changes)
 
     return _label_text(event)
-
 
 class GiteaEventFormatter:
     def plain_text(self, event: GiteaWebhookEvent, event_type: str = "") -> str:
@@ -121,7 +236,7 @@ class GiteaEventFormatter:
             ]
         )
 
-    def issues_forward(self, event: GiteaIssuesEvent, event_type: str = "") -> list:
+    def issues_forward(self, event: GiteaIssuesEvent, event_type: str = "") -> list[dict[str, Any]]:
         event_name = event_type or "issues"
         forward = Forward()
 
@@ -150,13 +265,15 @@ class GiteaEventFormatter:
         return forward.message
 
     def issue_comment(self, event: GiteaIssueCommentEvent, event_type: str = "") -> str:
+        """issue_comment 的纯文本摘要（不含图片下载），供 plain_text 路径兜底。"""
         body = event.comment.body or ""
         content = _limit_text(body)
 
         event_name = event_type or "issue_comment"
         target = "pull request" if event.is_pull else "issue"
         lines = [
-            f"[Gitea] {event_name} on {target} #{event.issue.number} {event.action} in {event.repository.full_name}",
+            f"[Gitea] {event_name} on {target} #{event.issue.number} {event.action}"
+            f" in {event.repository.full_name}",
             event.issue.title,
         ]
         if content:
@@ -165,49 +282,72 @@ class GiteaEventFormatter:
         lines.append(f"\nurl: {event.comment.html_url}")
         return "\n".join(lines)
 
+    def issue_comment_plain(
+        self, event: GiteaIssueCommentEvent, event_type: str = ""
+    ) -> tuple[str, list[ImageSegment]]:
+        """
+        issue_comment 的纯文本摘要 + 待发送图片列表。
+        正文保留文字与 [图片] 占位的原始顺序；图片附件一并加入图片列表。
+        """
+        repo_html_url = event.repository.html_url
+        segments = _parse_comment_segments(
+            event.comment.body or "", event.comment.assets, repo_html_url
+        )
+
+        # 生成纯文本摘要：将 segments 转为单一文本
+        text_parts: list[str] = []
+        for seg in segments:
+            if isinstance(seg, TextSegment):
+                text_parts.append(_limit_text(seg.text))
+            elif isinstance(seg, ImageSegment):
+                label = f"[图片: {seg.alt}]" if seg.alt else "[图片]"
+                text_parts.append(label)
+            elif isinstance(seg, FileSegment):
+                text_parts.append(f"附件: {seg.name} ({format_size(seg.size)}) {seg.download_url}")
+
+        event_name = event_type or "issue_comment"
+        target = "pull request" if event.is_pull else "issue"
+        lines = [
+            f"[Gitea] {event_name} on {target} #{event.issue.number} {event.action}"
+            f" in {event.repository.full_name}",
+            event.issue.title,
+        ]
+        if text_parts:
+            lines.append(_limit_text("".join(text_parts)))
+        lines.append(f"\nurl: {event.comment.html_url}")
+        return "\n".join(lines), _extract_images(segments)
+
     def issue_comment_forward(
         self, event: GiteaIssueCommentEvent, comments: list[Comment]
-    ) -> list:
-        forward = Forward()
-
+    ) -> ForwardPlan:
+        repo_html_url = event.repository.html_url
         target = "pull request" if event.is_pull else "issue"
-        # 节点1: issue 信息
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            text="\n".join(
-                [
-                    f"[Gitea] issue_comment on {target} #{event.issue.number}"
-                    f" in {event.repository.full_name}",
-                    f"Title: {event.issue.title}",
-                    f"Author: {_issue_author(event.issue)}",
-                    f"Labels: {_label_text(event.issue)}",
-                ]
-            ),
+
+        header_text = "\n".join(
+            [
+                f"[Gitea] issue_comment on {target} #{event.issue.number}"
+                f" in {event.repository.full_name}",
+                f"Title: {event.issue.title}",
+                f"Author: {_issue_author(event.issue)}",
+                f"Labels: {_label_text(event.issue)}",
+            ]
         )
 
-        # 节点2: issue 正文
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            text=event.issue.body or "(empty body)",
-        )
+        nodes: list[ContentNode] = []
 
-        # 节点3~N: 每条评论（正序）
+        # 节点1: issue 正文（也解析其内联图片）
+        issue_segments = _parse_comment_segments(
+            event.issue.body or "(empty body)", [], repo_html_url
+        )
+        nodes.append(ContentNode(sender_name="Gitea", segments=issue_segments))
+
+        # 节点2~N: 每条评论（正序）
         for comment in comments:
             author = comment.original_author or comment.user.login
-            body = _limit_text(comment.body or "(empty)")
-            forward.add_node(
-                type="text",
-                sender_name=author,
-                text=body,
+            segments = _parse_comment_segments(
+                comment.body or "(empty)", comment.assets, repo_html_url
             )
+            nodes.append(ContentNode(sender_name=author, segments=segments))
 
-        # 最后: URL
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            text=f"url: {event.issue.html_url}",
-        )
-
-        return forward.message
+        url_text = f"url: {event.issue.html_url}"
+        return ForwardPlan(header_text=header_text, nodes=nodes, url_text=url_text)

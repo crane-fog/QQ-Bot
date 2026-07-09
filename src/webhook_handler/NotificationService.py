@@ -11,14 +11,17 @@ from httpx import AsyncClient, Timeout
 from src.Api import Api
 from src.gitea.GiteaEventFormatter import (
     ContentNode,
+    FileSegment,
     ForwardPlan,
     GiteaEventFormatter,
-    ImageRef,
+    ImageSegment,
+    TextSegment,
 )
 from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
 from src.webhook_handler.EventConfig import EventConfig
 from utils.CQType import Forward
+from utils.TextUtils import format_size, sanitize_filename
 
 
 class NotificationService:
@@ -59,32 +62,150 @@ class NotificationService:
             resp.raise_for_status()
             return [Comment.model_validate(c) for c in resp.json()]
 
+    async def _download_images(
+        self, images: list[ImageSegment], temp_dir: Path
+    ) -> dict[str, str | None]:
+        """
+        带鉴权并发下载图片到临时目录，返回 {url: 本地路径}；单张失败映射 None。
+
+        Args:
+            images: 图片段列表
+            temp_dir: 临时目录
+
+        Returns:
+            图片 URL 映射到本地路径的字典，失败时映射 None
+        """
+        if not images:
+            return {}
+
+        headers = {"Authorization": f"token {self.gitea_api_token}"}
+        result: dict[str, str | None] = {}
+
+        async def _download_one(client: AsyncClient, idx: int, image: ImageSegment) -> None:
+            # 用图片 alt 做文件名前缀，保证可识别
+            name = sanitize_filename(image.alt) or f"{idx:02d}"
+            # 强制 .png 扩展名，便于 OneBot 端识别图片类型
+            path = temp_dir / f"{idx:02d}_{name}.png"
+            try:
+                resp = await client.get(image.url, headers=headers, timeout=Timeout(30))
+                resp.raise_for_status()
+                path.write_bytes(resp.content)
+                result[image.url] = str(path)
+            except Exception as e:
+                Log.warning(f"下载 Gitea 图片失败：url={image.url}, error={e}")
+                result[image.url] = None
+
+        seen: set[str] = set()
+        # 收集所有下载任务，URL 去重后并发执行
+        tasks: list[Awaitable[None]] = []
+        async with AsyncClient() as client:
+            for idx, image in enumerate(images):
+                if image.url in seen:
+                    continue
+                seen.add(image.url)
+                tasks.append(_download_one(client, idx, image))
+            await asyncio.gather(*tasks)
+        return result
+
+    def _build_forward_from_plan(
+        self, plan: ForwardPlan, image_paths: dict[str, str | None]
+    ) -> Forward:
+        """把 ForwardPlan 组装成合并转发消息，图片用本地路径，下载失败的标记占位。"""
+        forward = Forward()
+        # 头部节点：issue 摘要信息
+        forward.add_node(type="text", sender_name="Gitea", text=plan.header_text)
+
+        for node in plan.nodes:
+            # 每个评论节点按原始 segments 顺序渲染
+            segments = self._node_segments(node, image_paths)
+            forward.add_mixed_node(segments=segments, sender_name=node.sender_name)
+
+        # 尾部节点：issue 链接
+        forward.add_node(type="text", sender_name="Gitea", text=plan.url_text)
+        return forward
+
+    @staticmethod
+    def _node_segments(
+        node: ContentNode, image_paths: dict[str, str | None]
+    ) -> list[dict[str, Any]]:
+        """单个评论节点的内容段：按 segments 原始顺序生成，下载失败的图片替换为文本占位。"""
+        result: list[dict[str, Any]] = []
+        for seg in node.segments:
+            if isinstance(seg, TextSegment):
+                # 纯文本：直接透传
+                result.append({"type": "text", "data": {"text": seg.text}})
+            elif isinstance(seg, ImageSegment):
+                # 图片：用本地 file:// 路径发送；下载失败则用文本占位兜底
+                path = image_paths.get(seg.url)
+                if path is None:
+                    result.append({"type": "text", "data": {"text": "[图片下载失败]"}})
+                else:
+                    result.append({"type": "image", "data": {"file": f"file://{path}"}})
+            elif isinstance(seg, FileSegment):
+                # 非图片附件：纯文本展示（文件名 + 大小 + 链接）
+                result.append(
+                    {
+                        "type": "text",
+                        "data": {
+                            "text": (
+                                f"附件: {seg.name}"
+                                f" ({format_size(seg.size)})"
+                                f" {seg.download_url}"
+                            )
+                        },
+                    }
+                )
+            else:
+                Log.warning(f"未知内容段类型：{type(seg)} : {str(seg)}")
+        return result
+
     async def _send_issue_comment_notification(
         self, data: GiteaIssueCommentEvent, event_type: str
     ) -> None:
-        # 1. 发送纯文本摘要
-        plain = self.formatter.plain_text(data, event_type)
-        if plain:
-            self.api.groupService.send_group_msg(
-                group_id=self.response_group,
-                message=plain,
+        # 创建临时目录，用于存放下载的图片，finally 中统一清理
+        temp_dir = Path(tempfile.mkdtemp(prefix="gitea_img_"))
+        try:
+            # 1. 发送纯文本摘要 + 内联图片
+            plain, images = self.formatter.issue_comment_plain(data, event_type)
+            if plain:
+                self.api.groupService.send_group_msg(group_id=self.response_group, message=plain)
+
+            if images:
+                path_map = await self._download_images(images, temp_dir)
+                for image in images:
+                    path = path_map.get(image.url)
+                    if path is not None:
+                        self.api.groupService.send_group_img(
+                            group_id=self.response_group, image_path=path
+                        )
+
+            # 2. 拉取历史评论并发送合并转发
+            comments = await self._fetch_issue_comments(
+                data.repository.full_name, data.issue.number
             )
+            plan = self.formatter.issue_comment_forward(data, comments)
 
-        # 2. 拉取历史评论
-        comments = await self._fetch_issue_comments(
-            data.repository.full_name, data.issue.number
-        )
+            # 收集合并转发计划中所有图片 URL，并发下载
+            plan_images: list[ImageSegment] = [
+                seg
+                for node in plan.nodes
+                for seg in node.segments
+                if isinstance(seg, ImageSegment)
+            ]
+            if plan_images:
+                plan_path_map: dict[str, str | None] = await self._download_images(
+                    plan_images, temp_dir
+                )
+            else:
+                plan_path_map = {}
 
-        # 3. 发送合并转发消息
-        forward_message = self.formatter.issue_comment_forward(data, comments)
-        if not forward_message:
-            Log.warning(f"Empty Gitea webhook forward message for {event_type}")
-            return
-
-        self.api.groupService.send_group_forward_msg(
-            group_id=self.response_group,
-            forward_message=forward_message,
-        )
+            forward: Forward = self._build_forward_from_plan(plan, plan_path_map)
+            self.api.groupService.send_group_forward_msg(
+                group_id=self.response_group, forward_message=forward.message
+            )
+        finally:
+            # 确保临时目录被清理，防止磁盘泄漏
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     def _send_issues_notification(self, data: GiteaIssuesEvent, event_type: str) -> None:
         message = self.formatter.issues_summary(data, event_type)
