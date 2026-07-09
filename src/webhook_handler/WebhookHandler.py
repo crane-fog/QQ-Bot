@@ -23,16 +23,12 @@ async def receive_post(request: Request):
         "X-Gogs-Event-Type", ""
     )
 
-    config = EVENT_CONFIG.get(event_type)
-    if config is None:
-        Log.warning(f"Unsupported Gitea webhook event type: {event_type}")
-        return {"ok": False, "message": f"Unsupported Gitea webhook event type: {event_type}"}
-
     try:
-        event = config.model.model_validate(payload)
-    except ValidationError as e:
-        Log.warning(f"Invalid Gitea webhook payload for {event_type}: {e}")
-        return {"ok": False, "message": f"Invalid Gitea webhook payload for {event_type}"}
+        event = parse_gitea_event(event_type, payload)
+        config = EVENT_CONFIG[event_type]
+    except (ValueError, ValidationError) as e:
+        Log.warning(f"Gitea webhook {event_type} 解析失败: {e}")
+        return {"ok": False, "message": str(e)}
 
     await handler.resolve(event, event_type, config)
     return {"ok": True}
@@ -46,6 +42,14 @@ def log_recoverable_payload_anomalies(data: GiteaWebhookEvent, event_type: str) 
                 f"event_type={event_type}, repo={data.repository.full_name}, "
                 f"ref={data.ref}, total_commits={data.total_commits}, after={data.after}"
             )
+
+
+def parse_gitea_event(event_type: str, payload: dict) -> GiteaWebhookEvent:
+    """将 webhook 原始 payload 解析为对应的事件模型。"""
+    config = EVENT_CONFIG.get(event_type)
+    if config is None:
+        raise ValueError(f"Unsupported Gitea webhook event type: {event_type}")
+    return config.model.model_validate(payload)
 
 
 class WebhookHandler:
