@@ -56,9 +56,6 @@ class ForwardPlan:
 # markdown 图片语法 ![alt](url) 或 ![alt](url "title")
 MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 
-# 按扩展名判定附件是否为图片
-_IMAGE_EXT = {".png", ".jpg", ".jpeg", ".gif", ".webp", ".bmp", ".svg"}
-
 def _limit_text(text: str, limit: int = 500) -> str:
     """将文本截断到指定长度（默认 500 字符），超出部分用 ... 代替。"""
     # 先去除首尾空白再判断长度
@@ -80,15 +77,6 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
     for attachment in attachments:
         lines.append(f"{attachment.name}: {attachment.browser_download_url}")
     return lines
-
-def _is_image(name: str) -> bool:
-    """按扩展名判断文件是否为图片。"""
-    return _suffix_lower(name) in _IMAGE_EXT
-
-def _suffix_lower(name: str) -> str:
-    """取文件名扩展名（小写），不含点则返回空串。"""
-    dot = name.rfind(".")
-    return name[dot:].lower() if dot != -1 else ""
 
 def _resolve_image_url(url: str, repo_html_url: str) -> str:
     """将 markdown 图片 URL 规范化为绝对 URL：绝对 URL 原样返回，相对路径拼接仓库根地址。"""
@@ -119,23 +107,18 @@ def _parse_body_segments(body: str, repo_html_url: str) -> list[ContentSegment]:
     return segments
 
 def _append_asset_segments(segments: list[ContentSegment], assets: list[Attachment]) -> None:
-    """向 segments 末尾追加 assets 中的图片附件（去重）和非图片附件。"""
-    seen_urls: set[str] = {s.url for s in segments if isinstance(s, ImageSegment)}
+    """所有附件统一以 FileSegment 追加（图片由 body markdown 解析处理）。"""
     for asset in assets:
         if not asset.browser_download_url:
             continue
-        if _is_image(asset.name):
-            if asset.browser_download_url not in seen_urls:
-                seen_urls.add(asset.browser_download_url)
-                segments.append(ImageSegment(url=asset.browser_download_url, alt=asset.name))
-        else:
-            segments.append(
-                FileSegment(
-                    name=asset.name,
-                    size=asset.size,
-                    download_url=asset.browser_download_url,
-                )
+        segments.append(
+            FileSegment(
+                name=asset.name,
+                size=asset.size,
+                download_url=asset.browser_download_url,
             )
+        )
+
 
 def _parse_comment_segments(
     body: str, assets: list[Attachment], repo_html_url: str
