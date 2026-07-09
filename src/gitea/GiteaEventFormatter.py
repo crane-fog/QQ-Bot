@@ -102,7 +102,7 @@ def _parse_body_segments(body: str, repo_html_url: str) -> list[ContentSegment]:
 
     tail = body[pos:]
     if tail:
-        segments.append(TextSegment(text=tail))
+        segments.append(TextSegment(text=tail+"\n\n"))
 
     return segments
 
