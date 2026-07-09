@@ -16,6 +16,8 @@ from src.gitea.GiteaEventFormatter import (
     GiteaEventFormatter,
     ImageSegment,
     TextSegment,
+    _extract_images,
+    _parse_comment_segments,
 )
 from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
@@ -44,11 +46,11 @@ class NotificationService:
                 if isinstance(data, GiteaIssueCommentEvent):
                     await self._send_issue_comment_notification(data, event_type)
                 elif isinstance(data, GiteaIssuesEvent):
-                    self._send_issues_notification(data, event_type)
+                    await self._send_issues_notification(data, event_type)
                 else:
                     raise TypeError(f"forward=True 不支持 {type(data).__name__} 类型")
             else:
-                self._send_plain_text(data, event_type)
+                await self._send_plain_text(data, event_type)
         except Exception as e:
             Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
 
@@ -113,7 +115,7 @@ class NotificationService:
         """把 ForwardPlan 组装成合并转发消息，图片用本地路径，下载失败的标记占位。"""
         forward = Forward()
         # 头部节点：issue 摘要信息
-        forward.add_node(type="text", sender_name="Gitea", text=plan.header_text)
+        forward.add_node(type="text", sender_name="Gitea", msg=plan.header_text)
 
         for node in plan.nodes:
             # 每个评论节点按原始 segments 顺序渲染
@@ -121,7 +123,7 @@ class NotificationService:
             forward.add_mixed_node(segments=segments, sender_name=node.sender_name)
 
         # 尾部节点：issue 链接
-        forward.add_node(type="text", sender_name="Gitea", text=plan.url_text)
+        forward.add_node(type="text", sender_name="Gitea", msg=plan.url_text)
         return forward
 
     @staticmethod
@@ -162,22 +164,25 @@ class NotificationService:
     async def _send_issue_comment_notification(
         self, data: GiteaIssueCommentEvent, event_type: str
     ) -> None:
-        # 创建临时目录，用于存放下载的图片，finally 中统一清理
         temp_dir = Path(tempfile.mkdtemp(prefix="gitea_img_"))
         try:
-            # 1. 发送纯文本摘要 + 内联图片
-            plain, images = self.formatter.issue_comment_plain(data, event_type)
-            if plain:
-                self.api.groupService.send_group_msg(group_id=self.response_group, message=plain)
+            # 1. 构建混合消息 文本 + 图片 + 附件
+            segments = _parse_comment_segments(
+                data.comment.body or "", data.comment.assets, data.repository.html_url
+            )
+            images = _extract_images(segments)
+            path_map = await self._download_images(images, temp_dir) if images else {}
 
-            if images:
-                path_map = await self._download_images(images, temp_dir)
-                for image in images:
-                    path = path_map.get(image.url)
-                    if path is not None:
-                        self.api.groupService.send_group_img(
-                            group_id=self.response_group, image_path=path
-                        )
+            event_name = event_type or "issue_comment"
+            target = "pull request" if data.is_pull else "issue"
+            msg: list[dict] = [
+                {"type": "text", "data": {
+                    "text": f"[Gitea] {event_name} on {target} #{data.issue.number} {data.action} in {data.repository.full_name}\n{data.issue.title}"
+                }},
+            ]
+            msg.extend(self._node_segments(ContentNode(sender_name="", segments=segments), path_map))
+            msg.append({"type": "text", "data": {"text": f"\nurl: {data.comment.html_url}"}})
+            await self.api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
 
             # 2. 拉取历史评论并发送合并转发
             comments = await self._fetch_issue_comments(
@@ -200,20 +205,20 @@ class NotificationService:
                 plan_path_map = {}
 
             forward: Forward = self._build_forward_from_plan(plan, plan_path_map)
-            self.api.groupService.send_group_forward_msg(
+            await self.api.asyncService.send_group_forward_msg(
                 group_id=self.response_group, forward_message=forward.message
             )
         finally:
             # 确保临时目录被清理，防止磁盘泄漏
             shutil.rmtree(temp_dir, ignore_errors=True)
 
-    def _send_issues_notification(self, data: GiteaIssuesEvent, event_type: str) -> None:
+    async def _send_issues_notification(self, data: GiteaIssuesEvent, event_type: str) -> None:
         message = self.formatter.issues_summary(data, event_type)
         if not message:
             Log.warning(f"Empty Gitea webhook message for {event_type}")
             return
 
-        self.api.groupService.send_group_msg(
+        await self.api.asyncService.send_group_msg(
             group_id=self.response_group,
             message=message,
         )
@@ -223,18 +228,18 @@ class NotificationService:
             Log.warning(f"Empty Gitea webhook forward message for {event_type}")
             return
 
-        self.api.groupService.send_group_forward_msg(
+        await self.api.asyncService.send_group_forward_msg(
             group_id=self.response_group,
             forward_message=forward_message,
         )
 
-    def _send_plain_text(self, data: GiteaWebhookEvent, event_type: str) -> None:
+    async def _send_plain_text(self, data: GiteaWebhookEvent, event_type: str) -> None:
         message = self.formatter.plain_text(data, event_type)
         if not message:
             Log.warning(f"Empty Gitea webhook message for {event_type}")
             return
 
-        self.api.groupService.send_group_msg(
+        await self.api.asyncService.send_group_msg(
             group_id=self.response_group,
             message=message,
         )
