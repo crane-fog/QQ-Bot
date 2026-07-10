@@ -227,7 +227,7 @@ class GiteaEventFormatter:
         forward.add_node(
             type="text",
             sender_name="Gitea",
-            text="\n".join(
+            msg="\n".join(
                 [
                     f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
                     f"Title: {event.issue.title}",
@@ -239,12 +239,12 @@ class GiteaEventFormatter:
         forward.add_node(
             type="text",
             sender_name="Gitea",
-            text=event.issue.body or "(empty body)",
+            msg=event.issue.body or "(empty body)",
         )
         forward.add_node(
             type="text",
             sender_name="Gitea",
-            text=f"url: {event.issue.html_url}",
+            msg=f"url: {event.issue.html_url}",
         )
         return forward.message
 
