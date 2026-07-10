@@ -116,7 +116,7 @@ api_token = <your-readonly-token>
 
 > **网络可达性：** 确保 Gitea 服务器能访问 Bot 的 `webhook_handler_address`。如果 Bot 部署在内网，可能需要配置反向代理或内网穿透。
 
-> 需要确保 Gitea 服务的 allowlist 中配置了 Bot 服务器的地址，否则 Webhook 事件将无法被被发送。
+> 需要确保 Gitea 服务的 allowlist 中配置了 Bot 服务器的地址，否则 Webhook 事件将无法被发送。
 
 ---
 
