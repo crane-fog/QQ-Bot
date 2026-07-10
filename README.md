@@ -64,7 +64,9 @@ cp configs/plugins.ini.template configs/plugins.ini
 
 > 对于 `configs` 文件夹下的每个配置文件，需要复制一份去掉 `.template` 后缀的文件，并根据需要修改配置项，bot 启动时如无法找到配置文件会自动复制模板文件
 
-#### `configs/bot.ini` bot 基础信息配置
+#### `configs/bot.ini` 
+
+#### bot 基础信息配置
 
 配置项 | 说明
 ------|----
@@ -81,8 +83,19 @@ database_name | 数据库名
 owner_id | 机器人所有者QQ号
 assistant_group | 助教群号（用于部分插件）
 enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），用于高程 Gitea 处理
-webhook_handler_address | Webhook Handler 服务监听地址
-webhook_response_group | Webhook Handler 发送消息的群号
+
+#### Gitea Webhook 集成配置
+
+当启用了 `enable_webhook_handler` 后，需要在 `[Gitea]` 节中配置以下项：
+
+| 配置项 | 说明 | 必填 |
+|---|---|---|
+| `webhook_handler_address` | Webhook Handler 服务监听地址 | 是 |
+| `webhook_response_group` | Webhook Handler 发送消息的群号 | 是 |
+| `api_url` | Gitea 实例根地址，**不要**带尾部 `/` | 是 |
+| `api_token` | Gitea 个人访问令牌 | 是 |
+
+详细说明见 **[Gitea Webhook 文档](docs/gitea-webhook.md)**
 
 
 #### `configs/groups.ini` 群聊插件启用信息配置
