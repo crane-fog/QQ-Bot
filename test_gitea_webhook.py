@@ -1,5 +1,5 @@
 import pytest
-from unittest.mock import Mock, patch
+from unittest.mock import AsyncMock, Mock, patch
 
 from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaPushEvent
@@ -154,15 +154,16 @@ async def test_push_formatter_falls_back_to_last_commit_without_warning():
     payload["head_commit"] = None
     event = GiteaPushEvent.model_validate(payload)
     api = Mock()
+    api.asyncService = AsyncMock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
         await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
 
     warning.assert_not_called()
-    api.groupService.send_group_msg.assert_called_once()
+    api.asyncService.send_group_msg.assert_called_once()
     assert (
         "latest: abcdef12 Implement webhook by alice"
-        in api.groupService.send_group_msg.call_args.kwargs["message"]
+        in api.asyncService.send_group_msg.call_args.kwargs["message"]
     )
 
 
@@ -177,13 +178,14 @@ async def test_push_payload_missing_commit_details_logs_warning():
     payload["total_commits"] = 1
     event = GiteaPushEvent.model_validate(payload)
     api = Mock()
+    api.asyncService = AsyncMock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
         await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
 
     warning.assert_called_once()
     assert "缺少提交详情" in warning.call_args.args[0]
-    api.groupService.send_group_msg.assert_called_once()
+    api.asyncService.send_group_msg.assert_called_once()
 
 
 @pytest.mark.asyncio
@@ -193,7 +195,8 @@ async def test_send_plain_text_failure_logs_error():
     """
     event = GiteaIssueCommentEvent.model_validate(issue_comment_payload())
     api = Mock()
-    api.groupService.send_group_msg.side_effect = RuntimeError("network down")
+    api.asyncService = AsyncMock()
+    api.asyncService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
         await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_comment", EVENT_CONFIG["issue_comment"])
@@ -211,15 +214,16 @@ async def test_issues_event_sends_three_node_forward_message():
     payload["issue"]["body"] = "long body\n" + ("x" * 600)
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
+    api.asyncService = AsyncMock()
 
     await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
 
-    api.groupService.send_group_msg.assert_called_once_with(
+    api.asyncService.send_group_msg.assert_called_once_with(
         group_id=123,
         message="[Gitea] issues #1 opened in org/repo",
     )
-    api.groupService.send_group_forward_msg.assert_called_once()
-    forward_message = api.groupService.send_group_forward_msg.call_args.kwargs["forward_message"]
+    api.asyncService.send_group_forward_msg.assert_called_once()
+    forward_message = api.asyncService.send_group_forward_msg.call_args.kwargs["forward_message"]
 
     assert len(forward_message) == 3
     assert forward_message[0]["type"] == "node"
@@ -244,14 +248,15 @@ async def test_issues_summary_failure_skips_forward_and_logs_error():
     """
     event = GiteaIssuesEvent.model_validate(issues_payload())
     api = Mock()
-    api.groupService.send_group_msg.side_effect = RuntimeError("network down")
+    api.asyncService = AsyncMock()
+    api.asyncService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
         await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
-    api.groupService.send_group_forward_msg.assert_not_called()
+    api.asyncService.send_group_forward_msg.assert_not_called()
 
 
 @pytest.mark.asyncio
@@ -263,15 +268,16 @@ async def test_issue_assign_sends_plain_text_without_forward_message():
     payload["action"] = "assigned"
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
+    api.asyncService = AsyncMock()
 
     await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_assign", EVENT_CONFIG["issue_assign"])
 
-    api.groupService.send_group_msg.assert_called_once()
+    api.asyncService.send_group_msg.assert_called_once()
     assert (
         "issue_assign #1 assigned in org/repo"
-        in api.groupService.send_group_msg.call_args.kwargs["message"]
+        in api.asyncService.send_group_msg.call_args.kwargs["message"]
     )
-    api.groupService.send_group_forward_msg.assert_not_called()
+    api.asyncService.send_group_forward_msg.assert_not_called()
 
 
 def test_issue_label_uses_issue_payload_model():
@@ -298,10 +304,11 @@ async def test_issue_label_sends_summary_author_and_label_only():
     }
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
+    api.asyncService = AsyncMock()
 
     await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_label", EVENT_CONFIG["issue_label"])
 
-    api.groupService.send_group_msg.assert_called_once_with(
+    api.asyncService.send_group_msg.assert_called_once_with(
         group_id=123,
         message=(
             "[Gitea] issue_label #1 label_updated in org/repo\n"
@@ -309,7 +316,7 @@ async def test_issue_label_sends_summary_author_and_label_only():
             "Label: +priority/high, -bug"
         ),
     )
-    api.groupService.send_group_forward_msg.assert_not_called()
+    api.asyncService.send_group_forward_msg.assert_not_called()
 
 
 def test_parse_issue_comment_event():
@@ -349,7 +356,7 @@ def test_issue_formatter_keeps_body_and_lists_attachments_separately():
     附件是独立 assets 列表，formatter 不改写正文，只额外列出附件 URL。
     """
     event = GiteaIssuesEvent.model_validate(issues_payload())
-    message = GiteaEventFormatter().issues(event, "issues")
+    message = GiteaEventFormatter().issue_detail(event, "issues")
 
     assert "body ![img](/attachments/uuid)" in message
     assert "pic.png: https://gitea.example.com/attachments/uuid" in message
