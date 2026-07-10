@@ -72,10 +72,10 @@ class Bot:
                 "Init", "enable_webhook_handler", fallback=None
             ),
             "webhook_handler_address": self.config.get(
-                "Init", "webhook_handler_address", fallback=None
+                "Gitea", "webhook_handler_address", fallback=None
             ),
             "webhook_response_group": self.config.getint(
-                "Init", "webhook_response_group", fallback=None
+                "Gitea", "webhook_response_group", fallback=None
             ),
             "gitea_api_url": self.config.get("Gitea", "api_url", fallback=None),
             "gitea_api_token": self.config.get("Gitea", "api_token", fallback=None),
