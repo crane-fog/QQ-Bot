@@ -42,7 +42,7 @@ def test_parse_comment_segments_preserves_original_order():
     assert segments[1].url == "https://gitea.example.com/attachments/abc.png"
     assert segments[1].alt == "alt text"
     assert isinstance(segments[2], TextSegment)
-    assert segments[2].text == " world"
+    assert segments[2].text == " world\n\n"
 
 
 def test_parse_comment_segments_image_assets_appended_with_dedup():
@@ -90,7 +90,7 @@ def test_parse_comment_segments_multiple_inline_images():
     assert isinstance(segments[1], ImageSegment) and segments[1].url.endswith("a.png")
     assert isinstance(segments[2], TextSegment) and segments[2].text == " b "
     assert isinstance(segments[3], ImageSegment) and segments[3].url.endswith("b.png")
-    assert isinstance(segments[4], TextSegment) and segments[4].text == " c"
+    assert isinstance(segments[4], TextSegment) and segments[4].text == " c\n\n"
 
 
 def test_resolve_image_url_handles_absolute_relative_and_root_paths():
@@ -240,11 +240,11 @@ def test_issue_comment_forward_returns_forwardplan_with_segments():
     # 节点1: issue 正文
     assert len(plan.nodes[0].segments) == 1
     assert isinstance(plan.nodes[0].segments[0], TextSegment)
-    assert plan.nodes[0].segments[0].text == "issue body"
+    assert plan.nodes[0].segments[0].text == "issue body\n\n"
     # 节点2: 评论，保留文字-图片-文字顺序
     assert len(plan.nodes[1].segments) == 3
     assert isinstance(plan.nodes[1].segments[0], TextSegment)
     assert isinstance(plan.nodes[1].segments[1], ImageSegment)
     assert isinstance(plan.nodes[1].segments[2], TextSegment)
     assert plan.nodes[1].segments[0].text == "reply "
-    assert plan.nodes[1].segments[2].text == " end"
+    assert plan.nodes[1].segments[2].text == " end\n\n"
