@@ -1,6 +1,7 @@
 """
 通用文本与格式化工具函数。
 """
+
 import re
 
 _SAFE_NAME_RE = re.compile(r"[^\w.\-]+")

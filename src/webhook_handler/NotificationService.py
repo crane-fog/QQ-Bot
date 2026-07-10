@@ -1,5 +1,4 @@
 import asyncio
-import re
 import shutil
 import tempfile
 from collections.abc import Awaitable
@@ -150,9 +149,7 @@ class NotificationService:
                         "type": "text",
                         "data": {
                             "text": (
-                                f"附件: {seg.name}"
-                                f" ({format_size(seg.size)})"
-                                f" {seg.download_url}"
+                                f"附件: {seg.name} ({format_size(seg.size)}) {seg.download_url}"
                             )
                         },
                     }
@@ -176,11 +173,16 @@ class NotificationService:
             event_name = event_type or "issue_comment"
             target = "pull request" if data.is_pull else "issue"
             msg: list[dict] = [
-                {"type": "text", "data": {
-                    "text": f"[Gitea] {event_name} on {target} #{data.issue.number} {data.action} in {data.repository.full_name}\n{data.issue.title}"
-                }},
+                {
+                    "type": "text",
+                    "data": {
+                        "text": f"[Gitea] {event_name} on {target} #{data.issue.number} {data.action} in {data.repository.full_name}\n{data.issue.title}"
+                    },
+                },
             ]
-            msg.extend(self._node_segments(ContentNode(sender_name="", segments=segments), path_map))
+            msg.extend(
+                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+            )
             msg.append({"type": "text", "data": {"text": f"\nurl: {data.comment.html_url}"}})
             await self.api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
 
@@ -192,10 +194,7 @@ class NotificationService:
 
             # 收集合并转发计划中所有图片 URL，并发下载
             plan_images: list[ImageSegment] = [
-                seg
-                for node in plan.nodes
-                for seg in node.segments
-                if isinstance(seg, ImageSegment)
+                seg for node in plan.nodes for seg in node.segments if isinstance(seg, ImageSegment)
             ]
             if plan_images:
                 plan_path_map: dict[str, str | None] = await self._download_images(

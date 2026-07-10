@@ -1,5 +1,6 @@
-import pytest
 from unittest.mock import AsyncMock, Mock, patch
+
+import pytest
 
 from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaPushEvent
@@ -157,7 +158,9 @@ async def test_push_formatter_falls_back_to_last_commit_without_warning():
     api.asyncService = AsyncMock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
-        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+            event, "push", EVENT_CONFIG["push"]
+        )
 
     warning.assert_not_called()
     api.asyncService.send_group_msg.assert_called_once()
@@ -181,7 +184,9 @@ async def test_push_payload_missing_commit_details_logs_warning():
     api.asyncService = AsyncMock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
-        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+            event, "push", EVENT_CONFIG["push"]
+        )
 
     warning.assert_called_once()
     assert "缺少提交详情" in warning.call_args.args[0]
@@ -199,7 +204,9 @@ async def test_send_plain_text_failure_logs_error():
     api.asyncService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
-        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_comment", EVENT_CONFIG["issue_comment"])
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+            event, "issue_comment", EVENT_CONFIG["issue_comment"]
+        )
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
@@ -216,7 +223,9 @@ async def test_issues_event_sends_three_node_forward_message():
     api = Mock()
     api.asyncService = AsyncMock()
 
-    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+        event, "issues", EVENT_CONFIG["issues"]
+    )
 
     api.asyncService.send_group_msg.assert_called_once_with(
         group_id=123,
@@ -252,7 +261,9 @@ async def test_issues_summary_failure_skips_forward_and_logs_error():
     api.asyncService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
-        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+            event, "issues", EVENT_CONFIG["issues"]
+        )
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
@@ -270,7 +281,9 @@ async def test_issue_assign_sends_plain_text_without_forward_message():
     api = Mock()
     api.asyncService = AsyncMock()
 
-    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_assign", EVENT_CONFIG["issue_assign"])
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+        event, "issue_assign", EVENT_CONFIG["issue_assign"]
+    )
 
     api.asyncService.send_group_msg.assert_called_once()
     assert (
@@ -306,7 +319,9 @@ async def test_issue_label_sends_summary_author_and_label_only():
     api = Mock()
     api.asyncService = AsyncMock()
 
-    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_label", EVENT_CONFIG["issue_label"])
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
+        event, "issue_label", EVENT_CONFIG["issue_label"]
+    )
 
     api.asyncService.send_group_msg.assert_called_once_with(
         group_id=123,

@@ -2,7 +2,6 @@ import re
 from dataclasses import dataclass, field
 from typing import Any
 from urllib.parse import urljoin
-from utils.TextUtils import format_size
 
 from src.gitea.Models import (
     Attachment,
@@ -14,6 +13,8 @@ from src.gitea.Models import (
     Issue,
 )
 from utils.CQType import Forward
+from utils.TextUtils import format_size
+
 
 @dataclass
 class TextSegment:
@@ -21,12 +22,14 @@ class TextSegment:
 
     text: str
 
+
 @dataclass
 class ImageSegment:
     """评论中的一张图片。url 已规范化为绝对 URL，不含 token。"""
 
     url: str
     alt: str = ""
+
 
 @dataclass
 class FileSegment:
@@ -36,7 +39,9 @@ class FileSegment:
     size: int
     download_url: str
 
+
 type ContentSegment = TextSegment | ImageSegment | FileSegment
+
 
 @dataclass
 class ContentNode:
@@ -44,6 +49,7 @@ class ContentNode:
 
     sender_name: str
     segments: list[ContentSegment] = field(default_factory=list)
+
 
 @dataclass
 class ForwardPlan:
@@ -53,8 +59,10 @@ class ForwardPlan:
     nodes: list[ContentNode]
     url_text: str
 
+
 # markdown 图片语法 ![alt](url) 或 ![alt](url "title")
 MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
+
 
 def _limit_text(text: str, limit: int = 500) -> str:
     """将文本截断到指定长度（默认 500 字符），超出部分用 ... 代替。"""
@@ -64,9 +72,11 @@ def _limit_text(text: str, limit: int = 500) -> str:
         return text
     return text[: limit - 3].rstrip() + "..."
 
+
 def _branch_name(ref: str) -> str:
     """去掉 ref 中的 refs/heads/ 或 refs/tags/ 前缀，返回分支名或标签名。"""
     return ref.removeprefix("refs/heads/").removeprefix("refs/tags/")
+
 
 def _attachment_lines(attachments: list[Attachment]) -> list[str]:
     """将附件列表格式化为文本行，供纯文本摘要使用。"""
@@ -78,11 +88,13 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
         lines.append(f"{attachment.name}: {attachment.browser_download_url}")
     return lines
 
+
 def _resolve_image_url(url: str, repo_html_url: str) -> str:
     """将 markdown 图片 URL 规范化为绝对 URL：绝对 URL 原样返回，相对路径拼接仓库根地址。"""
     if url.startswith(("http://", "https://")):
         return url
     return urljoin(repo_html_url, url)
+
 
 def _parse_body_segments(body: str, repo_html_url: str) -> list[ContentSegment]:
     """把 body 按 markdown 图片切分为 TextSegment / ImageSegment 交替序列。"""
@@ -102,9 +114,10 @@ def _parse_body_segments(body: str, repo_html_url: str) -> list[ContentSegment]:
 
     tail = body[pos:]
     if tail:
-        segments.append(TextSegment(text=tail+"\n\n"))
+        segments.append(TextSegment(text=tail + "\n\n"))
 
     return segments
+
 
 def _append_asset_segments(segments: list[ContentSegment], assets: list[Attachment]) -> None:
     """所有附件统一以 FileSegment 追加（图片由 body markdown 解析处理）。"""
@@ -128,9 +141,11 @@ def _parse_comment_segments(
     _append_asset_segments(segments, assets)
     return segments
 
+
 def _extract_images(segments: list[ContentSegment]) -> list[ImageSegment]:
     """从 segments 中提取所有图片段，供 plain_text 路径发图使用。"""
     return [s for s in segments if isinstance(s, ImageSegment)]
+
 
 def _label_text(event_or_issue: GiteaIssuesEvent | Issue) -> str:
     """提取 issue 的标签，以逗号分隔；无标签返回 "none"。"""
@@ -138,10 +153,12 @@ def _label_text(event_or_issue: GiteaIssuesEvent | Issue) -> str:
     labels = [label.name for label in issue.labels if label.name]
     return ", ".join(labels) if labels else "none"
 
+
 def _issue_author(event_or_issue: GiteaIssuesEvent | Issue) -> str:
     """获取 issue 的原始作者，若原作者为空则回退到当前用户 login。"""
     issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
     return issue.original_author or issue.user.login
+
 
 def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
     """生成标签变更描述文本，前置 +/- 区分新增/移除；无变更则返回当前标签列表。"""
@@ -153,6 +170,7 @@ def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
             return ", ".join(changes)
 
     return _label_text(event)
+
 
 class GiteaEventFormatter:
     def plain_text(self, event: GiteaWebhookEvent, event_type: str = "") -> str:
