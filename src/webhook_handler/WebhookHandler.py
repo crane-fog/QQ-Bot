@@ -13,7 +13,7 @@ app = FastAPI(title="Webhook Handler")
 
 @app.post("/api/tjhlp")
 async def receive_post(request: Request):
-    handler: WebhookHandler | None = app.state.handler
+    handler: WebhookHandler | None = getattr(app.state, "handler", None)
     if not isinstance(handler, WebhookHandler):
         Log.error("WebhookHandler 未初始化")
         return {"ok": False, "message": "WebhookHandler 未初始化"}
