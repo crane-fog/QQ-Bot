@@ -1,10 +1,14 @@
+import pytest
 from unittest.mock import Mock, patch
 
 from src.gitea.GiteaEventFormatter import GiteaEventFormatter
 from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaPushEvent
+from src.webhook_handler.EventConfig import EVENT_CONFIG
 from src.webhook_handler.WebhookHandler import WebhookHandler, parse_gitea_event
 
 NOW = "2026-04-29T12:00:00Z"
+GITEA_API_URL = "https://gitea.example.com"
+GITEA_API_TOKEN = "test-token"
 
 
 def user_payload(login: str = "alice") -> dict:
@@ -141,7 +145,8 @@ def test_parse_push_event_and_format_message():
     assert "latest: abcdef12 Implement webhook by alice" in message
 
 
-def test_push_formatter_falls_back_to_last_commit_without_warning():
+@pytest.mark.asyncio
+async def test_push_formatter_falls_back_to_last_commit_without_warning():
     """
     head_commit 缺失但 commits 存在时属于可降级场景，不应污染日志。
     """
@@ -151,7 +156,7 @@ def test_push_formatter_falls_back_to_last_commit_without_warning():
     api = Mock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
-        WebhookHandler(api, 123).resolve(event, "push")
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
 
     warning.assert_not_called()
     api.groupService.send_group_msg.assert_called_once()
@@ -161,7 +166,8 @@ def test_push_formatter_falls_back_to_last_commit_without_warning():
     )
 
 
-def test_push_payload_missing_commit_details_logs_warning():
+@pytest.mark.asyncio
+async def test_push_payload_missing_commit_details_logs_warning():
     """
     push 声称有提交但没有任何提交详情时，需要记录 warning 方便排查。
     """
@@ -173,14 +179,15 @@ def test_push_payload_missing_commit_details_logs_warning():
     api = Mock()
 
     with patch("src.webhook_handler.WebhookHandler.Log.warning") as warning:
-        WebhookHandler(api, 123).resolve(event, "push")
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "push", EVENT_CONFIG["push"])
 
     warning.assert_called_once()
     assert "缺少提交详情" in warning.call_args.args[0]
     api.groupService.send_group_msg.assert_called_once()
 
 
-def test_send_plain_text_failure_logs_error():
+@pytest.mark.asyncio
+async def test_send_plain_text_failure_logs_error():
     """
     QQ 消息发送失败应被记录，但不应让 webhook handler 继续向外抛异常。
     """
@@ -189,13 +196,14 @@ def test_send_plain_text_failure_logs_error():
     api.groupService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
-        WebhookHandler(api, 123).resolve(event, "issue_comment")
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_comment", EVENT_CONFIG["issue_comment"])
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
 
 
-def test_issues_event_sends_three_node_forward_message():
+@pytest.mark.asyncio
+async def test_issues_event_sends_three_node_forward_message():
     """
     issues 类事件应先发送一条摘要，再发送三条节点的合并转发消息。
     """
@@ -204,7 +212,7 @@ def test_issues_event_sends_three_node_forward_message():
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
 
-    WebhookHandler(api, 123).resolve(event, "issues")
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
 
     api.groupService.send_group_msg.assert_called_once_with(
         group_id=123,
@@ -229,7 +237,8 @@ def test_issues_event_sends_three_node_forward_message():
     )
 
 
-def test_issues_summary_failure_skips_forward_and_logs_error():
+@pytest.mark.asyncio
+async def test_issues_summary_failure_skips_forward_and_logs_error():
     """
     issues 摘要发送失败时应记录错误，并且不继续发送合并转发。
     """
@@ -238,14 +247,15 @@ def test_issues_summary_failure_skips_forward_and_logs_error():
     api.groupService.send_group_msg.side_effect = RuntimeError("network down")
 
     with patch("src.webhook_handler.NotificationService.Log.error") as error:
-        WebhookHandler(api, 123).resolve(event, "issues")
+        await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issues", EVENT_CONFIG["issues"])
 
     error.assert_called_once()
     assert "发送 Gitea webhook 通知失败" in error.call_args.args[0]
     api.groupService.send_group_forward_msg.assert_not_called()
 
 
-def test_issue_assign_sends_plain_text_without_forward_message():
+@pytest.mark.asyncio
+async def test_issue_assign_sends_plain_text_without_forward_message():
     """
     只有 issues 事件发送合并转发；其他 IssuePayload 事件走普通文本。
     """
@@ -254,7 +264,7 @@ def test_issue_assign_sends_plain_text_without_forward_message():
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
 
-    WebhookHandler(api, 123).resolve(event, "issue_assign")
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_assign", EVENT_CONFIG["issue_assign"])
 
     api.groupService.send_group_msg.assert_called_once()
     assert (
@@ -275,7 +285,8 @@ def test_issue_label_uses_issue_payload_model():
     assert "issue_label #1 opened in org/repo" in message
 
 
-def test_issue_label_sends_summary_author_and_label_only():
+@pytest.mark.asyncio
+async def test_issue_label_sends_summary_author_and_label_only():
     """
     issue_label 事件只需要一条包含摘要、作者和变更标签的普通消息。
     """
@@ -288,7 +299,7 @@ def test_issue_label_sends_summary_author_and_label_only():
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
 
-    WebhookHandler(api, 123).resolve(event, "issue_label")
+    await WebhookHandler(api, 123, GITEA_API_URL, GITEA_API_TOKEN).resolve(event, "issue_label", EVENT_CONFIG["issue_label"])
 
     api.groupService.send_group_msg.assert_called_once_with(
         group_id=123,
