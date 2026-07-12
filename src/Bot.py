@@ -12,6 +12,7 @@ from sqlalchemy.pool import NullPool
 
 from plugins import Plugins
 
+from .AIService import AIService
 from .Api import Api
 from .EventController import Event
 from .PrintLog import Log
@@ -41,6 +42,9 @@ class Bot:
         # 初始化配置加载器
         with open(os.path.join(self.configs_path, "bot.toml"), encoding="utf-8") as f:
             self.bot_config = tomlkit.load(f).unwrap()
+
+        # 初始化 AI 服务
+        self.ai = AIService(os.path.join(self.configs_path, "ai.ini"))
 
         # 初始化插件列表
         self.plugins_list: list[Plugins] = []
@@ -317,6 +321,12 @@ def check_config_files(configs_path: str) -> None:
         copyfile(
             os.path.join(configs_path, "bot.toml.template"),
             os.path.join(configs_path, "bot.toml"),
+        )
+    if not os.path.isfile(os.path.join(configs_path, "ai.toml")):
+        Log.warning("配置文件ai.toml不存在，正在复制默认配置文件模板")
+        copyfile(
+            os.path.join(configs_path, "ai.toml.template"),
+            os.path.join(configs_path, "ai.toml"),
         )
     if not os.path.isfile(os.path.join(configs_path, "groups.toml")):
         Log.warning("配置文件groups.toml不存在，正在复制默认配置文件模板")

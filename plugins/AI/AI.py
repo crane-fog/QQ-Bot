@@ -1,10 +1,11 @@
 import re
 import time
 
+from openai.types.chat import ChatCompletionMessageParam
+
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
 from utils.CQType import At, Reply
 
 
@@ -61,16 +62,15 @@ class AI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
             # 获取大模型回复
-            response = await get_llm_response(
-                [
-                    {
-                        "role": "system",
-                        "content": '尽可能简短、直接地回答用户的问题，不得输出markdown格式，不得回答任何政治相关问题。如遇到你不确定/无法回答的问题，你必须回答"小莫不知道哦~"。',
-                    },
-                    {"role": "user", "content": question},
-                ],
-                model="gemini-3-flash-preview",
-            )
+            profile_name = self.config.get("ai_profile", "default")
+            messages: list[ChatCompletionMessageParam] = [
+                {
+                    "role": "system",
+                    "content": '尽可能简短、直接地回答用户的问题，不得输出markdown格式，不得回答任何政治相关问题。如遇到你不确定/无法回答的问题，你必须回答"小莫不知道哦~"。',
+                },
+                {"role": "user", "content": question},
+            ]
+            response = await self.bot.ai.generate(profile_name, messages)
 
             # 发送回复到群聊
             reply_message = Reply(id=event.message_id) + response
