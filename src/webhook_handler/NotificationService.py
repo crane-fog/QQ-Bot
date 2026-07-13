@@ -37,7 +37,7 @@ class NotificationService:
         self.response_group = response_group
         self.gitea_api_url = gitea_api_url.rstrip("/")
         self.gitea_api_token = gitea_api_token
-        self.formatter = GiteaEventFormatter()
+        self.formatter = GiteaEventFormatter(self.gitea_api_url)
 
     async def send(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
         try:
@@ -165,7 +165,10 @@ class NotificationService:
         try:
             # 1. 构建混合消息 文本 + 图片 + 附件
             segments = _parse_comment_segments(
-                data.comment.body or "", data.comment.assets, data.repository.html_url
+                data.comment.body or "",
+                data.comment.assets,
+                data.repository.html_url,
+                self.gitea_api_url,
             )
             images = _extract_images(segments)
             path_map = await self._download_images(images, temp_dir) if images else {}
