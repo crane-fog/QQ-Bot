@@ -111,6 +111,19 @@ def test_resolve_image_url_handles_absolute_relative_and_root_paths():
     )
 
 
+def test_resolve_image_url_preserves_gitea_sub_path_for_root_relative_attachment():
+    """Gitea webhook 原始 Markdown 的 /attachments 链接必须保留站点子路径。"""
+    gitea_base_url = "http://10.80.42.185/tjhlp"
+    repo_html_url = f"{gitea_base_url}/owner/repo"
+
+    assert (
+        _resolve_image_url(
+            "/attachments/0dd501f5-b9eb-4c30-982f-31527b521d69", repo_html_url, gitea_base_url
+        )
+        == "http://10.80.42.185/tjhlp/attachments/0dd501f5-b9eb-4c30-982f-31527b521d69"
+    )
+
+
 def test_extract_images_collects_all_image_segments():
     segs = [
         TextSegment(text="a"),
@@ -124,9 +137,10 @@ def test_extract_images_collects_all_image_segments():
     assert images[1].url == "y.png"
 
 
-def test_issue_comment_plain_returns_text_and_image_list():
+def test_issue_comment_plain_resolves_root_relative_image_with_configured_sub_path():
     from src.gitea.Models import GiteaIssueCommentEvent
 
+    gitea_base_url = "https://gitea.example.com/tjhlp"
     payload = {
         "action": "created",
         "issue": {
@@ -162,17 +176,17 @@ def test_issue_comment_plain_returns_text_and_image_list():
             "full_name": "org/repo",
             "private": True,
             "fork": False,
-            "html_url": REPO_HTML_URL,
+            "html_url": f"{gitea_base_url}/org/repo",
         },
         "sender": {"id": 1, "login": "alice"},
         "is_pull": False,
     }
     event = GiteaIssueCommentEvent.model_validate(payload)
-    text, images = GiteaEventFormatter().issue_comment_plain(event, "issue_comment")
+    text, images = GiteaEventFormatter(gitea_base_url).issue_comment_plain(event, "issue_comment")
 
     assert "[图片: x]" in text
     assert len(images) == 1
-    assert images[0].url == "https://gitea.example.com/attachments/abc.png"
+    assert images[0].url == f"{gitea_base_url}/attachments/abc.png"
 
 
 def test_issue_comment_forward_returns_forwardplan_with_segments():
