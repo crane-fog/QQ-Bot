@@ -30,7 +30,7 @@ Gitea 仓库 ── POST /api/tjhlp ──► WebhookHandler (FastAPI)
                     ▼                   ▼                       ▼
            GiteaEventFormatter    NotificationService    GiteaEventFormatter
            .plain_text()          发送混合消息 +          .issue_comment_forward()
-                    │             拉 Gitea API 评论/图片   .issues_forward()
+                    │             下载 Markdown 图片       .issues_forward_plan()
                     ▼                   │                       │
            send_group_msg        send_group_msg         ForwardPlan 组装
                                         │                       │
