@@ -4,6 +4,7 @@ import time
 from openai.types.chat import ChatCompletionMessageParam
 
 from plugins import Plugins, plugin_main
+from src.AIService import AIConfigurationError, AIProviderError
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
 from utils.CQType import At, Reply
@@ -70,7 +71,22 @@ class AI(Plugins):
                 },
                 {"role": "user", "content": question},
             ]
-            response = await self.bot.ai.generate(profile_name, messages)
+            try:
+                response = await self.bot.ai.generate(profile_name, messages)
+            except AIConfigurationError as exc:
+                Log.error(f"插件：{self.name} AI 配置错误：{exc}")
+                self.api.groupService.send_group_msg(
+                    group_id=event.group_id,
+                    message=f"{At(qq=event.user_id)} AI 服务配置有误，请联系管理员。",
+                )
+                return
+            except AIProviderError as exc:
+                Log.error(f"插件：{self.name} AI 服务请求失败：{exc}")
+                self.api.groupService.send_group_msg(
+                    group_id=event.group_id,
+                    message=f"{At(qq=event.user_id)} AI 服务暂时不可用，请稍后再试。",
+                )
+                return
 
             # 发送回复到群聊
             reply_message = Reply(id=event.message_id) + response
