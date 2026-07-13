@@ -92,7 +92,7 @@ enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），�
 |---|---|---|
 | `webhook_handler_address` | Webhook Handler 服务监听地址 | 是 |
 | `webhook_response_group` | Webhook Handler 发送消息的群号 | 是 |
-| `api_url` | Gitea 实例根地址，**不要**带尾部 `/` | 是 |
+| `api_url` | Gitea 对 Bot 可访问的基础地址；若部署在子路径，必须包含该子路径（如 `https://gitea.example.com/tjhlp`）。尾部 `/` 会自动兼容，建议省略 | 是 |
 | `api_token` | Gitea 个人访问令牌 | 是 |
 
 详细说明见 **[Gitea Webhook 文档](docs/gitea-webhook.md)**

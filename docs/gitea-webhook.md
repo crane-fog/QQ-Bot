@@ -80,8 +80,18 @@ api_token = <your-readonly-token>
 |---|---|---|
 | `webhook_handler_address` | 监听地址，格式 `IP:端口` | 是 |
 | `webhook_response_group` | 通知发送目标 QQ 群号 | 是 |
-| `api_url` | Gitea 实例根地址，**不要**带尾部 `/` | 是 |
+| `api_url` | Gitea 对 Bot 可访问的基础地址；若部署在子路径，必须包含该子路径。尾部 `/` 会自动兼容，建议省略 | 是 |
 | `api_token` | Gitea 个人访问令牌 | 是 |
+
+`api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
+
+```ini
+# Gitea 部署在站点根路径
+api_url = https://gitea.example.com
+
+# Gitea 部署在子路径 /QA
+api_url = http://gitea.example.com/QA
+```
 
 **Token 权限要求：** 至少需要 `read:repository` 和 `read:issue` 权限。Token 用于：
 - 拉取 issue 的完整评论列表（构建合并转发消息时）
@@ -235,7 +245,7 @@ curl -X POST http://localhost:8000/api/tjhlp \
 | 启动后端口不通 | 防火墙 / 云安全组未放行 | `telnet <Bot IP> <端口>` 验证 |
 | Gitea Test Delivery 返回 422 | 事件类型不在 `EVENT_CONFIG` 中 | 检查 `X-Gitea-Event-Type` 请求头是否为 6 种支持类型之一 |
 | Gitea Test Delivery 返回 200 但群内无消息 | `webhook_response_group` 填写错误或 Bot 未加入该群 | 确认群号正确，Bot 在群内 |
-| 通知中图片显示为 `[图片下载失败]` | Token 无权限或过期 | 检查 `[Gitea] api_token` 权限，确认含 `read:repository` |
+| 通知中图片显示为 `[图片下载失败]` | Token 无权限/过期，或子路径部署时 `api_url` 未包含子路径 | 检查 `[Gitea] api_token` 权限（含 `read:repository`）；再确认 `api_url` 是外部基础地址，例如 `http://host/QA` 而不是 `http://host` |
 | 合并转发消息发送失败 | 历史评论数过多导致消息超长 | 当前版本未做截断，暂时减少评论数或关闭 `forward` |
 | 日志出现 `发送 Gitea webhook 通知失败` | Gitea API 不可达 / Token 无效 / 网络超时 | 检查 `api_url` 可达性，确认 Token 未过期 |
 
