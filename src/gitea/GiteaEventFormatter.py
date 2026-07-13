@@ -89,17 +89,17 @@ def _attachment_lines(attachments: list[Attachment]) -> list[str]:
     return lines
 
 
-def _resolve_image_url(url: str, repo_html_url: str, gitea_base_url: str | None = None) -> str:
+def _resolve_image_url(url: str, repo_html_url: str, gitea_base_url: str) -> str:
     """将 Markdown 图片 URL 规范化为绝对 URL，并保留 Gitea 的站点子路径。"""
     if url.startswith(("http://", "https://")):
         return url
-    if url.startswith("/") and gitea_base_url:
-        return urljoin(gitea_base_url.rstrip("/") + "/", url.lstrip("/"))
+    if url.startswith("/"):
+        return urljoin(gitea_base_url + "/", url.lstrip("/"))
     return urljoin(repo_html_url, url)
 
 
 def _parse_body_segments(
-    body: str, repo_html_url: str, gitea_base_url: str | None = None
+    body: str, repo_html_url: str, gitea_base_url: str
 ) -> list[ContentSegment]:
     """把 body 按 markdown 图片切分为 TextSegment / ImageSegment 交替序列。"""
     segments: list[ContentSegment] = []
@@ -141,7 +141,7 @@ def _parse_comment_segments(
     body: str,
     assets: list[Attachment],
     repo_html_url: str,
-    gitea_base_url: str | None = None,
+    gitea_base_url: str,
 ) -> list[ContentSegment]:
     """解析评论正文与附件，生成有序段落列表。"""
     segments = _parse_body_segments(body, repo_html_url, gitea_base_url)
@@ -180,8 +180,10 @@ def _issue_label_change_text(event: GiteaIssuesEvent) -> str:
 
 
 class GiteaEventFormatter:
-    def __init__(self, gitea_base_url: str | None = None):
-        self.gitea_base_url = (gitea_base_url or "").rstrip("/")
+    def __init__(self, gitea_base_url: str):
+        self.gitea_base_url = gitea_base_url.strip().rstrip("/")
+        if not self.gitea_base_url:
+            raise ValueError("Gitea 基础地址不能为空")
 
     def plain_text(self, event: GiteaWebhookEvent, event_type: str = "") -> str:
         # case 的时候不会真正构造对象，只是判断是否匹配类型

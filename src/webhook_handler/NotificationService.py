@@ -35,7 +35,9 @@ class NotificationService:
     def __init__(self, api: Api, response_group: int, gitea_api_url: str, gitea_api_token: str):
         self.api = api
         self.response_group = response_group
-        self.gitea_api_url = gitea_api_url.rstrip("/")
+        self.gitea_api_url = gitea_api_url.strip().rstrip("/")
+        if not self.gitea_api_url:
+            raise ValueError("[Gitea] api_url 不能为空")
         self.gitea_api_token = gitea_api_token
         self.formatter = GiteaEventFormatter(self.gitea_api_url)
 
