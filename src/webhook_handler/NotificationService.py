@@ -4,6 +4,7 @@ import tempfile
 from collections.abc import Awaitable
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlsplit
 
 from httpx import AsyncClient, Timeout
 
@@ -69,7 +70,7 @@ class NotificationService:
         self, images: list[ImageSegment], temp_dir: Path
     ) -> dict[str, str | None]:
         """
-        带鉴权并发下载图片到临时目录，返回 {url: 本地路径}；单张失败映射 None。
+        并发下载图片到临时目录；仅向配置的 Gitea 站点发送鉴权头，单张失败映射 None。
 
         Args:
             images: 图片段列表
@@ -81,7 +82,7 @@ class NotificationService:
         if not images:
             return {}
 
-        headers = {"Authorization": f"token {self.gitea_api_token}"}
+        gitea_origin = urlsplit(self.gitea_api_url)
         result: dict[str, str | None] = {}
 
         async def _download_one(client: AsyncClient, idx: int, image: ImageSegment) -> None:
@@ -90,6 +91,13 @@ class NotificationService:
             # 强制 .png 扩展名，便于 OneBot 端识别图片类型
             path = temp_dir / f"{idx:02d}_{name}.png"
             try:
+                image_origin = urlsplit(image.url)
+                headers = (
+                    {"Authorization": f"token {self.gitea_api_token}"}
+                    if (image_origin.scheme, image_origin.netloc)
+                    == (gitea_origin.scheme, gitea_origin.netloc)
+                    else {}
+                )
                 resp = await client.get(image.url, headers=headers, timeout=Timeout(30))
                 resp.raise_for_status()
                 path.write_bytes(resp.content)
@@ -217,25 +225,45 @@ class NotificationService:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
     async def _send_issues_notification(self, data: GiteaIssuesEvent, event_type: str) -> None:
-        message = self.formatter.issues_summary(data, event_type)
-        if not message:
-            Log.warning(f"Empty Gitea webhook message for {event_type}")
-            return
+        """发送 Issue 事件通知，并渲染正文中的 Markdown 图片和附件。"""
+        temp_dir = Path(tempfile.mkdtemp(prefix="gitea_img_"))
+        try:
+            segments = _parse_comment_segments(
+                data.issue.body or "",
+                data.issue.assets,
+                data.repository.html_url,
+                self.gitea_api_url,
+            )
+            images = _extract_images(segments)
+            path_map = await self._download_images(images, temp_dir) if images else {}
 
-        await self.api.asyncService.send_group_msg(
-            group_id=self.response_group,
-            message=message,
-        )
+            message: list[dict] = [
+                {
+                    "type": "text",
+                    "data": {
+                        "text": (
+                            f"{self.formatter.issues_summary(data, event_type)}\n{data.issue.title}"
+                        )
+                    },
+                }
+            ]
+            message.extend(
+                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+            )
+            message.append({"type": "text", "data": {"text": f"\nurl: {data.issue.html_url}"}})
+            await self.api.asyncService.send_group_msg(
+                group_id=self.response_group,
+                message=message,
+            )
 
-        forward_message = self.formatter.issues_forward(data, event_type)
-        if not forward_message:
-            Log.warning(f"Empty Gitea webhook forward message for {event_type}")
-            return
-
-        await self.api.asyncService.send_group_forward_msg(
-            group_id=self.response_group,
-            forward_message=forward_message,
-        )
+            plan = self.formatter.issues_forward_plan(data, event_type)
+            forward: Forward = self._build_forward_from_plan(plan, path_map)
+            await self.api.asyncService.send_group_forward_msg(
+                group_id=self.response_group,
+                forward_message=forward.message,
+            )
+        finally:
+            shutil.rmtree(temp_dir, ignore_errors=True)
 
     async def _send_plain_text(self, data: GiteaWebhookEvent, event_type: str) -> None:
         message = self.formatter.plain_text(data, event_type)

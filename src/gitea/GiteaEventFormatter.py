@@ -1,6 +1,5 @@
 import re
 from dataclasses import dataclass, field
-from typing import Any
 from urllib.parse import urljoin
 
 from src.gitea.Models import (
@@ -12,7 +11,6 @@ from src.gitea.Models import (
     GiteaWebhookEvent,
     Issue,
 )
-from utils.CQType import Forward
 from utils.TextUtils import format_size
 
 
@@ -250,33 +248,28 @@ class GiteaEventFormatter:
             ]
         )
 
-    def issues_forward(self, event: GiteaIssuesEvent, event_type: str = "") -> list[dict[str, Any]]:
+    def issues_forward_plan(self, event: GiteaIssuesEvent, event_type: str = "") -> ForwardPlan:
+        """构建 issues 事件的合并转发计划，保留正文中的图片和附件顺序。"""
         event_name = event_type or "issues"
-        forward = Forward()
-
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            msg="\n".join(
-                [
-                    f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
-                    f"Title: {event.issue.title}",
-                    f"Labels: {_label_text(event)}",
-                    f"Author: {event.issue.original_author}",
-                ]
-            ),
+        header_text = "\n".join(
+            [
+                f"[Gitea] {event_name} #{event.number} {event.action} in {event.repository.full_name}",
+                f"Title: {event.issue.title}",
+                f"Labels: {_label_text(event)}",
+                f"Author: {_issue_author(event)}",
+            ]
         )
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            msg=event.issue.body or "(empty body)",
+        body_segments = _parse_comment_segments(
+            event.issue.body or "(empty body)",
+            event.issue.assets,
+            event.repository.html_url,
+            self.gitea_base_url,
         )
-        forward.add_node(
-            type="text",
-            sender_name="Gitea",
-            msg=f"url: {event.issue.html_url}",
+        return ForwardPlan(
+            header_text=header_text,
+            nodes=[ContentNode(sender_name="Gitea", segments=body_segments)],
+            url_text=f"url: {event.issue.html_url}",
         )
-        return forward.message
 
     def issue_comment_plain(
         self, event: GiteaIssueCommentEvent, event_type: str = ""
