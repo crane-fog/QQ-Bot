@@ -141,7 +141,7 @@ def test_parse_push_event_and_format_message():
     event = parse_gitea_event("push", push_payload())
 
     assert isinstance(event, GiteaPushEvent)
-    message = GiteaEventFormatter().plain_text(event, "push")
+    message = GiteaEventFormatter(GITEA_API_URL).plain_text(event, "push")
     assert "push in org/repo" in message
     assert "latest: abcdef12 Implement webhook by alice" in message
 
@@ -300,7 +300,7 @@ def test_issue_label_uses_issue_payload_model():
     event = parse_gitea_event("issue_label", issues_payload())
 
     assert isinstance(event, GiteaIssuesEvent)
-    message = GiteaEventFormatter().plain_text(event, "issue_label")
+    message = GiteaEventFormatter(GITEA_API_URL).plain_text(event, "issue_label")
     assert "issue_label #1 opened in org/repo" in message
 
 
@@ -341,7 +341,7 @@ def test_parse_issue_comment_event():
     event = parse_gitea_event("issue_comment", issue_comment_payload())
 
     assert isinstance(event, GiteaIssueCommentEvent)
-    message = GiteaEventFormatter().plain_text(event, "issue_comment")
+    message = GiteaEventFormatter(GITEA_API_URL).plain_text(event, "issue_comment")
     assert "issue_comment on issue #1 created in org/repo" in message
     assert "comment body" in message
 
@@ -371,7 +371,7 @@ def test_issue_formatter_keeps_body_and_lists_attachments_separately():
     附件是独立 assets 列表，formatter 不改写正文，只额外列出附件 URL。
     """
     event = GiteaIssuesEvent.model_validate(issues_payload())
-    message = GiteaEventFormatter().issue_detail(event, "issues")
+    message = GiteaEventFormatter(GITEA_API_URL).issue_detail(event, "issues")
 
     assert "body ![img](/attachments/uuid)" in message
     assert "pic.png: https://gitea.example.com/attachments/uuid" in message

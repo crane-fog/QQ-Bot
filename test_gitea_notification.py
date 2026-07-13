@@ -20,6 +20,11 @@ def service():
     return NotificationService(api, 123, "https://gitea.example.com", "token")
 
 
+def test_notification_service_requires_non_empty_api_url():
+    with pytest.raises(ValueError, match=r"\[Gitea\] api_url 不能为空"):
+        NotificationService(MagicMock(), 123, "   ", "token")
+
+
 def _make_response(content: bytes = b"data", status: int = 200):
     resp = MagicMock()
     resp.content = content
