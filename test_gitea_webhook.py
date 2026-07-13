@@ -213,12 +213,11 @@ async def test_send_plain_text_failure_logs_error():
 
 
 @pytest.mark.asyncio
-async def test_issues_event_sends_three_node_forward_message():
-    """
-    issues 类事件应先发送一条摘要，再发送三条节点的合并转发消息。
-    """
+async def test_issues_event_sends_mixed_message_and_three_node_forward_message():
+    """issues 事件应发送含正文的混合消息，以及图片/附件可用的三节点合并转发。"""
     payload = issues_payload()
     payload["issue"]["body"] = "long body\n" + ("x" * 600)
+    payload["issue"]["assets"] = []
     event = GiteaIssuesEvent.model_validate(payload)
     api = Mock()
     api.asyncService = AsyncMock()
@@ -227,10 +226,20 @@ async def test_issues_event_sends_three_node_forward_message():
         event, "issues", EVENT_CONFIG["issues"]
     )
 
-    api.asyncService.send_group_msg.assert_called_once_with(
-        group_id=123,
-        message="[Gitea] issues #1 opened in org/repo",
-    )
+    api.asyncService.send_group_msg.assert_called_once()
+    plain_message = api.asyncService.send_group_msg.call_args.kwargs["message"]
+    assert plain_message == [
+        {
+            "type": "text",
+            "data": {"text": "[Gitea] issues #1 opened in org/repo\nFix webhook"},
+        },
+        {"type": "text", "data": {"text": "long body\n" + ("x" * 600) + "\n\n"}},
+        {
+            "type": "text",
+            "data": {"text": "\nurl: https://gitea.example.com/org/repo/issues/1"},
+        },
+    ]
+
     api.asyncService.send_group_forward_msg.assert_called_once()
     forward_message = api.asyncService.send_group_forward_msg.call_args.kwargs["forward_message"]
 
@@ -242,8 +251,11 @@ async def test_issues_event_sends_three_node_forward_message():
     )
     assert "Title: Fix webhook" in forward_message[0]["data"]["content"][0]["data"]["text"]
     assert "Labels: bug" in forward_message[0]["data"]["content"][0]["data"]["text"]
-    assert "Author: None" in forward_message[0]["data"]["content"][0]["data"]["text"]
-    assert "long body\n" + ("x" * 600) == forward_message[1]["data"]["content"][0]["data"]["text"]
+    assert "Author: alice" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    assert (
+        forward_message[1]["data"]["content"][0]["data"]["text"]
+        == "long body\n" + ("x" * 600) + "\n\n"
+    )
     assert (
         "url: https://gitea.example.com/org/repo/issues/1"
         == forward_message[2]["data"]["content"][0]["data"]["text"]
