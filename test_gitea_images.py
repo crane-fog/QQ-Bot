@@ -97,7 +97,10 @@ def test_parse_comment_segments_multiple_inline_images():
 
 
 def test_resolve_image_url_handles_absolute_relative_and_root_paths():
-    assert _resolve_image_url("https://other.com/x.png", REPO_HTML_URL, GITEA_BASE_URL) == "https://other.com/x.png"
+    assert (
+        _resolve_image_url("https://other.com/x.png", REPO_HTML_URL, GITEA_BASE_URL)
+        == "https://other.com/x.png"
+    )
     assert (
         _resolve_image_url("/attachments/uuid", REPO_HTML_URL, GITEA_BASE_URL)
         == "https://gitea.example.com/attachments/uuid"
