@@ -35,36 +35,12 @@ class TheresaCard(Plugins):
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
-
-        self.semester_dict = {
-            893688452: 252620,
-            1082118774: 252620,
-            1084322221: 252620,
-            1070607202: 252620,
-            972200687: 252620,
-            1078859289: 252620,
-            1067419462: 252620,
-            972090094: 252620,
-            760848601: 252620,
-            555635776: 252620,
-        }
-
-        self.class_dict = {
-            1070607202: 1,
-            972200687: 2,
-            1078859289: 3,
-            1067419462: 4,
-            972090094: 5,
-            760848601: 6,
-            555635776: 7,
-        }
-
         self.init_status()
 
     @plugin_main(call_word=["Theresa card"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         # 可使用 kick
-        permission_ids: list[int] = list(map(int, self.config.get("permission_ids").split(",")))
+        permission_ids: list[int] = self.config.get("permission_ids", [])
         permission_ids.append(self.bot.owner_id)
         # 可使用普通检查
         if (
@@ -81,7 +57,7 @@ class TheresaCard(Plugins):
         strict_flag = "strict" in event.message
         unenter_flag = "unenter" in event.message
         check_time_flag = False
-        check_class_flag = event.group_id in self.class_dict
+        check_class_flag = str(event.group_id) in self.config.get("classes", {})
         if event.message.split()[-1].isdigit():
             time_limit_hours = int(event.message.split()[-1])
             time_limit_seconds = time_limit_hours * 3600
@@ -90,7 +66,7 @@ class TheresaCard(Plugins):
             self.api.groupService.send_group_msg(group_id=event.group_id, message="权限不足")
             return
         if strict_flag or unenter_flag:
-            semester = self.semester_dict.get(event.group_id)
+            semester = self.config.get("semesters", {}).get(str(event.group_id))
             if semester is None:
                 self.api.groupService.send_group_msg(
                     group_id=event.group_id,
@@ -102,7 +78,7 @@ class TheresaCard(Plugins):
         group_member_list = self.api.groupService.get_group_member_list(
             group_id=event.group_id
         ).get("data")
-        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
+        ignored_ids: list[int] = self.config.get("ignored_ids", [])
         not_allowed_ids = []
         not_allowed_cards = []
         strict_candidates: list[tuple[int, int, str, str]] = []
@@ -138,7 +114,7 @@ class TheresaCard(Plugins):
             stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
         if strict_flag and strict_candidates:
             if check_class_flag:
-                class_ = self.class_dict[event.group_id]
+                class_ = self.config.get("classes", {}).get(str(event.group_id))
                 db_name_map = await self.check_in_list_batch(semester, stu_ids, class_=class_)
             else:
                 db_name_map = await self.check_in_list_batch(semester, stu_ids)

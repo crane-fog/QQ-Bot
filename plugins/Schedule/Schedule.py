@@ -71,7 +71,7 @@ class Schedule(Plugins):
 
     @plugin_main(call_word=["Schedule", "[CQ:file,file=textbook"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
-        calendar = self.config.getint("current_calendar")
+        calendar = self.config.get("current_calendar", "121")
         first_day = datetime.strptime(self.config.get("first_day"), "%Y-%m-%d").date()
 
         if event.message.startswith("[CQ:file,file=textbook"):

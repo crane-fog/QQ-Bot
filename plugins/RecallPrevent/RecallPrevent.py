@@ -33,13 +33,13 @@ class RecallPrevent(Plugins):
     async def main(self, event: GroupMessageEvent | GroupRecallEvent, debug: bool):
         # 初始化同步 Redis 连接
         if not self.redis_client:
-            host = self.config.get("host", fallback="localhost")
-            port = self.config.getint("port", fallback=6379)
-            db = self.config.getint("db", fallback=0)
+            host = self.config.get("host", "localhost")
+            port = self.config.get("port", 6379)
+            db = self.config.get("db", 0)
             self.redis_client = redis.Redis(host=host, port=port, db=db, decode_responses=True)
         group_id = event.group_id
 
-        for_administer = self.config.getboolean("for_administer")
+        for_administer = self.config.get("for_administer", False)
 
         if event.post_type == "message":  # 当获取消息时将消息的信息存入redis
             # 获取消息和消息ID
@@ -68,13 +68,13 @@ class RecallPrevent(Plugins):
         card_cuts = response_data["card"].split("-")
         recalled_message = response_data["message"]
 
-        for_everyone = self.config.getboolean("for_everyone")
-        ban = self.config.getboolean("ban")
+        for_everyone = self.config.get("for_everyone", False)
+        ban = self.config.get("ban", False)
         ban_time = self.config.get("ban_time")
         ban_time_cuts = ban_time.split("-")
         min_ban_time = ban_time_cuts[0].split(":")
         max_ban_time = ban_time_cuts[1].split(":")
-        ignored_ids: list[int] = list(map(int, self.config.get("ignored_ids").split(",")))
+        ignored_ids: list[int] = self.config.get("ignored_ids", [])
         duration = random.randint(
             int(min_ban_time[0]) * 3600 + int(min_ban_time[1]) * 60 + int(min_ban_time[2]),
             int(max_ban_time[0]) * 3600 + int(max_ban_time[1]) * 60 + int(max_ban_time[2]),

@@ -33,9 +33,9 @@ class ExamplePlugin(Plugins):
         """
 
         # 读取 plugins.ini 中的配置项
-        # 由于项目结构设计限制及保证配置动态加载能力，不得在 __init__ 中读取
-        self.config.get("some_config")
-
+        # 由于项目结构设计限制，不得在 __init__ 中读取
+        some_config = self.config.get("some_config", "default_value")
+        some_config += "!"
         self.set_status("error")
         Log.debug("成功将该插件状态变为error", debug)
         Log.error(f"这个错误是由测试插件：{self.name}主动产生的，Nothing goes wrong！")

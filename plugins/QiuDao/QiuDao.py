@@ -30,23 +30,21 @@ class QiuDao(Plugins):
         self.name = "QiuDao"
         self.type = "Group"
         self.author = "just monika / Heai"
-        self.introduction = """
+        self.introduction = f"""
                                 根据高程期末考试成绩发送对应的表情
-                                usage: Theresa 求刀/公开我的期末成绩吧
+                                {Face(id=63)} = [90, 100]
+                                {Face(id=112)} = [80, 90)
+                                {Face(id=112)}{Face(id=112)} = [70, 80)
+                                {Face(id=112)}{Face(id=112)}{Face(id=112)} = [60, 70)
+                                {Face(id=112)}{Face(id=112)}{Face(id=112)}{Face(id=112)} = [0, 60)
+                                usage: Theresa 公开我的刀数
                             """
         self.init_status()
-        self.semester_dict = {
-            893688452: 252611,
-            783564589: 252611,
-            861871927: 252610,
-            110275974: 252610,
-            927504458: 252610,
-        }
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
 
-    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的期末成绩吧"], require_db=True)
+    @plugin_main(call_word=["Theresa 求刀", "Theresa 公开我的刀数"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         group_id = event.group_id
 
@@ -66,7 +64,7 @@ class QiuDao(Plugins):
         else:
             stu_id = int(sender_card[0])
             select_result = None
-            semester_id = self.semester_dict.get(group_id)
+            semester_id = self.config.get("semesters", {}).get(str(group_id))
             select_result = await self.query_by_stu_id(stu_id, semester_id)
 
             if select_result is not None:

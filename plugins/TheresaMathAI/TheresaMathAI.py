@@ -8,6 +8,9 @@ from src.PrintLog import Log
 from utils.AITools import get_llm_response
 from utils.CQType import At
 
+# 仅用于测试 deepseek-v3.2-speciale 模型，以及测试群聊文件发送、群聊文件夹创建等功能
+# 由于相应模型 api 已下线，该插件目前不应启用
+
 
 class TheresaMathAI(Plugins):
     """

@@ -80,9 +80,9 @@ class TheresaChat(Plugins):
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         # 从数据库读取的上下文消息条数
-        self.context_length = self.config.getint("context_length")
-        self.extra_context = self.config.getint("extra_context")
-        self.context_length_for_face = self.config.getint("context_length_for_face")
+        self.context_length = self.config.get("context_length", 100)
+        self.extra_context = self.config.get("extra_context", 100)
+        self.context_length_for_face = self.config.get("context_length_for_face", 20)
 
         message = event.message
         group_id = event.group_id

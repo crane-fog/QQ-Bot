@@ -23,17 +23,6 @@ class GroupApprove(Plugins):
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
-        self.semester_dict = {
-            1082118774: 252620,
-            1084322221: 252620,
-            1070607202: 252620,
-            972200687: 252620,
-            1078859289: 252620,
-            1067419462: 252620,
-            972090094: 252620,
-            760848601: 252620,
-            555635776: 252620,
-        }
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupRequestEvent, debug: bool):
@@ -43,8 +32,8 @@ class GroupApprove(Plugins):
         if event.sub_type != "add":
             return
         group_id = event.group_id
-        reject_flag = self.config.getboolean("reject")
-        strict_flag = self.config.getboolean("strict")
+        reject_flag = self.config.get("reject", False)
+        strict_flag = self.config.get("strict", False)
         flag = event.flag
         full_comment = event.comment
 
@@ -71,7 +60,9 @@ class GroupApprove(Plugins):
             return
 
         stu_id = int(real_answer[:7])
-        if not self.stu_id_conform(stu_id, strict_flag, self.semester_dict.get(group_id)):
+        if not self.stu_id_conform(
+            stu_id, strict_flag, self.config.get("semesters", {}).get(str(group_id))
+        ):
             if reject_flag:
                 reject_reason = "学号错误"
                 self.api.groupService.set_group_add_request(
@@ -88,7 +79,7 @@ class GroupApprove(Plugins):
             Log.debug(f"{self.name}:{group_id}正确入群申请{flag}批准", debug)
 
     def format_check(self, real_answer: str) -> bool:
-        parts = self.config.getint("parts")
+        parts = self.config.get("parts", 2)
         flag = False
         spacer_type = ""
         for spacer in self.spacer:
@@ -105,7 +96,9 @@ class GroupApprove(Plugins):
                 flag = False
         return flag
 
-    def stu_id_conform(self, stu_id: int, strict_flag: bool, semester: int) -> bool:
+    def stu_id_conform(self, stu_id: int, strict_flag: bool, semester: int | None) -> bool:
+        if semester is None:
+            raise ValueError("群聊学期未配置，请在配置文件中添加学期信息")
         if not strict_flag:
             i = semester // 10000 - semester % 10  # 252620 -> 25, 252621 -> 24
             i = i * 100000 + 50000

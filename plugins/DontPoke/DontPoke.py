@@ -35,7 +35,7 @@ class DontPoke(Plugins):
 
         current_time = time.time()
         last_ask_time = self.user_cooldown.get(event.user_id, 0)
-        if current_time - last_ask_time < self.config.getint("cooldown_time"):
+        if current_time - last_ask_time < self.config.get("cooldown_time", 0):
             # if event.role in ["admin", "owner"]:
             #     return
             # self.api.groupService.send_group_msg(group_id=group_id, message=f"{At(qq=event.user_id)} 还戳，挨ban了吧")
@@ -54,7 +54,7 @@ class DontPoke(Plugins):
 
         if user_id == self.bot.owner_id:
             message = f"{At(qq=user_id)} {Face(id=319)}"
-        elif user_id == 3500519807:
+        elif user_id in self.config.get("special_ids", []):
             message = f"{At(qq=user_id)} {Face(id=318)}"
         else:
             message_list = [
@@ -73,7 +73,7 @@ class DontPoke(Plugins):
             message = f"{At(qq=user_id)} " + message_list[randint(0, len(message_list) - 1)]
         self.api.groupService.send_group_msg(group_id=group_id, message=message)
 
-        repoke_frequency = self.config.getint("repoke_frequency")
+        repoke_frequency = self.config.get("repoke_frequency", 0)
         if randint(0, 99) < repoke_frequency:
             self.api.groupService.send_group_poke(group_id=group_id, user_id=user_id)
         return

@@ -17,7 +17,7 @@ class TheresaCardBatch(Plugins):
 
     @plugin_main(call_word=["Theresa card"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
-        target_groups: list[int] = list(map(int, self.config.get("target_groups").split(",")))
+        target_groups: list[int] = self.config.get("target_groups", [])
         origin_group_id = event.group_id
         for plugin in self.bot.plugins_list:
             if plugin.name == "TheresaCard":

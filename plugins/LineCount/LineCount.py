@@ -35,15 +35,6 @@ class LineCount(Plugins):
                                 usage: Theresa linecount
                             """
         self.init_status()
-        self.semester_dict = {
-            893688452: 252610,
-            861871927: 252610,
-            110275974: 252610,
-            927504458: 252610,
-        }
-        self.total_people = {
-            252610: 904,
-        }
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
@@ -62,14 +53,14 @@ class LineCount(Plugins):
         else:
             stu_id = int(sender_card[0])
             select_result = None
-            semester_id = self.semester_dict.get(group_id)
+            semester_id = self.config.get("semesters", {}).get(str(group_id))
             select_result = await self.query_by_stu_id(stu_id, semester_id)
 
             if select_result is not None:
                 rank = select_result.get("rank")
                 count = select_result.get("count")
                 query_user_id = select_result.get("user_id")
-                total = self.total_people.get(semester_id)
+                total = self.config.get("total_people", {}).get(str(semester_id))
                 if int(query_user_id) != user_id:
                     self.api.groupService.send_group_msg(
                         group_id=group_id,

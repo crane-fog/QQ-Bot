@@ -55,7 +55,7 @@ class GroupSum(Plugins):
 
     @plugin_main(call_word=["Summary"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
-        self.max_length = self.config.getint("max_length")
+        self.max_length = self.config.get("max_length", 1000)
 
         msg = event.message.strip().split()
         if len(msg) != 2 or not msg[1].isdigit():

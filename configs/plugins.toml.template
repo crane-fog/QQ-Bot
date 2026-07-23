@@ -6,6 +6,7 @@ enable = false
 repoke_frequency = 50
 ban_time = "00:00:00-24:00:00"
 cooldown_time = 60
+special_ids = [123,456]
 
 [EmojiLike]
 enable = false
@@ -17,6 +18,10 @@ enable = false
 parts = 2
 reject = false
 strict = false
+
+[GroupApprove.semesters]
+"12345" = 252610
+"67890" = 252620
 
 [RecallPrevent]
 enable = false
@@ -48,6 +53,15 @@ enable = false
 ignored_ids = [123,456]
 permission_ids = [123,456]
 
+[TheresaCard.semesters]
+"12345" = 252620
+"67890" = 252620
+
+[TheresaCard.classes]
+"11111" = 1
+"22222" = 2
+"33333" = 3
+
 [TheresaAI]
 enable = false
 
@@ -73,9 +87,6 @@ enable = false
 [TheresaHelp]
 enable = true
 
-[TheresaLuck]
-enable = false
-
 [TheresaChat]
 enable = false
 context_length = 200
@@ -92,8 +103,20 @@ enable = false
 [QiuDao]
 enable = false
 
+[QiuDao.semesters]
+"12345" = 252620
+"67890" = 252611
+
 [LineCount]
 enable = false
+
+[LineCount.semesters]
+"12345" = 252610
+"67890" = 252620
+
+[LineCount.total_people]
+"252610" = 1111
+"252620" = 2222
 
 [MessageRecorder]
 enable = false

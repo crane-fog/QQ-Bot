@@ -22,7 +22,7 @@ class TheresaBan(Plugins):
     async def main(self, event: GroupMessageEvent, debug: bool):
         message = event.message
         command_list = message.split()
-        black_list: list[int] = list(map(int, self.config.get("black_list").split(",")))
+        black_list: list[int] = self.config.get("black_list", [])
 
         if len(command_list) != 4:
             return

@@ -47,18 +47,16 @@ class AskForward(Plugins):
         self.session_factory: sessionmaker = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
-        self.special_assistant_list: set[int] = set()
+        self.special_assistant_list: set[int] = set()  # 不转发消息的，不在助教群的助教
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         if event.message.startswith("Theresa "):
             return
-        broadcast_target_group: int = self.config.getint("broadcast_target_group")
-        answer_group: int = self.config.getint("answer_group")
-        ask_groups: list[int] = list(map(int, self.config.get("ask_groups").split(",")))
-        self.special_assistant_list: set[int] = set(
-            map(int, self.config.get("special_assistant_list", "").split(","))
-        )
+        broadcast_target_group: int = self.config.get("broadcast_target_group", 0)
+        answer_group: int = self.config.get("answer_group", 0)
+        ask_groups: list[int] = self.config.get("ask_groups", [])
+        self.special_assistant_list: set[int] = set(self.config.get("special_assistant_list", []))
 
         check_message = event.message.strip()
         while check_message.startswith("[CQ:image,"):
