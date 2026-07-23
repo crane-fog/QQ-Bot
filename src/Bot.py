@@ -44,7 +44,7 @@ class Bot:
             self.bot_config = tomlkit.load(f).unwrap()
 
         # 初始化 AI 服务
-        self.ai = AIService(os.path.join(self.configs_path, "ai.ini"))
+        self.ai = AIService(os.path.join(self.configs_path, "ai.toml"))
 
         # 初始化插件列表
         self.plugins_list: list[Plugins] = []

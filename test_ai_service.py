@@ -9,9 +9,9 @@ from src.Bot import check_config_files
 
 
 def _make_service(api_key: str = "test-secret") -> AIService:
-    service = AIService("configs/ai.ini.template")
-    provider_name = service._config["profile:default"].get("provider")
-    service._config.set(f"provider:{provider_name}", "api_key", api_key)
+    service = AIService("configs/ai.toml.template")
+    provider_name = service._config["profile"]["default"]["provider"]
+    service._config["provider"][provider_name]["api_key"] = api_key
     return service
 
 
@@ -56,12 +56,11 @@ async def test_generate_uses_provider_api_key_and_does_not_mutate_messages(monke
     assert messages == [{"role": "user", "content": "hello"}]
     assert captured["api_key"] == "test-secret"
     assert captured["base_url"] == "https://api.deepseek.com"
-    assert captured["timeout"] == 45.0
+    assert captured["timeout"] == 45
     assert captured["max_retries"] == 1
     assert captured["request"] == {
         "model": "deepseek-v4-flash",
         "messages": messages,
-        "temperature": 0.7,
     }
 
 
@@ -84,4 +83,4 @@ def test_check_config_files_creates_ai_configuration_from_template():
         check_config_files("configs")
 
     copied_destinations = [call.args[1] for call in copyfile.call_args_list]
-    assert any(destination.endswith("ai.ini") for destination in copied_destinations)
+    assert any(destination.endswith("ai.toml") for destination in copied_destinations)

@@ -1,4 +1,3 @@
-from configparser import SectionProxy
 from types import SimpleNamespace
 from typing import cast
 from unittest.mock import AsyncMock, Mock
@@ -33,7 +32,7 @@ async def test_ai_plugin_returns_friendly_message_for_ai_service_errors(error, e
         ),
     )
     plugin.api = cast(Api, SimpleNamespace(groupService=group_service))
-    plugin.config = cast(SectionProxy, {"ai_profile": "default"})
+    plugin.config = {"ai_profile": "default"}
     plugin.user_cooldown = {}
     plugin.cooldown_time = 1
 
