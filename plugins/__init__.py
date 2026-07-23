@@ -1,8 +1,9 @@
 # plugins/__init__.py
-import configparser
 import os
 from functools import wraps
 from typing import TYPE_CHECKING
+
+import tomlkit
 
 from src.Api import Api
 
@@ -66,7 +67,7 @@ class Plugins:
         self.introduction = "xxx"
         self.status = None  # running/disable/error
         self.error_info = ""
-        self.config: configparser.SectionProxy = None
+        self.config: dict = None
         self.effected_groups: list[int] = []
 
     async def main(self, event, debug: bool):
@@ -91,19 +92,17 @@ class Plugins:
 
     def load_effected_groups(self):
         """
-        用于从插件的配置文件中加载插件的生效群聊列表
+        用于从群聊配置文件中加载插件的生效群聊列表
         :return: 不返回值，直接赋值给self.effected_groups
         """
-        g_config = configparser.ConfigParser()
-        with open(os.path.join(self.bot.configs_path, "groups.ini"), encoding="utf-8") as f:
-            g_config.read_file(f)
+        with open(os.path.join(self.bot.configs_path, "groups.toml"), "rb", encoding="utf-8") as f:
+            groups_config = tomlkit.load(f).unwrap()
 
         self.effected_groups = []
-        for section in g_config.sections():
+        for section in groups_config:
             if section.isdigit():
                 # 检查该插件在此群是否启用
-                if g_config.has_option(section, self.name):
-                    if g_config.getboolean(section, self.name):
-                        # 提取群号
-                        group_id = int(section)
-                        self.effected_groups.append(group_id)
+                if self.name in groups_config[section] and groups_config[section][self.name]:
+                    # 提取群号
+                    group_id = int(section)
+                    self.effected_groups.append(group_id)

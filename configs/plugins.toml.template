@@ -1,0 +1,137 @@
+[AI]
+enable = false
+
+[DontPoke]
+enable = false
+repoke_frequency = 50
+ban_time = "00:00:00-24:00:00"
+cooldown_time = 60
+
+[EmojiLike]
+enable = false
+ignored_ids = [123,456]
+frequency = 1
+
+[GroupApprove]
+enable = false
+parts = 2
+reject = false
+strict = false
+
+[RecallPrevent]
+enable = false
+ban = true
+for_everyone = true
+for_administer = false
+ignored_ids = [123,456]
+ban_time = "00:00:00-00:05:00"
+host = "localhost"
+port = 6379
+db = 0
+
+[Repeater]
+enable = false
+threshold = 2
+ban = true
+recall = true
+ban_time = "00:00:00-00:05:00"
+for_everyone = true
+normal_message = "请不要复读，否则可能被禁言哦"
+special_message = "助教带头复读，当罚"
+ignored_ids = [123,456]
+
+[ExamplePlugin]
+enable = false
+
+[TheresaCard]
+enable = false
+ignored_ids = [123,456]
+permission_ids = [123,456]
+
+[TheresaAI]
+enable = false
+
+[TheresaBan]
+enable = false
+black_list = [123,456]
+
+[Theresac]
+enable = true
+
+[TheresaDora]
+enable = false
+
+[TheresaGoodMorning]
+enable = false
+
+[TheresaMathAI]
+enable = false
+
+[TheresaWithdraw]
+enable = false
+
+[TheresaHelp]
+enable = true
+
+[TheresaLuck]
+enable = false
+
+[TheresaChat]
+enable = false
+context_length = 200
+extra_context = 100
+context_length_for_face = 20
+
+[MoeGoe]
+enable = false
+url = "http://127.0.0.1:8080/tts"
+
+[GetStuId]
+enable = false
+
+[QiuDao]
+enable = false
+
+[LineCount]
+enable = false
+
+[MessageRecorder]
+enable = false
+
+[TheresaImage]
+enable = false
+
+[A_Pixiv]
+enable = false
+
+[A_music]
+enable = false
+
+[I_like_you]
+enable = false
+
+[DataImport]
+enable = false
+
+[AskForward]
+enable = false
+broadcast_target_group = 12345
+answer_group = 12345
+ask_groups = [12345,67890]
+special_assistant_list = [12345,67890]
+
+[TheresaCardBatch]
+enable = false
+target_groups = [12345,67890]
+
+[Configset]
+enable = true
+
+[GroupSum]
+enable = false
+max_length = 1000
+
+[Schedule]
+enable = false
+current_calendar = 121
+first_day = "2026-03-02"

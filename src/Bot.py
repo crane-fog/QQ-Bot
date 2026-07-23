@@ -1,5 +1,4 @@
 import asyncio
-import configparser
 import logging
 import os
 import sys
@@ -7,6 +6,7 @@ from importlib import import_module
 from pkgutil import iter_modules
 from shutil import copyfile
 
+import tomlkit
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from sqlalchemy.pool import NullPool
 
@@ -39,9 +39,8 @@ class Bot:
         check_config_files(self.configs_path)
 
         # 初始化配置加载器
-        self.config: configparser.ConfigParser = configparser.ConfigParser()
-        with open(os.path.join(self.configs_path, "bot.ini"), encoding="utf-8") as f:
-            self.config.read_file(f)
+        with open(os.path.join(self.configs_path, "bot.toml"), "rb", encoding="utf-8") as f:
+            self.bot_config = tomlkit.load(f).unwrap()
 
         # 初始化插件列表
         self.plugins_list: list[Plugins] = []
@@ -49,36 +48,32 @@ class Bot:
         # 初始化数据库连接对象
         self.database: None | AsyncEngine = None
 
-        # 通过 ConfigParser 加载其他初始化参数
-        Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.ini')}")
+        # 加载初始化参数
+        Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.toml')}")
 
         # 需要检查的关键配置项
         required_configs = {
-            "server_address": self.config.get("Init", "server_address", fallback=None),
-            "client_address": self.config.get("Init", "client_address", fallback=None),
-            "web_controller_address": self.config.get(
-                "Init", "web_controller_address", fallback=None
+            "server_address": self.bot_config.get("Init", {}).get("server_address"),
+            "client_address": self.bot_config.get("Init", {}).get("client_address"),
+            "web_controller_address": self.bot_config.get("Init", {}).get("web_controller_address"),
+            "bot_name": self.bot_config.get("Init", {}).get("bot_name"),
+            "debug": self.bot_config.get("Init", {}).get("debug"),
+            "database_enable": self.bot_config.get("Init", {}).get("database_enable"),
+            "database_username": self.bot_config.get("Init", {}).get("database_username"),
+            "database_address": self.bot_config.get("Init", {}).get("database_address"),
+            "database_passwd": self.bot_config.get("Init", {}).get("database_passwd"),
+            "database_name": self.bot_config.get("Init", {}).get("database_name"),
+            "owner_id": self.bot_config.get("Init", {}).get("owner_id"),
+            "assistant_group": self.bot_config.get("Init", {}).get("assistant_group"),
+            "enable_webhook_handler": self.bot_config.get("Init", {}).get("enable_webhook_handler"),
+            "webhook_handler_address": self.bot_config.get("Init", {}).get(
+                "webhook_handler_address"
             ),
-            "bot_name": self.config.get("Init", "bot_name", fallback=None),
-            "debug": self.config.getboolean("Init", "debug", fallback=None),
-            "database_enable": self.config.getboolean("Init", "database_enable", fallback=None),
-            "database_username": self.config.get("Init", "database_username", fallback=None),
-            "database_address": self.config.get("Init", "database_address", fallback=None),
-            "database_passwd": self.config.get("Init", "database_passwd", fallback=None),
-            "database_name": self.config.get("Init", "database_name", fallback=None),
-            "owner_id": self.config.getint("Init", "owner_id", fallback=None),
-            "assistant_group": self.config.getint("Init", "assistant_group", fallback=None),
-            "enable_webhook_handler": self.config.getboolean(
-                "Init", "enable_webhook_handler", fallback=None
+            "webhook_response_group": self.bot_config.get("Gitea", {}).get(
+                "webhook_response_group"
             ),
-            "webhook_handler_address": self.config.get(
-                "Gitea", "webhook_handler_address", fallback=None
-            ),
-            "webhook_response_group": self.config.getint(
-                "Gitea", "webhook_response_group", fallback=None
-            ),
-            "gitea_api_url": self.config.get("Gitea", "api_url", fallback=None),
-            "gitea_api_token": self.config.get("Gitea", "api_token", fallback=None),
+            "gitea_api_url": self.bot_config.get("Gitea", {}).get("api_url"),
+            "gitea_api_token": self.bot_config.get("Gitea", {}).get("api_token"),
         }
 
         # 检查哪些关键配置项是空的
@@ -119,9 +114,7 @@ class Bot:
             self.api.botSelfInfo.get_login()
         except Exception as e:
             raise ConnectionError(f"无法连接到Bot服务端，请确认监听端配置：{e}") from None
-        self.bot_id: int = (
-            self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id", None)
-        )
+        self.bot_id: int = self.api.botSelfInfo.get_login_info().get("data", {}).get("user_id")
         if self.bot_id is None:
             raise ValueError("无法获取Bot登录信息")
         Log.info(f"获取到Bot的登录信息：{self.bot_id}")
@@ -162,9 +155,8 @@ class Bot:
         Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
-        plugins_config = configparser.ConfigParser()
-        plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
-        plugins_config.read(plugins_config_path, encoding="utf-8")
+        with open(os.path.join(self.configs_path, "plugins.toml"), "rb", encoding="utf-8") as f:
+            plugins_config = tomlkit.load(f).unwrap()
 
         for _, name, ispkg in iter_modules([self.plugins_path]):
             if not ispkg:
@@ -172,16 +164,15 @@ class Bot:
 
             # 检查插件是否启用
             enable = False
-            if plugins_config.has_section(name):
-                if plugins_config.has_option(name, "enable"):
-                    enable = plugins_config.getboolean(name, "enable")
+            if name in plugins_config:
+                enable = plugins_config[name].get("enable", False)
 
             if not enable:
                 Log.info(f"插件 {name} 未启用，跳过加载")
                 continue
 
             try:
-                plugin_instance = self.create_plugin_instance(name, plugins_config)
+                plugin_instance = self.create_plugin_instance(name, plugins_config[name])
                 self.plugins_list.append(plugin_instance)
                 Log.info(
                     f"成功加载插件：{plugin_instance.name}，插件类型：{plugin_instance.type}，插件作者{plugin_instance.author}"
@@ -206,20 +197,19 @@ class Bot:
             Log.error(f"没有找到插件{plugin_name}")
             return False
 
-        groups_config = configparser.ConfigParser()
-        groups_config_path = os.path.join(self.configs_path, "groups.ini")
-        groups_config.optionxform = str  # 保持大小写
-        groups_config.read(groups_config_path, encoding="utf-8")
+        with open(os.path.join(self.configs_path, "groups.toml"), "rb", encoding="utf-8") as f:
+            groups_config = tomlkit.load(f)
+
         for gid in group_ids:
             if not gid.isdigit():
                 Log.error(f"无效的群号：{gid}")
                 return False
         for gid in group_ids:
-            if not groups_config.has_section(gid):
-                groups_config.add_section(gid)
+            if gid not in groups_config:
+                groups_config[gid] = tomlkit.table()
             groups_config[gid][plugin_name] = "True" if enable else "False"
-        with open(groups_config_path, "w", encoding="utf-8") as f:
-            groups_config.write(f)
+        with open(os.path.join(self.configs_path, "groups.toml"), "w", encoding="utf-8") as f:
+            tomlkit.dump(groups_config, f)
 
         return self.reload_plugin(plugin_name)
 
@@ -229,13 +219,12 @@ class Bot:
         """
         Log.info(f"开始插件{name}的热重载")
 
-        plugins_config = configparser.ConfigParser()
-        plugins_config_path = os.path.join(self.configs_path, "plugins.ini")
-        plugins_config.read(plugins_config_path, encoding="utf-8")
-        if not plugins_config.has_section(name):
+        with open(os.path.join(self.configs_path, "plugins.toml"), "rb", encoding="utf-8") as f:
+            plugins_config = tomlkit.load(f).unwrap()
+        if name not in plugins_config:
             Log.error(f"插件{name}的配置不存在，无法热重载")
             return False
-        elif not plugins_config.getboolean(name, "enable", fallback=False):
+        elif not plugins_config[name].get("enable", False):
             Log.info(f"插件{name}未启用，无法热重载")
             return False
 
@@ -248,7 +237,7 @@ class Bot:
         try:
             for k in keys_to_remove:
                 del sys.modules[k]
-            plugin_instance = self.create_plugin_instance(name, plugins_config)
+            plugin_instance = self.create_plugin_instance(name, plugins_config[name])
         except Exception as e:
             keys_to_remove = [
                 k for k in sys.modules if k == f"plugins.{name}" or k.startswith(f"plugins.{name}.")
@@ -266,9 +255,7 @@ class Bot:
         )
         return True
 
-    def create_plugin_instance(
-        self, name: str, plugins_config: configparser.ConfigParser
-    ) -> Plugins:
+    def create_plugin_instance(self, name: str, plugin_config: dict) -> Plugins:
         # 从plugins包动态导入子包
         plugin_module = import_module(f".{name}", "plugins")
         # 获取子包中的插件类，假设类名与模块名相同
@@ -276,7 +263,7 @@ class Bot:
         # 实例化插件
         plugin_instance: Plugins = PluginClass(self.server_address, self)
         # 传递插件配置
-        plugin_instance.config = plugins_config[name]
+        plugin_instance.config = plugin_config
         return plugin_instance
 
     async def run(self) -> None:
@@ -325,21 +312,21 @@ def check_config_files(configs_path: str) -> None:
     """
     如配置文件不存在，复制默认配置文件模板
     """
-    if not os.path.isfile(os.path.join(configs_path, "bot.ini")):
-        Log.warning("配置文件bot.ini不存在，正在复制默认配置文件模板")
+    if not os.path.isfile(os.path.join(configs_path, "bot.toml")):
+        Log.warning("配置文件bot.toml不存在，正在复制默认配置文件模板")
         copyfile(
-            os.path.join(configs_path, "bot.ini.template"),
-            os.path.join(configs_path, "bot.ini"),
+            os.path.join(configs_path, "bot.toml.template"),
+            os.path.join(configs_path, "bot.toml"),
         )
-    if not os.path.isfile(os.path.join(configs_path, "groups.ini")):
-        Log.warning("配置文件groups.ini不存在，正在复制默认配置文件模板")
+    if not os.path.isfile(os.path.join(configs_path, "groups.toml")):
+        Log.warning("配置文件groups.toml不存在，正在复制默认配置文件模板")
         copyfile(
-            os.path.join(configs_path, "groups.ini.template"),
-            os.path.join(configs_path, "groups.ini"),
+            os.path.join(configs_path, "groups.toml.template"),
+            os.path.join(configs_path, "groups.toml"),
         )
-    if not os.path.isfile(os.path.join(configs_path, "plugins.ini")):
-        Log.warning("配置文件plugins.ini不存在，正在复制默认配置文件模板")
+    if not os.path.isfile(os.path.join(configs_path, "plugins.toml")):
+        Log.warning("配置文件plugins.toml不存在，正在复制默认配置文件模板")
         copyfile(
-            os.path.join(configs_path, "plugins.ini.template"),
-            os.path.join(configs_path, "plugins.ini"),
+            os.path.join(configs_path, "plugins.toml.template"),
+            os.path.join(configs_path, "plugins.toml"),
         )

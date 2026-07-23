@@ -25,6 +25,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "xlrd>=2.0.2",
     "playwright>=1.60.0",
+    "tomlkit>=0.15.1",
 ]
 
 [dependency-groups]
