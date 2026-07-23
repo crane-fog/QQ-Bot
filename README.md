@@ -57,14 +57,14 @@ ssh -L 3080:localhost:3080 user@remote_host
 ### 配置 configs/*.ini
 
 ```bash
-cp configs/bot.ini.template configs/bot.ini
-cp configs/groups.ini.template configs/groups.ini
-cp configs/plugins.ini.template configs/plugins.ini
+cp configs/bot.toml.template configs/bot.toml
+cp configs/groups.toml.template configs/groups.toml
+cp configs/plugins.toml.template configs/plugins.toml
 ```
 
 > 对于 `configs` 文件夹下的每个配置文件，需要复制一份去掉 `.template` 后缀的文件，并根据需要修改配置项，bot 启动时如无法找到配置文件会自动复制模板文件
 
-#### `configs/bot.ini`
+#### `configs/bot.toml`
 
 #### bot 基础信息配置
 
@@ -98,28 +98,28 @@ enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），�
 详细说明见 **[Gitea Webhook 文档](docs/gitea-webhook.md)**
 
 
-#### `configs/groups.ini` 群聊插件启用信息配置
-```ini
+#### `configs/groups.toml` 群聊插件启用信息配置
+```toml
 [123456789]
-PluginName1 = True
-PluginName2 = True
+PluginName1 = true
+PluginName2 = true
 
 [987654321]
-PluginName1 = True
-PluginName3 = True
+PluginName1 = true
+PluginName3 = true
 ```
 决定了一个群聊（123456789）中启用哪些插件（PluginName1、PluginName2），未配置的插件默认不启用
 
-#### `configs/plugins.ini` 插件启用信息及部分特殊配置
-```ini
+#### `configs/plugins.toml` 插件启用信息及部分特殊配置
+```toml
 [PluginName1]
-enable = True
+enable = true
 
 [PluginName2]
-enable = False
+enable = false
 some_special_config = 123
 ```
-`enable` 决定插件是否启用，此处的启用优先级高于群聊配置，即，只要配置了 `enable = False`，该插件不会被加载，不会在任何群聊中生效
+`enable` 决定插件是否启用，此处的启用优先级高于群聊配置，即，只要配置了 `enable = false`，该插件不会被加载，不会在任何群聊中生效
 
 其余可包含插件需要读取的特殊配置项，建议将插件中需要可变的配置项写入此文件
 
