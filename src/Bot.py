@@ -39,7 +39,7 @@ class Bot:
         check_config_files(self.configs_path)
 
         # 初始化配置加载器
-        with open(os.path.join(self.configs_path, "bot.toml"), "rb", encoding="utf-8") as f:
+        with open(os.path.join(self.configs_path, "bot.toml"), encoding="utf-8") as f:
             self.bot_config = tomlkit.load(f).unwrap()
 
         # 初始化插件列表
@@ -66,7 +66,7 @@ class Bot:
             "owner_id": self.bot_config.get("Init", {}).get("owner_id"),
             "assistant_group": self.bot_config.get("Init", {}).get("assistant_group"),
             "enable_webhook_handler": self.bot_config.get("Init", {}).get("enable_webhook_handler"),
-            "webhook_handler_address": self.bot_config.get("Init", {}).get(
+            "webhook_handler_address": self.bot_config.get("Gitea", {}).get(
                 "webhook_handler_address"
             ),
             "webhook_response_group": self.bot_config.get("Gitea", {}).get(
@@ -155,7 +155,7 @@ class Bot:
         Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
-        with open(os.path.join(self.configs_path, "plugins.toml"), "rb", encoding="utf-8") as f:
+        with open(os.path.join(self.configs_path, "plugins.toml"), encoding="utf-8") as f:
             plugins_config = tomlkit.load(f).unwrap()
 
         for _, name, ispkg in iter_modules([self.plugins_path]):
@@ -197,7 +197,7 @@ class Bot:
             Log.error(f"没有找到插件{plugin_name}")
             return False
 
-        with open(os.path.join(self.configs_path, "groups.toml"), "rb", encoding="utf-8") as f:
+        with open(os.path.join(self.configs_path, "groups.toml"), encoding="utf-8") as f:
             groups_config = tomlkit.load(f)
 
         for gid in group_ids:
@@ -207,7 +207,7 @@ class Bot:
         for gid in group_ids:
             if gid not in groups_config:
                 groups_config[gid] = tomlkit.table()
-            groups_config[gid][plugin_name] = "True" if enable else "False"
+            groups_config[gid][plugin_name] = True if enable else False
         with open(os.path.join(self.configs_path, "groups.toml"), "w", encoding="utf-8") as f:
             tomlkit.dump(groups_config, f)
 
@@ -219,7 +219,7 @@ class Bot:
         """
         Log.info(f"开始插件{name}的热重载")
 
-        with open(os.path.join(self.configs_path, "plugins.toml"), "rb", encoding="utf-8") as f:
+        with open(os.path.join(self.configs_path, "plugins.toml"), encoding="utf-8") as f:
             plugins_config = tomlkit.load(f).unwrap()
         if name not in plugins_config:
             Log.error(f"插件{name}的配置不存在，无法热重载")

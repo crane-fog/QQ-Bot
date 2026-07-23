@@ -17,7 +17,7 @@
 - **Gitea Webhook 支持**
 - 重写 WebController，目前弃用
 - 为 Api 引入 TypedDict
-- 插件依赖的选择性安装（playwright etc.）
+- 插件依赖的选择性安装（Playwright etc.）
 - 小特完整 agent 流程
 - bot 名称加入触发词
 

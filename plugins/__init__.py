@@ -95,7 +95,7 @@ class Plugins:
         用于从群聊配置文件中加载插件的生效群聊列表
         :return: 不返回值，直接赋值给self.effected_groups
         """
-        with open(os.path.join(self.bot.configs_path, "groups.toml"), "rb", encoding="utf-8") as f:
+        with open(os.path.join(self.bot.configs_path, "groups.toml"), encoding="utf-8") as f:
             groups_config = tomlkit.load(f).unwrap()
 
         self.effected_groups = []
