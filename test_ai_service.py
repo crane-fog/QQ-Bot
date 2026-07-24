@@ -2,14 +2,20 @@ from types import SimpleNamespace
 from unittest.mock import patch
 
 import pytest
+from openai._types import omit
 from openai.types.chat import ChatCompletionMessageParam
 
 from src.AIService import AIConfigurationError, AIService
+from src.Api import Api
 from src.Bot import check_config_files
 
 
 def _make_service(api_key: str = "test-secret") -> AIService:
-    service = AIService("configs/ai.toml.template")
+    service = AIService(
+        "configs/ai.toml.template",
+        "utils/persona.j2",
+        Api("localhost"),
+    )
     provider_name = service._config["profile"]["default"]["provider"]
     service._config["provider"][provider_name]["api_key"] = api_key
     return service
@@ -22,7 +28,11 @@ class _FakeCompletions:
     async def create(self, **kwargs):
         self.captured["request"] = kwargs
         return SimpleNamespace(
-            choices=[SimpleNamespace(message=SimpleNamespace(content="configured reply"))]
+            choices=[
+                SimpleNamespace(
+                    message=SimpleNamespace(content="configured reply", tool_calls=None)
+                )
+            ]
         )
 
 
@@ -56,11 +66,14 @@ async def test_generate_uses_provider_api_key_and_does_not_mutate_messages(monke
     assert messages == [{"role": "user", "content": "hello"}]
     assert captured["api_key"] == "test-secret"
     assert captured["base_url"] == "https://api.deepseek.com"
-    assert captured["timeout"] == 45
-    assert captured["max_retries"] == 1
+    assert captured["timeout"] == 60.0
     assert captured["request"] == {
-        "model": "deepseek-v4-flash",
+        "model": "deepseek-v4-pro",
         "messages": messages,
+        "response_format": omit,
+        "reasoning_effort": omit,
+        "tools": omit,
+        "extra_body": None,
     }
 
 
