@@ -9,7 +9,7 @@ api_key = "<your-api-key>"
 
 [profile.example]
 provider = "deepseek"
-model = "deepseek-v4-falsh"
+model = "deepseek-v4-flash"
 response_format = {"type" = "json_object"} # 可选参数
 reasoning_effort = "xhigh" # 可选参数
 extra_body.thinking.type = "disabled" # 可选参数，用于 deepseek
