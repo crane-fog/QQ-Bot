@@ -14,7 +14,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
@@ -153,7 +152,8 @@ class TheresaChat(Plugins):
             )
             if isinstance(context_messages[0]["content"], str):
                 context_messages[0]["content"] += NO_INNER_OS_MARKER
-            response = await get_llm_response(
+            response = await self.bot.ai.generate(
+                "chat",
                 [
                     {"role": "system", "content": persona},
                     *context_messages,
@@ -163,10 +163,6 @@ class TheresaChat(Plugins):
                         "name": "time_info",
                     },
                 ],
-                model="deepseek-v4-pro",
-                use_tools=True,
-                api=self.api,
-                insert_persona=True,
             )
             if "[NO REPLY]" not in response:
                 # 更新冷却时间
@@ -181,7 +177,7 @@ class TheresaChat(Plugins):
                 msgs.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": encode_image(cq.path)},
+                        "image_url": {"url": self.bot.ai.encode_image(cq.path)},
                     }
                 )
                 message = message.replace(str(cq), "")
@@ -289,12 +285,7 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = await get_llm_response(
-            messages=messages,
-            model="deepseek-v4-flash",
-            response_format={"type": "json_object"},
-            insert_persona=True,
-        )
+        response = await self.bot.ai.generate("chat_face", messages)
         try:
             image_id = json.loads(response).get("image_id")
             if image_id and image_id != 0 and image_id != 36 and image_id != 42:

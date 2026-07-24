@@ -1,10 +1,62 @@
 [provider.deepseek]
-protocol = "openai_chat_completions"
 base_url = "https://api.deepseek.com"
 api_key = "<your-api-key>"
-timeout_seconds = 45
-max_retries = 1
+timeout_seconds = 60.0 # 可选参数
+
+[provider.mnapi]
+base_url = "https://api.mnapi.com/v1"
+api_key = "<your-api-key>"
+
+[profile.example]
+provider = "deepseek"
+model = "deepseek-v4-falsh"
+response_format = {"type" = "json_object"} # 可选参数
+reasoning_effort = "xhigh" # 可选参数
+extra_body.thinking.type = "disabled" # 可选参数，用于 deepseek
+tools = ["set_group_ban"] # 可选参数
+insert_persona = false # 可选参数，默认 false
 
 [profile.default]
 provider = "deepseek"
+model = "deepseek-v4-pro"
+
+[profile.group_sum]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+response_format = {"type" = "json_object"}
+insert_persona = true
+
+[profile.Theresa_simple]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+insert_persona = true
+
+[profile.chat]
+provider = "deepseek"
+model = "deepseek-v4-pro"
+tools = ["set_group_ban"]
+insert_persona = true
+
+[profile.chat_face]
+provider = "deepseek"
 model = "deepseek-v4-flash"
+response_format = {"type" = "json_object"}
+insert_persona = true
+
+[profile.image_simple]
+provider = "mnapi"
+model = "gemini-3-flash-preview"
+
+[tool.set_group_ban]
+name = "set_group_ban"
+strict = false
+description = "Ban a user in a group, the user will not be able to send messages in the group for a certain period of time. You can unset the ban by use duration 0. You should prudently use this tool."
+parameters.type = "object"
+parameters.properties.user_id.type = "integer"
+parameters.properties.user_id.description = "The user ID of the person to ban."
+parameters.properties.group_id.type = "integer"
+parameters.properties.group_id.description = "The group ID where the ban will be applied."
+parameters.properties.duration.type = "integer"
+parameters.properties.duration.description = "The duration of the ban in seconds. Must be in the range of 0 to 2592000."
+parameters.required = ["user_id", "group_id", "duration"]
+parameters.additionalProperties = false

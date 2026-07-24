@@ -5,7 +5,6 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
 from utils.CQType import At, Reply
 
 
@@ -63,13 +62,12 @@ class TheresaGoodMorning(Plugins):
             question_full = f"{event.nickname}(群名片：{event.card})说：\n{question}"
 
             # 获取大模型回复
-            response = await get_llm_response(
+            response = await self.bot.ai.generate(
+                "Theresa_simple",
                 [
                     {"role": "system", "content": persona},
                     {"role": "user", "content": question_full},
                 ],
-                model="deepseek-v4-pro",
-                insert_persona=True,
             )
 
             # 发送回复到群聊

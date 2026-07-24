@@ -5,7 +5,6 @@ import time
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import get_llm_response
 from utils.CQType import At
 
 # 仅用于测试 deepseek-v3.2-speciale 模型，以及测试群聊文件发送、群聊文件夹创建等功能
@@ -68,12 +67,12 @@ class TheresaMathAI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
 
             # 获取大模型回复
-            response = await get_llm_response(
-                messages=[
+            response = await self.bot.ai.generate(
+                "default",
+                [
                     {"role": "system", "content": "You are a professional math prover."},
                     {"role": "user", "content": question},
                 ],
-                model="deepseek-v4-pro",
             )
 
             asker_qq = event.user_id

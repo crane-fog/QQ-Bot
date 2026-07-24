@@ -3,7 +3,6 @@ import re
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import At, Reply
 
@@ -33,8 +32,9 @@ class TheresaImage(Plugins):
                 )
                 image_path = self.get_image_filename_from_msg(msg_str)
                 if image_path:
-                    response = await get_llm_response(
-                        messages=[
+                    response = await self.bot.ai.generate(
+                        "image_simple",
+                        [
                             {
                                 "role": "system",
                                 "content": "尽可能简短、直接地回答用户的问题，不得输出markdown格式。",
@@ -45,12 +45,11 @@ class TheresaImage(Plugins):
                                     {"type": "text", "text": prompt},
                                     {
                                         "type": "image_url",
-                                        "image_url": {"url": encode_image(image_path)},
+                                        "image_url": {"url": self.bot.ai.encode_image(image_path)},
                                     },
                                 ],
                             },
                         ],
-                        model="gemini-3-flash-preview",
                     )
                     reply_message = Reply(id=event.message_id) + response
                     self.api.groupService.send_group_msg(

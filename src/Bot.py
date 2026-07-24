@@ -43,9 +43,6 @@ class Bot:
         with open(os.path.join(self.configs_path, "bot.toml"), encoding="utf-8") as f:
             self.bot_config = tomlkit.load(f).unwrap()
 
-        # 初始化 AI 服务
-        self.ai = AIService(os.path.join(self.configs_path, "ai.toml"))
-
         # 初始化插件列表
         self.plugins_list: list[Plugins] = []
 
@@ -122,6 +119,12 @@ class Bot:
         if self.bot_id is None:
             raise ValueError("无法获取Bot登录信息")
         Log.info(f"获取到Bot的登录信息：{self.bot_id}")
+        # 初始化 AI 服务
+        self.ai = AIService(
+            os.path.join(self.configs_path, "ai.toml"),
+            os.path.join(os.path.dirname(__file__), "../utils/persona.j2"),
+            self.api,
+        )
         self.init_database()
         self.init_assistant_list()
         self.init_plugins()

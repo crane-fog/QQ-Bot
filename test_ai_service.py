@@ -36,7 +36,7 @@ def test_generate_rejects_unknown_profile():
     service = _make_service()
 
     with pytest.raises(AIConfigurationError, match="unknown"):
-        service.get_profile("unknown")
+        service._get_profile("unknown")
 
 
 @pytest.mark.asyncio

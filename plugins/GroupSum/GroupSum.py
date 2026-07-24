@@ -10,7 +10,6 @@ from sqlalchemy.orm import declarative_base, sessionmaker
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
-from utils.AITools import encode_image, get_llm_response
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
 
@@ -77,16 +76,12 @@ class GroupSum(Plugins):
             resolve_imgs=False,
         )
 
-        response = await get_llm_response(
+        response = await self.bot.ai.generate(
+            "group_sum",
             [
                 {"role": "system", "content": persona},
                 *context_messages,
             ],
-            model="deepseek-v4-pro",
-            use_tools=True,
-            api=self.api,
-            response_format={"type": "json_object"},
-            insert_persona=True,
         )
 
         response_json: dict = json.loads(response)
@@ -116,7 +111,7 @@ class GroupSum(Plugins):
                 msgs.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": encode_image(cq.path)},
+                        "image_url": {"url": self.bot.ai.encode_image(cq.path)},
                     }
                 )
                 message = message.replace(str(cq), "")

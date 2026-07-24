@@ -63,7 +63,6 @@ class AI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len(f"{self.bot.bot_name} ask") :]).strip()
 
             # 获取大模型回复
-            profile_name = self.config.get("ai_profile", "default")
             messages: list[ChatCompletionMessageParam] = [
                 {
                     "role": "system",
@@ -72,7 +71,7 @@ class AI(Plugins):
                 {"role": "user", "content": question},
             ]
             try:
-                response = await self.bot.ai.generate(profile_name, messages)
+                response = await self.bot.ai.generate("default", messages)
             except AIConfigurationError as exc:
                 Log.error(f"插件：{self.name} AI 配置错误：{exc}")
                 self.api.groupService.send_group_msg(
