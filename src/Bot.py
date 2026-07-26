@@ -15,6 +15,7 @@ from plugins import Plugins
 from .Api import Api
 from .EventController import Event
 from .PrintLog import Log
+from .Scheduler import Scheduler
 from .webhook_handler.WebhookHandler import WebhookHandler
 
 # 设置 SQLAlchemy 相关的所有日志为 CRITICAL
@@ -286,6 +287,10 @@ class Bot:
         # Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
         # web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
         # Log.info("web controller 服务启动成功！")
+        
+        scheduler = Scheduler(self.api, self.configs_path)
+        scheduler.register_tasks()
+
         if self.enable_webhook_handler:
             webhook_handler = WebhookHandler(self.api, self.webhook_response_group)
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
@@ -296,11 +301,13 @@ class Bot:
             finally:
                 await event.stop()
                 await webhook_handler.stop()
+                await scheduler.stop()
         else:
             try:
                 await event_server
             finally:
                 await event.stop()
+                await scheduler.stop()
 
 
 def check_config_files(configs_path: str) -> None:
@@ -324,4 +331,10 @@ def check_config_files(configs_path: str) -> None:
         copyfile(
             os.path.join(configs_path, "plugins.ini.template"),
             os.path.join(configs_path, "plugins.ini"),
+        )
+    if not os.path.isfile(os.path.join(configs_path, "scheduler.ini")):
+        Log.warning("配置文件scheduler.ini不存在，正在复制默认配置文件模板")
+        copyfile(
+            os.path.join(configs_path, "scheduler.ini.template"),
+            os.path.join(configs_path, "scheduler.ini"),
         )
