@@ -18,10 +18,11 @@
 
 | 插件名 | 类型 | 用途 | 触发方式 | 文档由AI生成 |
 | --- | --- | --- | --- | --- |
-| [`AI`](plugins/AI.md) | `Group` | 简短问答插件，使用 Gemini 模型回答问题。 | 命令触发：`monika ask <提问内容>` | 是 |
+| [`AI`](plugins/AI.md) | `Group` | 简短问答插件，调用 `ai.toml` 配置的 AI 服务回答问题。 | 命令触发：`monika ask <提问内容>` | 是 |
 | [`AskForward`](plugins/AskForward.md) | `Group` | 将提问群消息转发到答疑群，并支持回复回传。 | 自动触发：`#Q#` 提问、回复转发消息回答、普通消息追问 | 是 |
 | [`A_music`](plugins/A_music.md) | `Group` | 搜索网易云音乐并发送语音或文件。 | 命令触发：`/music ...` | 是 |
 | [`A_Pixiv`](plugins/A_Pixiv.md) | `Group` | 根据作品 ID 获取 Pixiv 图片，并支持清理发送结果。 | 命令触发：`pid...`、`p_clean` | 是 |
+| [`Configset`](plugins/Configset.md) | `Group` | 按群开启/关闭指定插件的管理插件，仅限 bot 主人使用。 | 命令触发：`/open`、`/close` | 是 |
 | [`DataImport`](plugins/DataImport.md) | `Group` | 导入成绩、行数或学生列表等数据到数据库。 | 命令触发：`DataImport ...` | 是 |
 | [`DontPoke`](plugins/DontPoke.md) | `Poke` | 对戳一戳事件作出回复，有概率反戳。 | 戳一戳触发 | 是 |
 | [`EmojiLike`](plugins/EmojiLike.md) | `Group` | 自动给消息添加表情回应。 | 自动触发 | 是 |
@@ -33,9 +34,10 @@
 | [`LineCount`](plugins/LineCount.md) | `Group` | 查询用户代码行数相关信息。 | 命令触发：`Theresa linecount` | 是 |
 | [`MessageRecorder`](plugins/MessageRecorder.md) | `Record` | 记录群消息到数据库，为上下文类插件提供数据。 | 自动触发 | 是 |
 | [`MoeGoe`](plugins/MoeGoe.md) | `Group` | 调用语音合成服务生成并发送语音。 | 命令触发：`moegoe ema/sheri zh/ja <文本>` | 是 |
-| [`QiuDao`](plugins/QiuDao.md) | `Group` | 根据数据库中的记录响应“求刀/公开成绩”类指令。 | 命令触发：`Theresa 求刀`、`Theresa 公开我的期末成绩吧` | 是 |
+| [`QiuDao`](plugins/QiuDao.md) | `Group` | 根据数据库中的记录响应“求刀/公开刀数”类指令。 | 命令触发：`Theresa 求刀`、`Theresa 公开我的刀数` | 是 |
 | [`RecallPrevent`](plugins/RecallPrevent.md) | `GroupRecall` | 记录消息并在用户撤回后把内容重新发出来。 | 自动触发；撤回事件触发 | 是 |
 | [`Repeater`](plugins/Repeater.md) | `Group` | 检测复读并按配置撤回或禁言。 | 自动触发 | 是 |
+| [`Schedule`](plugins/Schedule.md) | `Group` | 查看群友今日课表状态并生成图片，支持通过群文件导入课表。 | 命令触发：`Schedule`、发送以 `textbook` 开头的群文件 | 是 |
 | [`TheresaAI`](plugins/TheresaAI.md) | `Group` | 以 Theresa 人设进行群聊问答。 | 命令触发：`Theresa ask <提问内容>` | 是 |
 | [`TheresaBan`](plugins/TheresaBan.md) | `Group` | 对群成员执行禁言。 | 命令触发：`Theresa ban <@> <禁言秒数>` | 是 |
 | [`Theresac`](plugins/Theresac.md) | `Group` | 执行系统命令，仅允许 bot 主人使用。 | 命令触发：`Theresac <命令>` | 是 |
