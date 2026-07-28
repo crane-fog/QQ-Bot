@@ -4,7 +4,7 @@
 
 Gitea Webhook 是 QQ-Bot 中的一个系统级功能，用于监听 Gitea 仓库的 Webhook 事件，将 Push、Issue 创建/变更、评论等事件实时推送到指定 QQ 群。主要服务于高级语言程序设计课程的 Gitea 作业仓库，方便助教和学生及时感知仓库动态。
 
-> **注意：** 这不是一个群聊插件。它不通过 `plugins.ini` / `groups.ini` 控制，而是在 `Bot.py` 启动时根据 `enable_webhook_handler` 配置条件性启动的独立 FastAPI 子服务。
+> **注意：** 这不是一个群聊插件。它不通过 `plugins.toml` / `groups.toml` 控制，而是在 `Bot.py` 启动时根据 `enable_webhook_handler` 配置条件性启动的独立 FastAPI 子服务。
 
 ---
 
@@ -51,29 +51,29 @@ Gitea 仓库 ── POST /api/tjhlp ──► WebhookHandler (FastAPI)
 
 ## 配置指南
 
-所有配置集中在 `configs/bot.ini`。
+所有配置集中在 `configs/bot.toml`。
 
 ### `[Init]` 节 — 总开关
 
-```ini
+```toml
 [Init]
-enable_webhook_handler = True
+enable_webhook_handler = true
 ```
 
 | 配置项 | 说明 | 必填 |
 |---|---|---|
 | `enable_webhook_handler` | 是否在 Bot 启动时创建 Webhook 子服务 | 是 |
 
-> 设为 `True` 后，Bot 启动时会读取 `[Gitea]` 节中的配置并启动 Webhook 监听服务。
+> 设为 `true` 后，Bot 启动时会读取 `[Gitea]` 节中的配置并启动 Webhook 监听服务。
 
 ### `[Gitea]` 节 — 集成配置
 
-```ini
+```toml
 [Gitea]
-webhook_handler_address = 0.0.0.0:8000
+webhook_handler_address = "0.0.0.0:8000"
 webhook_response_group = 123456789
-api_url = https://gitea.example.com
-api_token = <your-readonly-token>
+api_url = "https://gitea.example.com"
+api_token = "<your-readonly-token>"
 ```
 
 | 配置项 | 说明 | 必填 |
@@ -85,12 +85,12 @@ api_token = <your-readonly-token>
 
 `api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
 
-```ini
+```toml
 # Gitea 部署在站点根路径
-api_url = https://gitea.example.com
+api_url = "https://gitea.example.com"
 
 # Gitea 部署在子路径 /QA
-api_url = http://gitea.example.com/QA
+api_url = "http://gitea.example.com/QA"
 ```
 
 **Token 权限要求：** 至少需要 `read:repository` 和 `read:issue` 权限。Token 用于：
@@ -241,7 +241,7 @@ curl -X POST http://localhost:8000/api/tjhlp \
 
 | 现象 | 可能原因 | 排查方向 |
 |---|---|---|
-| 启动日志无 Webhook Handler 信息 | `enable_webhook_handler` 为 `False` | 检查 `bot.ini`，设为 `True` |
+| 启动日志无 Webhook Handler 信息 | `enable_webhook_handler` 为 `false` | 检查 `bot.toml`，设为 `true` |
 | 启动后端口不通 | 防火墙 / 云安全组未放行 | `telnet <Bot IP> <端口>` 验证 |
 | Gitea Test Delivery 返回 422 | 事件类型不在 `EVENT_CONFIG` 中 | 检查 `X-Gitea-Event-Type` 请求头是否为 6 种支持类型之一 |
 | Gitea Test Delivery 返回 200 但群内无消息 | `webhook_response_group` 填写错误或 Bot 未加入该群 | 确认群号正确，Bot 在群内 |
@@ -254,7 +254,7 @@ curl -X POST http://localhost:8000/api/tjhlp \
 ## 注意事项
 
 - **端口冲突：** `webhook_handler_address` 的端口不要与 LLBot 的 HTTP 服务端口或 Bot 的 `server_address` / `client_address` 端口冲突。
-- **Token 安全：** `api_token` 存储在 `bot.ini` 明文，目前只建议使用只读权限的 Token，并确保 `bot.ini` 不会被提交到公开仓库。
+- **Token 安全：** `api_token` 存储在 `bot.toml` 明文，目前只建议使用只读权限的 Token，并确保 `bot.toml` 不会被提交到公开仓库。
 - **图片存储：** 图片下载到系统临时目录（`tempfile.mkdtemp`），发送后自动清理。如果 Bot 进程异常退出，残留的 `gitea_img_*` 目录需手动清理。
 - **PR 评论支持：** `issue_comment` 事件同时覆盖 Issue 和 Pull Request 的评论（由 `is_pull` 字段区分）。
 
