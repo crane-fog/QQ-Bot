@@ -17,6 +17,8 @@
   uv sync --no-dev
   ```
 
+  > 如需启用 Schedule 插件（依赖 playwright），需额外安装可选依赖：`uv sync --no-dev --extra Schedule`
+
   对于开发：
 
   ```bash
@@ -44,20 +46,21 @@ ssh -L 3080:localhost:3080 user@remote_host
 
 - 事件接收
   - 点击“HTTP服务”
-  - 启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 server_address
+  - 启用“启用此适配器”，监听地址/端口对应 `bot.toml` 中的 server_address
   - 消息格式选择“CQ码”
   - 保存
 
 - 事件上报
   - 点击“HTTP上报”
-  - 启用“启用此适配器”，监听地址/端口对应 `bot.ini` 中的 client_address
+  - 启用“启用此适配器”，监听地址/端口对应 `bot.toml` 中的 client_address
   - 消息格式选择“CQ码”
   - 保存
 
-### 配置 configs/*.ini
+### 配置 configs/*.toml
 
 ```bash
 cp configs/bot.toml.template configs/bot.toml
+cp configs/ai.toml.template configs/ai.toml
 cp configs/groups.toml.template configs/groups.toml
 cp configs/plugins.toml.template configs/plugins.toml
 ```
@@ -74,15 +77,15 @@ server_address | 监听端的监听地址（即 bot 上报事件的地址）
 client_address | 监听端的事件上报的地址（即 bot 接收事件的地址）
 web_controller_address | bot web 控制面板的监听地址，目前弃用
 bot_name | bot 的名字（目前似乎没有什么用）
-debug | 是否开启日志调试模式（True/False）
-database_enable | 是否启用数据库（True/False）（建议使用 PostgreSQL）
+debug | 是否开启日志调试模式（true/false）
+database_enable | 是否启用数据库（true/false）（建议使用 PostgreSQL）
 database_username | 数据库用户名
 database_address | 数据库地址
 database_passwd | 数据库密码
 database_name | 数据库名
 owner_id | 机器人所有者QQ号
 assistant_group | 助教群号（用于部分插件）
-enable_webhook_handler | 是否启用 Webhook Handler 服务（True/False），用于高程 Gitea 处理
+enable_webhook_handler | 是否启用 Webhook Handler 服务（true/false），用于高程 Gitea 处理
 
 #### Gitea Webhook 集成配置
 
@@ -122,6 +125,16 @@ some_special_config = 123
 `enable` 决定插件是否启用，此处的启用优先级高于群聊配置，即，只要配置了 `enable = false`，该插件不会被加载，不会在任何群聊中生效
 
 其余可包含插件需要读取的特殊配置项，建议将插件中需要可变的配置项写入此文件
+
+#### `configs/ai.toml` AI 服务配置
+
+供 AI 相关插件（TheresaChat、TheresaAI、GroupSum 等）使用，分为三部分：
+
+- `[provider.*]`：模型服务商配置（`base_url`、`api_key` 等）
+- `[profile.*]`：具名模型配置，指定 provider、model 及可选参数，插件按名称引用
+- `[tool.*]`：AI 可调用的工具定义，供 profile 中的 `tools` 列表引用
+
+模板已包含完整示例，一般只需填入各 provider 的 `api_key`，并按需增改 profile
 
 ### 启动 bot
 
