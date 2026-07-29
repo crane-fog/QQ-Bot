@@ -17,7 +17,7 @@
   uv sync --no-dev
   ```
 
-  > 如需启用 Schedule 插件（依赖 playwright），需额外安装可选依赖：`uv sync --no-dev --extra Schedule`
+  > 如需启用 Schedule 插件（依赖 playwright），需额外安装可选依赖：`uv sync --no-dev --extra Schedule` 并执行 `playwright install`
 
   对于开发：
 
@@ -27,6 +27,8 @@
   uv sync
   uv run pre-commit install
   ```
+
+> 安装所有依赖：`uv sync --all-extras`
 
 ### 使用 LLBot 作为监听端
 
