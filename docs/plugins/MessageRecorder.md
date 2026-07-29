@@ -13,9 +13,9 @@
 - 自动触发
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 不受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 不受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 
 ## 配置项
 - 无插件专属 `self.config` 配置项

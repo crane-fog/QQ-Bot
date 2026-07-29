@@ -13,8 +13,8 @@
 - 自动触发
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
 - 不要求数据库
 - 无额外权限限制
 
@@ -28,6 +28,21 @@
 - `special_message`：助教复读时的提示
 - `ban_time`：禁言时间区间，格式为 `HH:MM:SS-HH:MM:SS`
 
+配置示例：
+
+```toml
+[Repeater]
+enable = false
+threshold = 2
+ban = true
+recall = true
+ban_time = "00:00:00-00:05:00"
+for_everyone = true
+normal_message = "请不要复读，否则可能被禁言哦"
+special_message = "助教带头复读，当罚"
+ignored_ids = [123,456]
+```
+
 ## 执行逻辑
 - 按群维护上一条消息内容和连续复读计数
 - 达到阈值后检查忽略名单、助教特殊逻辑和管理员身份
@@ -40,7 +55,7 @@
 ## 注意事项
 - 以纯消息文本判断复读
 - 以 `Theresa` 开头的消息会被跳过
-- 对管理员/群主的处理不是禁言或撤回，而是单独发送“管理员带头复读，当罚”
+- 对管理员/群主不执行禁言或撤回，只发送提示文本
 
 ## 相关代码
 - `plugins/Repeater/Repeater.py`

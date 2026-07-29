@@ -11,16 +11,21 @@
 
 ## 触发方式
 - `Theresa 求刀`
-- `Theresa 公开我的期末成绩吧`
+- `Theresa 公开我的刀数`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 - 无额外权限限制
 
 ## 配置项
-- 无插件专属 `self.config` 配置项
+- `semesters`：群号到学期编号的映射，配置在 `plugins.toml` 的 `[QiuDao.semesters]` 表中，例如：
+
+```toml
+[QiuDao.semesters]
+"12345" = 252620
+```
 
 ## 执行逻辑
 - 从群名片中提取学号

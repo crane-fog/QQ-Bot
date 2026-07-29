@@ -13,14 +13,23 @@
 - 自动触发
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
 - 不要求数据库
 - 无额外权限限制
 
 ## 配置项
 - `ignored_ids`：忽略的用户 QQ 列表
 - `frequency`：触发表情回应的概率阈值
+
+配置示例：
+
+```toml
+[EmojiLike]
+enable = false
+ignored_ids = [123,456]
+frequency = 1
+```
 
 ## 执行逻辑
 - 跳过 `ignored_ids` 中的用户

@@ -14,14 +14,25 @@
 - `owner_id` 还可发送 `chat stop <秒数>` 暂停当前群回复
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 - `chat stop` 仅 bot 主人可用
 
 ## 配置项
 - `context_length`：普通回复读取的上下文消息条数
+- `extra_context`：上下文优化时额外多读的消息条数
 - `context_length_for_face`：表情图片选择时读取的上下文消息条数
+
+配置示例：
+
+```toml
+[TheresaChat]
+enable = false
+context_length = 200
+extra_context = 100
+context_length_for_face = 20
+```
 
 ## 执行逻辑
 - 从数据库读取消息上下文
@@ -31,8 +42,8 @@
 
 ## 外部依赖
 - PostgreSQL
-- 环境变量：`MNAPI_KEY`、`DPSK_KEY`
-- 本地模板：`persona.j2`、`persona_face.j2`
+- `configs/ai.toml`：`[profile.chat]`（普通回复）、`[profile.chat_face]`（表情选择）及其引用的 `[provider.*]`
+- 本地模板：`prompt.j2`、`persona_face.j2`
 - 本地素材目录：`plugins/TheresaChat/faces/`
 
 ## 注意事项
@@ -41,5 +52,6 @@
 
 ## 相关代码
 - `plugins/TheresaChat/TheresaChat.py`
-- `plugins/TheresaChat/persona.j2`
+- `plugins/TheresaChat/prompt.j2`
 - `plugins/TheresaChat/persona_face.j2`
+- `src/AIService.py`

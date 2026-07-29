@@ -13,10 +13,10 @@
 - 触发命令：`Theresac <命令>`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 不受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 不受 `groups.toml` 群启用控制
 - 不要求数据库
-- 仅 `owner_id` 可用
+- 仅 `bot.toml` 中 `owner_id` 指定的 bot 主人可用
 
 ## 配置项
 - 无插件专属 `self.config` 配置项

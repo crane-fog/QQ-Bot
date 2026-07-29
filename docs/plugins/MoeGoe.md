@@ -13,13 +13,21 @@
 - 触发命令：`moegoe ema/sheri zh/ja <文本>`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
 - 不要求数据库
 - 无额外权限限制
 
 ## 配置项
 - `url`：语音合成服务地址
+
+配置示例：
+
+```toml
+[MoeGoe]
+enable = false
+url = "http://127.0.0.1:8080/tts"
+```
 
 ## 执行逻辑
 - 校验角色、语言和文本长度

@@ -13,13 +13,20 @@
 - 自动触发
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 不受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 不受 `groups.toml` 群启用控制
 - 不要求数据库
 
 ## 配置项
 - `some_config`：示例配置项
-  说明：代码实际读取该配置，但当前 `configs/plugins.ini.template` 未提供这一项
+
+配置示例：
+
+```toml
+[ExamplePlugin]
+enable = false
+some_config = 123
+```
 
 ## 执行逻辑
 - 演示如何在 `main()` 中读取 `self.config`

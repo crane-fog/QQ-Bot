@@ -14,13 +14,21 @@
 - 实际上复用了 `TheresaCard` 的同一触发词，并把当前事件转交给 `TheresaCard.main(...)`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 - 依赖 `TheresaCard` 已成功加载
 
 ## 配置项
 - `target_groups`：要批量检查的群号列表
+
+配置示例：
+
+```toml
+[TheresaCardBatch]
+enable = false
+target_groups = [12345,67890]
+```
 
 ## 执行逻辑
 - 从 `bot.plugins_list` 中找到 `TheresaCard`

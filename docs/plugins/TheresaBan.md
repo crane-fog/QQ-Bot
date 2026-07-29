@@ -13,13 +13,21 @@
 - 触发命令：`Theresa ban <@> <禁言秒数>`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
 - 不要求数据库
 - 仅 bot 主人、群管理员/群主、助教可用
 
 ## 配置项
 - `black_list`：禁止特定人使用禁言插件
+
+配置示例：
+
+```toml
+[TheresaBan]
+enable = false
+black_list = [123,456]
+```
 
 ## 执行逻辑
 - 解析被 `@` 的目标 QQ 和禁言秒数

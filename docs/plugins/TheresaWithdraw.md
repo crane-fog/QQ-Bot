@@ -13,8 +13,8 @@
 - 回复某条消息并发送 `Twithdraw`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
 - 不要求数据库
 - 仅 bot 主人、群管理员/群主、助教可用
 

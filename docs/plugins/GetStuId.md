@@ -13,9 +13,9 @@
 - 触发命令：`GetStuId <群号>`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 - 仅 `owner_id` 可用
 
 ## 配置项

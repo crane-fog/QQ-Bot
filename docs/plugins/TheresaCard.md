@@ -13,15 +13,35 @@
 - 触发命令：`Theresa card (kick/debug) (strict) (unenter) (<小时数>)`
 
 ## 生效条件
-- 需要在 `plugins.ini` 中启用
-- 受 `groups.ini` 群启用控制
-- 要求 `database_enable = True`
+- 需要在 `plugins.toml` 中启用
+- 受 `groups.toml` 群启用控制
+- 要求 `bot.toml` 中 `database_enable = true`
 - 普通检查要求 `permission_ids`、群管理员/群主或助教权限
 - `kick` 仅 `permission_ids` 和 `owner_id` 可用
 
 ## 配置项
 - `ignored_ids`：检查时忽略的用户 QQ 列表
 - `permission_ids`：允许执行检查/踢人的用户列表
+- `semesters`：群号到学期编号的映射（`strict`/`unenter` 分支必需）
+- `classes`：群号到班级编号的映射（可选，用于按班级过滤选课名单）
+
+配置示例：
+
+```toml
+[TheresaCard]
+enable = false
+ignored_ids = [123,456]
+permission_ids = [123,456]
+
+[TheresaCard.semesters]
+"12345" = 252620
+"67890" = 252620
+
+[TheresaCard.classes]
+"11111" = 1
+"22222" = 2
+"33333" = 3
+```
 
 ## 执行逻辑
 - 解析 `kick`、`debug`、`strict`、`unenter` 和时间限制参数
@@ -34,7 +54,7 @@
 - PostgreSQL
 
 ## 注意事项
-- 群号和学期/班级映射写死在代码里
+- 群号到学期/班级的映射需在 `plugins.toml` 的 `[TheresaCard.semesters]` / `[TheresaCard.classes]` 中配置，`strict`/`unenter` 分支找不到对应群号的学期时会在群内提示"未设定群学期信息"并直接返回
 - 功能面向特定课程群，迁移到其他场景前需要改代码
 
 ## 相关代码
