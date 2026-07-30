@@ -1,0 +1,7 @@
+[BanEmojiPost]
+enabled = false
+interval = 60
+banned_tiny_ids = [2746432398]
+banned_emoji_ids = []
+banned_group_ids = []
+ban_duration = 600
