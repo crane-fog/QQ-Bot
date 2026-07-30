@@ -25,6 +25,7 @@ dependencies = [
     "psycopg2-binary>=2.9.12",
     "xlrd>=2.0.2",
     "tomlkit>=0.15.1",
+    "apscheduler>=3.11.3",
 ]
 optional-dependencies = { Schedule = ["playwright>=1.60.0"] }
 
