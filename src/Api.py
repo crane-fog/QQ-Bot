@@ -1,3 +1,4 @@
+import asyncio
 import json
 
 import requests
@@ -57,6 +58,52 @@ class Api:
     class GroupService:
         def __init__(self, api_instance):
             self.api: Api = api_instance  # 保存对Api类实例的引用
+
+        def get_group_msg_history(self, group_id: int, count: int = 50) -> dict:
+            params = {"group_id": group_id, "count": count}
+            response = requests.post(
+                self.api.bot_api_address + "get_group_msg_history", json=params
+            )
+            return response.json()
+
+        def get_msg_emoji_poster(self, msg_id: int, emoji_id: int) -> dict:
+            params = {"message_id": msg_id, "emoji_id": emoji_id}
+            response = requests.post(self.api.bot_api_address + "get_msg_emoji_post", json=params)
+            return response.json()
+
+        def get_group_recent_emoji_posters(self, group_id: int, emoji_id: int) -> dict:
+            msg_history_dict = self.api.groupService.get_group_msg_history(group_id)
+            if msg_history_dict is None or msg_history_dict["status"] != "ok":
+                raise ConnectionError(
+                    f"获取群聊天记录失败，group_id:{group_id}, status:{msg_history_dict.get('status')}"
+                )
+            msg_history = msg_history_dict.get("data").get("messages")
+            msg_id_list = [msg.get("message_id") for msg in msg_history]
+
+            async def _query_all():
+                async def _query_one(msg_id):
+                    return msg_id, await self.api.asyncService.aget_msg_emoji_poster(
+                        msg_id, emoji_id
+                    )
+
+                return await asyncio.gather(*[_query_one(mid) for mid in msg_id_list])
+
+            results = asyncio.run(_query_all())
+
+            poster_set: set[int] = set()
+            for _msg_id, result in results:
+                if result and result.get("status") == "ok":
+                    data = result.get("data")
+                    if data:
+                        for emoji_likes in data.get("emoji_likes_list", []):
+                            poster_set.add(emoji_likes["tiny_id"])
+
+            return {
+                "status": "ok",
+                "data": {
+                    "posters": list(poster_set),
+                },
+            }
 
         def get_group_member_list(self, group_id: int, no_cache: bool = True) -> dict:
             params = {"group_id": group_id, "no_cache": no_cache}
@@ -248,6 +295,13 @@ class Api:
             params = {"group_id": group_id, "messages": forward_message}
             response = await self.client.post(
                 self.api.bot_api_address + "send_group_forward_msg", json=params
+            )
+            return response.json()
+
+        async def aget_msg_emoji_poster(self, msg_id: int, emoji_id: int) -> dict:
+            params = {"message_id": msg_id, "emoji_id": emoji_id}
+            response = await self.client.post(
+                self.api.bot_api_address + "get_msg_emoji_post", json=params
             )
             return response.json()
 
