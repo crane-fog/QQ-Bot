@@ -15,6 +15,7 @@ from .AIService import AIService
 from .Api import api
 from .EventController import Event
 from .PrintLog import Log
+from .Scheduler import Scheduler
 from .webhook_handler.WebhookHandler import WebhookHandler
 
 
@@ -278,6 +279,8 @@ class Bot:
         # Log.info("web controller 服务启动成功！")
 
         webhook_handler = None
+        scheduler = Scheduler(self.api, self.configs_path)
+        scheduler.register_tasks()
         if self.enable_webhook_handler:
             webhook_handler = WebhookHandler(
                 self.webhook_response_group,
@@ -304,6 +307,7 @@ class Bot:
             await event.stop()
             if webhook_handler is not None:
                 await webhook_handler.stop()
+            await scheduler.stop()
 
 
 def check_config_files(configs_path: str) -> None:
@@ -334,3 +338,9 @@ def check_config_files(configs_path: str) -> None:
             os.path.join(configs_path, "plugins.toml.template"),
             os.path.join(configs_path, "plugins.toml"),
         )
+    # if not os.path.isfile(os.path.join(configs_path, "scheduler.toml")):
+    #     Log.warning("配置文件scheduler.toml不存在，正在复制默认配置文件模板")
+    #     copyfile(
+    #         os.path.join(configs_path, "scheduler.toml.template"),
+    #         os.path.join(configs_path, "scheduler.toml"),
+    #     )
