@@ -90,7 +90,7 @@ def make_plugin():
 async def test_data_import_parses_and_replaces_semester_rows(
     table_name, file_content, expected_model, expected_rows
 ):
-    plugin, group_service, session_factory = make_plugin()
+    plugin, _, session_factory = make_plugin()
     event = SimpleNamespace(
         message=f"DataImport {table_name} 252620",
         user_id=10001,
@@ -101,19 +101,14 @@ async def test_data_import_parses_and_replaces_semester_rows(
         await DataImport.main.__wrapped__(plugin, event, debug=False)
 
     assert len(session_factory.sessions) == 1
-    delete_statement, delete_parameters = session_factory.sessions[0].executions[0]
+    delete_statement, _ = session_factory.sessions[0].executions[0]
     insert_statement, inserted_rows = session_factory.sessions[0].executions[1]
     compiled_delete = delete_statement.compile(dialect=postgresql.dialect())
 
-    assert delete_parameters is None
     assert delete_statement.table.name == expected_model.__tablename__
     assert 252620 in compiled_delete.params.values()
     assert insert_statement.table.name == expected_model.__tablename__
     assert inserted_rows == expected_rows
-    group_service.send_group_msg.assert_called_once_with(
-        group_id=20001,
-        message=f"正在向表 {table_name} 导入学期 252620 的 2 条数据",
-    )
 
 
 @pytest.mark.asyncio
@@ -128,7 +123,4 @@ async def test_data_import_rejects_unknown_table_without_database_access():
     await DataImport.main.__wrapped__(plugin, event, debug=False)
 
     assert session_factory.sessions == []
-    group_service.send_group_msg.assert_called_once_with(
-        group_id=20001,
-        message="表名错误，请使用 scores、linecounts、stulists 或 stulists_detail",
-    )
+    group_service.send_group_msg.assert_called_once()

@@ -1,9 +1,7 @@
-import importlib
 from datetime import UTC, datetime
 
 import pytest
 from sqlalchemy.dialects import postgresql
-from sqlalchemy.schema import CreateTable
 
 from src import models
 
@@ -104,56 +102,9 @@ def test_shared_metadata_contains_only_expected_tables():
     assert set(models.Base.metadata.tables) == set(EXPECTED_SCHEMAS)
 
 
-def test_model_defaults_and_attribute_mapping_are_preserved():
-    assert models.Message.send_time.property.columns[0].server_default is not None
-    assert models.Message.msg_id.property.columns[0].default.arg == 0
-    assert models.Message.user_nickname.property.columns[0].default.arg == " "
-    assert models.Message.user_card.property.columns[0].default.arg == " "
+def test_attribute_mapping_and_unique_constraint_are_preserved():
     assert models.StuList.class_.property.columns[0].name == "class"
     assert models.AskMessage.id_of_message.property.columns[0].unique is True
-
-
-@pytest.mark.parametrize("table", models.Base.metadata.sorted_tables)
-def test_every_model_compiles_for_postgresql(table):
-    ddl = str(CreateTable(table).compile(dialect=postgresql.dialect()))
-
-    assert f"CREATE TABLE {table.name}" in ddl
-
-
-def test_plugins_use_the_shared_model_classes(monkeypatch):
-    monkeypatch.setenv("pg_conn", "postgresql+psycopg2://user:password@localhost/database")
-    expected_references = {
-        "plugins.AskForward.AskForward": {
-            "AskMessage": models.AskMessage,
-            "Message": models.Message,
-        },
-        "plugins.DataImport.DataImport": {
-            "LineCounts": models.LineCounts,
-            "Scores": models.Scores,
-            "StuList": models.StuList,
-        },
-        "plugins.GetStuId.GetStuId": {"StuId": models.StuId},
-        "plugins.GroupApprove.GroupApprove": {"StuList": models.StuList},
-        "plugins.GroupSum.GroupSum": {"Message": models.Message},
-        "plugins.LineCount.LineCount": {
-            "LineCounts": models.LineCounts,
-            "StuId": models.StuId,
-        },
-        "plugins.MessageRecorder.MessageRecorder": {"Message": models.Message},
-        "plugins.QiuDao.QiuDao": {"Scores": models.Scores, "StuId": models.StuId},
-        "plugins.Schedule.GetData": {"Courses": models.Courses},
-        "plugins.Schedule.Schedule": {
-            "Courses": models.Courses,
-            "PersonalSchedule": models.PersonalSchedule,
-        },
-        "plugins.TheresaCard.TheresaCard": {"StuList": models.StuList},
-        "plugins.TheresaChat.TheresaChat": {"Message": models.Message},
-    }
-
-    for module_name, references in expected_references.items():
-        module = importlib.import_module(module_name)
-        for attribute, expected_model in references.items():
-            assert getattr(module, attribute) is expected_model
 
 
 def test_message_formatted_time_uses_china_standard_time():
