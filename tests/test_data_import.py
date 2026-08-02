@@ -45,6 +45,15 @@ def make_plugin():
     return plugin, group_service, session_factory
 
 
+def test_data_import_maps_supported_names_to_shared_models():
+    assert DataImport.table_models == {
+        "scores": Scores,
+        "linecounts": LineCounts,
+        "stulists": StuList,
+        "stulists_detail": StuList,
+    }
+
+
 @pytest.mark.asyncio
 @pytest.mark.parametrize(
     ("table_name", "file_content", "expected_model", "expected_rows"),
