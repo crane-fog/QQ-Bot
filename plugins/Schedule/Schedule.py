@@ -5,39 +5,15 @@ import requests
 import xlrd
 from jinja2 import Template
 from playwright.async_api import async_playwright
-from sqlalchemy import BigInteger, Boolean, Column, Integer, Text, select
-from sqlalchemy.dialects.postgresql import JSONB
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.EventController import GroupMessageEvent
+from src.models import Courses, PersonalSchedule
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
-
-Base = declarative_base()
-
-
-class Courses(Base):
-    __tablename__ = "courses"
-
-    calendar_id = Column(Integer, primary_key=True)
-    new_course_code = Column(Text, primary_key=True)
-    course_code = Column(Text, primary_key=True)
-    teacher = Column(Text, primary_key=True)
-    course_name = Column(Text, nullable=False)
-    time_info = Column(JSONB, nullable=False)
-
-
-class PersonalSchedule(Base):
-    __tablename__ = "personal_schedule"
-
-    calendar_id = Column(Integer, primary_key=True)
-    user_id = Column(BigInteger, primary_key=True)
-    group_id = Column(BigInteger, primary_key=True)
-    is_new_code = Column(Boolean, nullable=False)
-    new_course_codes = Column(JSONB, nullable=False)
-    course_codes = Column(JSONB, nullable=False)
 
 
 class Schedule(Plugins):

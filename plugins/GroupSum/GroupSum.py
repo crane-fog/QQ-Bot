@@ -1,36 +1,17 @@
 import json
 import os
-from datetime import timedelta, timezone
 
 from jinja2 import Template
-from sqlalchemy import BigInteger, Column, DateTime, Text, desc, func, select
+from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.models import Message
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
-
-Base = declarative_base()
-
-
-class Message(Base):
-    __tablename__ = "messages"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=False)
-    group_id = Column(BigInteger, nullable=False)
-    msg = Column(Text, nullable=False)
-    send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    msg_id = Column(BigInteger, nullable=False, default=0)
-    user_nickname = Column(Text, nullable=False, default=" ")
-    user_card = Column(Text, nullable=False, default=" ")
-
-    @property
-    def formatted_time(self) -> str:
-        return self.send_time.astimezone(timezone(timedelta(hours=8))).strftime("%H:%M")
 
 
 class GroupSum(Plugins):

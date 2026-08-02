@@ -1,27 +1,11 @@
-from sqlalchemy import Column, Integer, String, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.models import LineCounts, StuId
 from utils.CQType import At
-
-Base = declarative_base()
-
-
-class LineCounts(Base):
-    __tablename__ = "linecounts"
-
-    semester = Column(Integer, primary_key=True)
-    stu_id = Column(Integer, primary_key=True)
-    count = Column(Integer, nullable=False)
-    rank = Column(Integer, nullable=False)
-
-
-class StuId(Base):
-    __tablename__ = "stu_qq_id_map"
-    stu_id = Column(Integer, primary_key=True)
-    qq_id = Column(String)
 
 
 class LineCount(Plugins):

@@ -1,36 +1,14 @@
 from datetime import datetime, timedelta
 
-from sqlalchemy import BigInteger, Column, DateTime, Integer, Text, func, select
+from sqlalchemy import func, select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.models import AskMessage, Message
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage, Forward, Reply
-
-Base = declarative_base()
-
-
-class AskMessage(Base):
-    __tablename__ = "ask_messages"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    discussion_id = Column(Integer, nullable=False)
-    id_of_message = Column(BigInteger, nullable=False, unique=True)
-
-
-class Message(Base):
-    __tablename__ = "messages"
-
-    id = Column(BigInteger, primary_key=True, autoincrement=True)
-    user_id = Column(BigInteger, nullable=False)
-    group_id = Column(BigInteger, nullable=False)
-    msg = Column(Text, nullable=False)
-    send_time = Column(DateTime(timezone=True), nullable=False, server_default=func.now())
-    msg_id = Column(BigInteger, nullable=False, default=0)
-    user_nickname = Column(Text, nullable=False, default=" ")
-    user_card = Column(Text, nullable=False, default=" ")
 
 
 class AskForward(Plugins):

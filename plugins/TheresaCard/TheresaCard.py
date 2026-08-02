@@ -1,24 +1,14 @@
 import re
 import time
 
-from sqlalchemy import Column, Integer, Text, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.models import StuList
 from utils.CQType import At, Forward
-
-Base = declarative_base()
-
-
-class StuList(Base):
-    __tablename__ = "stulists"
-
-    semester = Column(Integer, primary_key=True)
-    stu_id = Column(Integer, primary_key=True)
-    name = Column(Text)
-    class_ = Column("class", Integer)
 
 
 class TheresaCard(Plugins):

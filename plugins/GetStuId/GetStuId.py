@@ -1,9 +1,9 @@
-from sqlalchemy import Column, Integer, String
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
+from src.models import StuId
 
 
 class GetStuId(Plugins):
@@ -47,13 +47,6 @@ class GetStuId(Plugins):
         async with self.session_factory() as session:
             async with session.begin():
                 for user_id, stu_id in info_list:
-                    stu_info = self.StuId(stu_id=int(stu_id), qq_id=str(user_id))
+                    stu_info = StuId(stu_id=int(stu_id), qq_id=str(user_id))
                     await session.merge(stu_info)
         return
-
-    Basement = declarative_base()
-
-    class StuId(Basement):
-        __tablename__ = "stu_qq_id_map"
-        stu_id = Column(Integer, primary_key=True)
-        qq_id = Column(String)

@@ -1,9 +1,10 @@
-from sqlalchemy import Column, Integer, Text, select
+from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.RequestEventHandler import GroupRequestEvent
+from src.models import StuList
 from src.PrintLog import Log
 
 
@@ -114,17 +115,7 @@ class GroupApprove(Plugins):
 
     async def select_all_inform(self) -> set[tuple[int, int]]:
         async with self.session_factory() as sessions:
-            stmt = select(self.StuLists.stu_id, self.StuLists.semester)
+            stmt = select(StuList.stu_id, StuList.semester)
             result = await sessions.execute(stmt)
             rows = result.all()
             return {tuple(row) for row in rows}
-
-    Base = declarative_base()
-
-    class StuLists(Base):
-        __tablename__ = "stulists"
-
-        semester = Column(Integer, primary_key=True)
-        stu_id = Column(Integer, primary_key=True)
-        name = Column(Text)
-        class_ = Column("class", Integer)

@@ -2,26 +2,19 @@
 
 import os
 import re
+import sys
 
 import requests
-from sqlalchemy import Column, Integer, Text, create_engine
-from sqlalchemy.dialects.postgresql import JSONB, insert
-from sqlalchemy.orm import declarative_base, sessionmaker
+from sqlalchemy import create_engine
+from sqlalchemy.dialects.postgresql import insert
+from sqlalchemy.orm import sessionmaker
 
-Base = declarative_base()
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+
+from src.models import Courses  # noqa: E402
+
 database = create_engine(os.environ.get("pg_conn", "your_pg_connection_string"))
 Session = sessionmaker(bind=database)
-
-
-class Courses(Base):
-    __tablename__ = "courses"
-
-    calendar_id = Column(Integer, primary_key=True)
-    new_course_code = Column(Text, primary_key=True)
-    course_code = Column(Text, primary_key=True)
-    teacher = Column(Text, primary_key=True)
-    course_name = Column(Text, nullable=False)
-    time_info = Column(JSONB, nullable=False)
 
 
 def parse_schedule(schedule_str: str) -> list[dict]:
