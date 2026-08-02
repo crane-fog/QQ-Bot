@@ -1,4 +1,5 @@
 from types import SimpleNamespace
+from typing import TYPE_CHECKING, Any, cast
 from unittest.mock import Mock, mock_open, patch
 
 import pytest
@@ -6,6 +7,10 @@ from sqlalchemy.dialects import postgresql
 
 from plugins.DataImport.DataImport import DataImport
 from src.models import LineCounts, Scores, StuList
+
+if TYPE_CHECKING:
+    from src.Api import Api
+    from src.Bot import Bot
 
 
 class FakeAsyncSession:
@@ -39,9 +44,10 @@ def make_plugin():
     group_service = SimpleNamespace(send_group_msg=Mock())
     session_factory = FakeSessionFactory()
     plugin = object.__new__(DataImport)
-    plugin.bot = SimpleNamespace(owner_id=10001)
-    plugin.api = SimpleNamespace(groupService=group_service)
-    plugin.session_factory = session_factory
+    # 测试替身只提供被测代码访问的属性；经 object 中转以通过 basedpyright 的重叠性检查
+    plugin.bot = cast("Bot", cast(object, SimpleNamespace(owner_id=10001)))
+    plugin.api = cast("Api", cast(object, SimpleNamespace(groupService=group_service)))
+    plugin.session_factory = cast(Any, session_factory)
     return plugin, group_service, session_factory
 
 
@@ -107,7 +113,7 @@ async def test_data_import_parses_and_replaces_semester_rows(
     )
 
     with patch("builtins.open", mock_open(read_data=file_content)):
-        await DataImport.main.__wrapped__(plugin, event, debug=False)
+        await cast(Any, DataImport.main).__wrapped__(plugin, event, debug=False)
 
     assert len(session_factory.sessions) == 1
     delete_statement, _ = session_factory.sessions[0].executions[0]
@@ -129,7 +135,7 @@ async def test_data_import_rejects_unknown_table_without_database_access():
         group_id=20001,
     )
 
-    await DataImport.main.__wrapped__(plugin, event, debug=False)
+    await cast(Any, DataImport.main).__wrapped__(plugin, event, debug=False)
 
     assert session_factory.sessions == []
     group_service.send_group_msg.assert_called_once()
