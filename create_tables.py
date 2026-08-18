@@ -13,13 +13,15 @@ import sys
 
 import tomlkit
 from sqlalchemy import inspect
+from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 
+from src.database import build_database_url
 from src.models import Base
 
 
-def load_database_url() -> str:
-    """从 configs/bot.toml 读取数据库配置并拼接连接串"""
+def load_database_url() -> URL:
+    """从 configs/bot.toml 读取数据库配置并构造连接 URL"""
     config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "bot.toml")
     if not os.path.exists(config_path):
         sys.exit(f"找不到配置文件：{config_path}")
@@ -40,11 +42,8 @@ def load_database_url() -> str:
     if missing:
         sys.exit(f"bot.toml 缺少以下数据库配置项：{', '.join(missing)}")
 
-    # 与 src/Bot.py 的拼接方式保持一致；注意密码含 URL 特殊字符时需手动转义
-    return (
-        f"postgresql+asyncpg://{keys['database_username']}:{keys['database_passwd']}"
-        f"@{keys['database_address']}/{keys['database_name']}"
-    )
+    # 使用 URL.create 构造连接串，用户名和密码会由 SQLAlchemy 自动做 URL 转义
+    return build_database_url(**keys)
 
 
 async def create_tables() -> None:
