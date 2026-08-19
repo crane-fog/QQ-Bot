@@ -143,7 +143,7 @@ some_special_config = 123
 若 `bot.toml` 中 `database_enable = true`，首次启动前需手动执行建表脚本：
 
 ```bash
-uv run python create_tables.py
+uv run python scripts/create_tables.py
 ```
 
 > 建表脚本以 `src/models.py` 为唯一表结构来源，且幂等：只创建缺失的表，已存在的表不会被修改。若后续修改了已有表的字段，需手动同步数据库（项目暂无迁移工具）。
