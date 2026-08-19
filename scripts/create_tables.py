@@ -4,7 +4,7 @@
 创建所有缺失的表，已存在的表不会被修改。
 
 用法：
-    uv run python create_tables.py
+    uv run python scripts/create_tables.py
 """
 
 import asyncio
