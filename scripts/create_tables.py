@@ -1,6 +1,6 @@
 """数据库一键建表脚本
 
-以 src/models.py 为唯一表结构来源，为 configs/bot.toml 中 [Init] 配置的数据库
+以 src/Models.py 为唯一表结构来源，为 configs/bot.toml 中 [Init] 配置的数据库
 创建所有缺失的表，已存在的表不会被修改。
 
 用法：
