@@ -3,7 +3,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.models import StuId
+from src.Models import StuId
 
 
 class GetStuId(Plugins):

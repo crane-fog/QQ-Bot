@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.RequestEventHandler import GroupRequestEvent
-from src.models import StuList
+from src.Models import StuList
 from src.PrintLog import Log
 
 

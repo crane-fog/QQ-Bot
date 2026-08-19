@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.models import LineCounts, Scores, StuList
+from src.Models import LineCounts, Scores, StuList
 
 
 class DataImport(Plugins):

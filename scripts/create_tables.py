@@ -18,7 +18,7 @@ from sqlalchemy.ext.asyncio import create_async_engine
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from src.models import Base
+from src.Models import Base
 from utils.Database import build_database_url
 
 

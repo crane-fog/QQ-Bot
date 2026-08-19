@@ -4,7 +4,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.models import LineCounts, StuId
+from src.Models import LineCounts, StuId
 from utils.CQType import At
 
 

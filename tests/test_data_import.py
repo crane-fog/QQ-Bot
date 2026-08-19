@@ -6,7 +6,7 @@ import pytest
 from sqlalchemy.dialects import postgresql
 
 from plugins.DataImport.DataImport import DataImport
-from src.models import LineCounts, Scores, StuList
+from src.Models import LineCounts, Scores, StuList
 
 if TYPE_CHECKING:
     from src.Api import Api

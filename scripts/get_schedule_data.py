@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from src.models import Courses
+from src.Models import Courses
 
 database = create_engine(os.environ.get("pg_conn", "your_pg_connection_string"))
 Session = sessionmaker(bind=database)

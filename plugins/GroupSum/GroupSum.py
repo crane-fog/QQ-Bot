@@ -8,7 +8,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.models import Message
+from src.Models import Message
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward

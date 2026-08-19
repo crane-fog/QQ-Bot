@@ -11,7 +11,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.EventController import GroupMessageEvent
-from src.models import Courses, PersonalSchedule
+from src.Models import Courses, PersonalSchedule
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper
 

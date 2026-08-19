@@ -6,7 +6,7 @@ from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
-from src.models import AskMessage, Message
+from src.Models import AskMessage, Message
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage, Forward, Reply
 

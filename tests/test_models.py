@@ -4,7 +4,7 @@ from pathlib import Path
 
 import pytest
 
-from src import models
+from src import Models
 
 
 def defines_database_model(source, filename="<unknown>"):
@@ -42,7 +42,7 @@ def defines_database_model(source, filename="<unknown>"):
 
 
 def test_message_formatted_time_uses_china_standard_time():
-    message = models.Message(send_time=datetime(2026, 8, 2, 0, 30, tzinfo=UTC))
+    message = Models.Message(send_time=datetime(2026, 8, 2, 0, 30, tzinfo=UTC))
 
     assert message.formatted_time == "08/02 08:30"
 
@@ -68,5 +68,5 @@ def test_plugins_do_not_define_their_own_models():
         if defines_database_model(source, filename=str(path)):
             violations.append(str(path.relative_to(plugins_dir.parent)))
     assert violations == [], (
-        f"数据库模型必须统一定义在 src/models.py，以下文件存在自定义模型: {violations}"
+        f"数据库模型必须统一定义在 src/Models.py，以下文件存在自定义模型: {violations}"
     )
