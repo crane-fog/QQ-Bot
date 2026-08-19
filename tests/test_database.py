@@ -1,6 +1,6 @@
 from sqlalchemy.engine import make_url
 
-from src.database import build_database_url
+from utils.Database import build_database_url
 
 
 def test_build_database_url_splits_host_and_port():

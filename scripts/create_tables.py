@@ -16,13 +16,17 @@ from sqlalchemy import inspect
 from sqlalchemy.engine import URL
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from src.database import build_database_url
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
+
 from src.models import Base
+from utils.Database import build_database_url
 
 
 def load_database_url() -> URL:
     """从 configs/bot.toml 读取数据库配置并构造连接 URL"""
-    config_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "configs", "bot.toml")
+    config_path = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)), "..", "configs", "bot.toml"
+    )
     if not os.path.exists(config_path):
         sys.exit(f"找不到配置文件：{config_path}")
 

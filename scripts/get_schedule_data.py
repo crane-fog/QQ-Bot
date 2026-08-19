@@ -9,9 +9,9 @@ from sqlalchemy import create_engine
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.orm import sessionmaker
 
-sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".."))
+sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
-from src.models import Courses  # noqa: E402
+from src.models import Courses
 
 database = create_engine(os.environ.get("pg_conn", "your_pg_connection_string"))
 Session = sessionmaker(bind=database)

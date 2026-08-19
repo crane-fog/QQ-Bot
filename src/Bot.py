@@ -9,10 +9,10 @@ import tomlkit
 from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 
 from plugins import Plugins
+from utils.Database import build_database_url
 
 from .AIService import AIService
 from .Api import Api
-from .database import build_database_url
 from .EventController import Event
 from .PrintLog import Log
 from .webhook_handler.WebhookHandler import WebhookHandler
