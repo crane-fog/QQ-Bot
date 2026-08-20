@@ -1,3 +1,3 @@
 [example] # 保证键名与文件名一致
-enable = true
+enable = false
 kwargs = {"group_id" = 123456789, "message" = "Hello, World!"} # 传入 main 函数的参数
