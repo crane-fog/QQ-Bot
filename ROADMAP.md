@@ -4,13 +4,13 @@
 
 - LLBot 与主程序的 systemd 参考配置
 - 部分插件额外依赖 PostgreSQL、Redis、LLM API Key、语音 API 等
-- 考虑 docker compose、k8s 部署支持
+- 考虑 k8s 部署支持
 
 ## 插件文档
 
 - 插件触发词
 - 插件配置项解释
-- 插件对外部的额外依赖
+- 插件对外部的额外依赖（moegoe api？）
 
 ## 其他
 
