@@ -1,0 +1,32 @@
+# cache
+**/__pycache__
+.ruff_cache
+.pytest_cache
+
+# config
+configs
+
+# runtime
+**/temp/**
+!**/temp/**/.gitkeep
+plugins/**/data/**
+!plugins/**/data/**/.gitkeep
+.venv
+log.out*
+
+# local plugins
+plugins/TheresaLuck
+plugins/TheresaCardSP
+
+# docker extra
+.git
+.gitignore
+.gitattributes
+.github
+docs
+.pre-commit-config.yaml
+tests
+.dockerignore
+Dockerfile
+compose.yaml
+*.md

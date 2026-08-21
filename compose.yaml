@@ -1,0 +1,71 @@
+services:
+    db:
+        image: postgres:18
+        environment:
+            POSTGRES_PASSWORD: <password>
+            POSTGRES_USER: postgres
+            POSTGRES_DB: bot
+        healthcheck:
+            test:
+                ["CMD-SHELL", "pg_isready -U $$POSTGRES_USER -d $$POSTGRES_DB"]
+            interval: 5s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        volumes:
+            - postgres_data:/var/lib/postgresql
+
+    pmhq:
+        image: linyuchen/pmhq:7.3.2
+        privileged: true
+        environment:
+            - ENABLE_HEADLESS=true
+            - AUTO_LOGIN_QQ=123456789
+        volumes:
+            - qq_volume:/root/.config/QQ
+            - ./llbot_config:/app/llbot/data:rw
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "curl", "-f", "http://localhost:13000/health"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    llbot:
+        image: linyuchen/llbot:7.12.15
+        ports:
+            - "3080:3080"
+        environment:
+            - PMHQ_HOST=pmhq
+            - WEBUI_PORT=3080
+        volumes:
+            - qq_volume:/root/.config/QQ
+            - ./llbot_config:/app/llbot/data:rw
+        depends_on:
+            - pmhq
+        restart: unless-stopped
+        healthcheck:
+            test: ["CMD", "sh", "-c", "ps | grep '[n]ode'"]
+            interval: 30s
+            timeout: 10s
+            retries: 3
+            start_period: 40s
+
+    theresa:
+        image: heai/theresa:latest
+        entrypoint: ["/bin/sh", "/app/theresa/scripts/entrypoint.sh"]
+        command: ["python3", "/app/theresa/main.py"]
+        volumes:
+            - ./configs:/app/theresa/configs:rw
+        depends_on:
+            db:
+                condition: service_healthy
+            pmhq:
+                condition: service_healthy
+            llbot:
+                condition: service_healthy
+
+volumes:
+    postgres_data:
+    qq_volume:
