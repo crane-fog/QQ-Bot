@@ -110,7 +110,7 @@ uv run main.py
 从 [Github Releases](https://github.com/crane-fog/QQ-Bot/releases/latest) 下载最新 `docker-compose-<version>.tar.gz`，解压、进入目录、执行脚本
 
 ```bash
-tar -xzvf docker-compose.tar.gz -C /your/desired/path
+tar -xzvf docker-compose-<version>.tar.gz -C /your/desired/path
 cd /your/desired/path
 bash scripts/docker_compose_init.sh
 ```

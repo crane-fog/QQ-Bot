@@ -29,22 +29,6 @@ jobs:
             - name: Checkout Code
               uses: actions/checkout@v6
 
-            - name: Package Files
-              run: |
-                  mkdir -p dist
-                  tar -czvf dist/docker-compose-${{ inputs.version }}.tar.gz README.md compose.yaml configs/*.template scripts/docker_compose_init.sh
-
-            - name: Create GitHub Release
-              uses: softprops/action-gh-release@v3
-              with:
-                  tag_name: ${{ inputs.version }}
-                  body: |
-                      ${{ inputs.description }}
-                      Download: `curl -LO https://github.com/crane-fog/QQ-Bot/releases/download/${{ inputs.version }}/docker-compose-${{ inputs.version }}.tar.gz`
-                  working_directory: dist
-                  files: |
-                      docker-compose-${{ inputs.version }}.tar.gz
-
             - name: Set up QEMU
               uses: docker/setup-qemu-action@v4
 
@@ -76,3 +60,19 @@ jobs:
                   cache-from: type=gha
                   cache-to: type=gha,mode=max
                   platforms: linux/amd64,linux/arm64
+
+            - name: Package Files
+              run: |
+                  mkdir -p dist
+                  tar -czvf dist/docker-compose-${{ inputs.version }}.tar.gz README.md compose.yaml configs/*.template scripts/docker_compose_init.sh
+
+            - name: Create GitHub Release
+              uses: softprops/action-gh-release@v3
+              with:
+                  tag_name: ${{ inputs.version }}
+                  body: |
+                      ${{ inputs.description }}
+                      Download: `curl -LO https://github.com/crane-fog/QQ-Bot/releases/download/${{ inputs.version }}/docker-compose-${{ inputs.version }}.tar.gz`
+                  working_directory: dist
+                  files: |
+                      docker-compose-${{ inputs.version }}.tar.gz
