@@ -105,11 +105,13 @@ uv run main.py
 
 ### 方式二：Docker compose 部署
 
-仅支持 Linux
+> 对于 Windows 用户，下面的脚本需在 wsl 中执行，或安装 git 后在 git bash 中执行
 
-从 Github Releases 下载最新 `docker-compose.tar.gz`，解压后进入目录，执行
+从 [Github Releases](https://github.com/crane-fog/QQ-Bot/releases/latest) 下载最新 `docker-compose-<version>.tar.gz`，解压、进入目录、执行脚本
 
 ```bash
+tar -xzvf docker-compose.tar.gz -C /your/desired/path
+cd /your/desired/path
 bash scripts/docker_compose_init.sh
 ```
 
@@ -124,7 +126,7 @@ bash scripts/docker_compose_init.sh
 >     - "3000:3000"
 > ```
 
-执行 `docker compose up -d`，等待镜像拉取完毕，容器启动后，执行 `docker compose logs`，日志中将显示 QQ 登录二维码（也可直接在浏览器打开 `http://localhost:3080` 登录 WebUI 后查看），手机扫码登录，务必勾选“下次登录无需手机确认”
+执行 `docker compose up -d`，等待镜像拉取完毕，容器启动后，执行 `docker compose logs`，日志中将显示 QQ 登录二维码（也可直接在浏览器打开 `http://localhost:3080` 登录 llbot WebUI 后查看），手机扫码登录，务必勾选“下次登录无需手机确认”
 
 > 宿主机 `configs/` 目录（以及 `llbot_config/` 目录）会被挂载到容器中，在修改 bot 配置文件后，可使用 `docker compose restart theresa` 使配置生效
 

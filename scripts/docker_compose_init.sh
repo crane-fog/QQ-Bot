@@ -18,21 +18,21 @@ if [ ! -f "$COMPOSE_FILE" ]; then
 fi
 
 while true; do
-    read -r -p "请输入 QQ 号: " qq_number
+    read -e -r -p "请输入 QQ 号: " qq_number
     if [ -n "$qq_number" ]; then
         break
     fi
 done
 
 while true; do
-    read -r -p "请输入 WebUI 密码: " webui_password
+    read -e -r -p "请输入 WebUI 密码: " webui_password
     if [ -n "$webui_password" ]; then
         break
     fi
 done
 
 while true; do
-    read -r -p "请输入数据库密码: " db_password
+    read -e -r -p "请输入数据库密码: " db_password
     if [ -n "$db_password" ]; then
         break
     fi
@@ -41,6 +41,15 @@ done
 escape_for_sed() {
     printf '%s' "$1" | sed -e 's/\\/\\\\/g' -e 's/"/\\"/g' | sed -e 's/\\/\\\\/g' -e 's/&/\\&/g' -e 's/|/\\|/g'
 }
+
+sedi() {
+    if [ "$(uname)" = "Darwin" ]; then
+        sed -i '' "$@"
+    else
+        sed -i "$@"
+    fi
+}
+
 escaped_db_pass=$(escape_for_sed "$db_password")
 
 mkdir -p "$LLBOT_DIR"
@@ -83,8 +92,8 @@ printf "%s" "$webui_password" > "${LLBOT_DIR}/webui_token.txt"
 
 echo "llbot 配置已生成"
 
-sed -i -E "s/(AUTO_LOGIN_QQ=).*/\1${qq_number}/" "$COMPOSE_FILE"
-sed -i -E "s|(POSTGRES_PASSWORD: ).*|\1\"${escaped_db_pass}\"|" "$COMPOSE_FILE"
+sedi -E "s/(AUTO_LOGIN_QQ=).*/\1${qq_number}/" "$COMPOSE_FILE"
+sedi -E "s|(POSTGRES_PASSWORD: ).*|\1\"${escaped_db_pass}\"|" "$COMPOSE_FILE"
 
 echo "compose.yaml 已更新"
 
@@ -98,10 +107,10 @@ for tpl in "$THERESA_DIR"/*.template; do
         echo "配置文件 $target 不存在，从模板复制"
         cp "$tpl" "$target"
         if [ "$(basename "$target")" = "bot.toml" ]; then
-            sed -i -E 's/(server_address = ).*/\1"llbot:5700"/' "$target"
-            sed -i -E 's/(client_address = ).*/\1"0.0.0.0:5701"/' "$target"
-            sed -i -E "s/(database_address = ).*/\1\"db:5432\"/" "$target"
-            sed -i -E "s|(database_passwd = ).*|\1\"${escaped_db_pass}\"|" "$target"
+            sedi -E 's/(server_address = ).*/\1"llbot:5700"/' "$target"
+            sedi -E 's/(client_address = ).*/\1"0.0.0.0:5701"/' "$target"
+            sedi -E "s/(database_address = ).*/\1\"db:5432\"/" "$target"
+            sedi -E "s|(database_passwd = ).*|\1\"${escaped_db_pass}\"|" "$target"
         fi
     fi
 done
