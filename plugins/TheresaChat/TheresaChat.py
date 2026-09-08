@@ -134,7 +134,10 @@ class TheresaChat(Plugins):
             )
 
             context_messages = await self.load_context_from_db(
-                group_id, self.context_length, resolve_imgs=True, enable_context_optimization=True
+                group_id,
+                self.context_length,
+                resolve_imgs=self.config.get("model_support_image", False),
+                enable_context_optimization=True,
             )
             if isinstance(context_messages[0]["content"], str):
                 context_messages[0]["content"] += NO_INNER_OS_MARKER
