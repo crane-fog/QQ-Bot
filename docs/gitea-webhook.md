@@ -73,7 +73,9 @@ enable_webhook_handler = true
 webhook_handler_address = "0.0.0.0:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
-api_token = "<your-readonly-token>"
+api_token = "<your-token>"
+# GiteaReply 插件回帖的目标仓库（owner/repo）
+reply_repo = "owner/repo"
 ```
 
 | 配置项 | 说明 | 必填 |
@@ -82,6 +84,7 @@ api_token = "<your-readonly-token>"
 | `webhook_response_group` | 通知发送目标 QQ 群号 | 是 |
 | `api_url` | Gitea 对 Bot 可访问的基础地址；若部署在子路径，必须包含该子路径。尾部 `/` 会自动兼容，建议省略 | 是 |
 | `api_token` | Gitea 个人访问令牌 | 是 |
+| `reply_repo` | GiteaReply 插件回帖的目标仓库，格式 `owner/repo`（单仓库） | 启用 GiteaReply 时必填 |
 
 `api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
 
@@ -98,6 +101,30 @@ api_url = "http://gitea.example.com/QA"
 - 下载 issue 正文和评论中内嵌的图片
 
 > 如果 Token 权限不足或过期，图片将无法显示（会被替换为 `[图片下载失败]` 占位文本），纯文本通知仍可正常工作。
+>
+> 若启用 [GiteaReply 插件](#从-qq-群回复-issue-giteareply-插件)，Token 还需要 `write:issue` 权限（用于发表评论）。
+
+---
+
+## 从 QQ 群回复 Issue（GiteaReply 插件）
+
+GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`，Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。
+
+### 使用方式
+
+```
+#7 登录一直报 500，麻烦看一下
+```
+
+- 触发格式严格匹配 `#数字 + 空格 + 非空内容`，`#话题#` 式闲聊、缺内容的 `#7` 都不会触发。
+- 发送前 Bot 会先校验 issue 是否存在，编号无效时在群内提示；评论发表成功后回执中带有 Gitea 评论链接。
+- 评论正文会带上发送者的群名片/昵称，例如：`**来自 QQ 群反馈**（张三）：\n\n<内容>`。
+
+### 启用配置
+
+1. `bot.toml` 的 `[Gitea]` 节配置 `reply_repo = "owner/repo"`，并确保 `api_token` 有 `write:issue` 权限。
+2. `plugins.toml` 中 `[GiteaReply]` 设 `enable = true`。
+3. `groups.toml` 中在需要的群下加 `GiteaReply = true` —— 插件只在配置了的群生效，即群白名单。
 
 ---
 
@@ -200,12 +227,14 @@ https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 uv run pytest test_gitea_webhook.py -v
 uv run pytest test_gitea_notification.py -v
 uv run pytest test_gitea_images.py -v
+uv run pytest test_gitea_reply.py -v
 ```
 
-三个测试文件覆盖：
+测试文件覆盖：
 - `test_gitea_webhook.py`：端到端事件解析与路由（push / issues / issue_comment / issue_assign / issue_label）
 - `test_gitea_notification.py`：通知发送逻辑（纯文本 / 合并转发 / 异常处理）
 - `test_gitea_images.py`：图片下载与合并转发组装
+- `test_gitea_reply.py`：GiteaApi 客户端与 GiteaReply 回帖插件（触发解析 / 回执 / 错误提示）
 
 ### 手动模拟
 
@@ -254,7 +283,7 @@ curl -X POST http://localhost:8000/api/tjhlp \
 ## 注意事项
 
 - **端口冲突：** `webhook_handler_address` 的端口不要与 LLBot 的 HTTP 服务端口或 Bot 的 `server_address` / `client_address` 端口冲突。
-- **Token 安全：** `api_token` 存储在 `bot.toml` 明文，目前只建议使用只读权限的 Token，并确保 `bot.toml` 不会被提交到公开仓库。
+- **Token 安全：** `api_token` 存储在 `bot.toml` 明文，未启用 GiteaReply 时建议使用只读权限的 Token；启用后 Token 需要 issue 写权限，务必确保 `bot.toml` 不会被提交到公开仓库，并限定插件生效群（`groups.toml`）以缩小可回帖人群。
 - **图片存储：** 图片下载到系统临时目录（`tempfile.mkdtemp`），发送后自动清理。如果 Bot 进程异常退出，残留的 `gitea_img_*` 目录需手动清理。
 - **PR 评论支持：** `issue_comment` 事件同时覆盖 Issue 和 Pull Request 的评论（由 `is_pull` 字段区分）。
 

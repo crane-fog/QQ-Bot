@@ -151,3 +151,6 @@ max_length = 1000
 enable = false
 current_calendar = 121
 first_day = "2026-03-02"
+
+[GiteaReply]
+enable = false
