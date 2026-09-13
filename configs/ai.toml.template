@@ -14,7 +14,7 @@ extract.url = "https://api.tavily.com/extract"
 
 [profile.example]
 provider = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"} # 可选参数
 reasoning_effort = "xhigh" # 可选参数
 extra_body.thinking.type = "disabled" # 可选参数，用于 deepseek
@@ -24,35 +24,35 @@ insert_persona = false # 可选参数，默认 false
 
 [profile.default]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 
 [profile.group_sum]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"}
 insert_persona = true
 
 [profile.Theresa_simple]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 insert_persona = true
 
 [profile.chat]
 provider = "deepseek"
-model = "deepseek-v4-flash-vision-exp"
+model = "deepseek-flash"
 tools = ["send_private_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "get_group_info", "send_group_poke", "shell"]
 max_turns = 10
 insert_persona = true
 
 [profile.chat_face]
 provider = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"}
 insert_persona = true
 
 [profile.image_simple]
-provider = "mnapi"
-model = "gemini-3-flash-preview"
+provider = "deepseek"
+model = "deepseek-flash"
 
 [tool.send_private_msg]
 name = "send_private_msg"
