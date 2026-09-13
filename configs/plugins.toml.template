@@ -94,10 +94,6 @@ extra_context = 100
 context_length_for_face = 20
 model_support_image = false
 
-[MoeGoe]
-enable = false
-url = "http://127.0.0.1:8080/tts"
-
 [GetStuId]
 enable = false
 

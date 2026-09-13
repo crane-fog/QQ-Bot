@@ -46,8 +46,9 @@ class GroupApprove(Plugins):
             return
 
         requests = full_comment.split("\n答案：")
-        real_answer = requests[1]
-        if not self.format_check(real_answer):
+        real_answer = requests[1]  # 提取验证消息内容
+        # strict 模式下先校验是否为三部分
+        if strict_flag and (not self.format_check(real_answer)):
             if reject_flag:
                 reject_reason = "请以正确格式申请入群"
                 api.groupService.set_group_add_request(
@@ -62,6 +63,7 @@ class GroupApprove(Plugins):
             return
 
         stu_id = int(real_answer[:7])
+        # 非 strict 模式只校验学号是否符合学期范围，strict 模式下校验学号是否在数据库中
         if not self.stu_id_conform(
             stu_id, strict_flag, self.config.get("semesters", {}).get(str(group_id))
         ):
