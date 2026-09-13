@@ -15,7 +15,3 @@
 !/plugins/**/data/**/.gitkeep
 /.venv/
 /log.out*
-
-# local plugins
-/plugins/TheresaLuck/
-/plugins/TheresaCardSP/
