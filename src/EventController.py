@@ -120,7 +120,7 @@ class Event:
         await self.run_plugins_by_types(event, {"Private"})
 
     async def run_group_plugins(self, event) -> None:
-        await self.run_plugins_by_types(event, {"Group", "GroupRecall", "Record"})
+        await self.run_plugins_by_types(event, {"Group", "Record"})
 
     async def run_group_recall(self, event) -> None:
         await self.run_plugins_by_types(event, {"GroupRecall"})
