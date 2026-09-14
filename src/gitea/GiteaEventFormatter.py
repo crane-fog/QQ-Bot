@@ -62,6 +62,19 @@ class ForwardPlan:
 # markdown 图片语法 ![alt](url) 或 ![alt](url "title")
 MD_IMAGE_RE = re.compile(r"!\[([^\]]*)\]\(([^)\s]+)(?:\s+\"[^\"]*\")?\)")
 
+# Gitea 编辑器粘贴图片时可能生成 HTML 形式：
+# <img width="963" alt="image.png" src="attachments/d54e5170-...">
+HTML_IMG_RE = re.compile(r"<img\b[^>]*>", re.IGNORECASE)
+HTML_ATTR_RE = re.compile(r"([:\w-]+)\s*=\s*(?:\"([^\"]*)\"|'([^']*)'|([^\s\"'<>`]+))")
+
+
+def _parse_html_attrs(tag: str) -> dict[str, str]:
+    """解析 HTML 标签内的属性，属性顺序与引号风格不限，值统一取第一个非空分组。"""
+    return {
+        m.group(1).lower(): next((g for g in m.groups()[1:] if g is not None), "")
+        for m in HTML_ATTR_RE.finditer(tag)
+    }
+
 
 def _limit_text(text: str, limit: int = 500) -> str:
     """将文本截断到指定长度（默认 500 字符），超出部分用 ... 代替。"""
@@ -92,6 +105,11 @@ def _resolve_image_url(url: str, repo_html_url: str, gitea_base_url: str) -> str
     """将 Markdown 图片 URL 规范化为绝对 URL，并保留 Gitea 的站点子路径。"""
     if url.startswith(("http://", "https://")):
         return url
+    # Gitea 的附件路由挂在站点根（/attachments/<uuid>），粘贴生成的 src 可能不带前导斜杠，
+    # 按 repo 相对路径解析会得到错误的 /org/repo/attachments/...，因此统一按站点根解析
+    stripped = url.lstrip("/")
+    if stripped.startswith("attachments/"):
+        return urljoin(gitea_base_url + "/", stripped)
     if url.startswith("/"):
         return urljoin(gitea_base_url + "/", url.lstrip("/"))
     return urljoin(repo_html_url, url)
@@ -100,20 +118,43 @@ def _resolve_image_url(url: str, repo_html_url: str, gitea_base_url: str) -> str
 def _parse_body_segments(
     body: str, repo_html_url: str, gitea_base_url: str
 ) -> list[ContentSegment]:
-    """把 body 按 markdown 图片切分为 TextSegment / ImageSegment 交替序列。"""
+    """把 body 按 markdown 图片 / HTML img 标签切分为 TextSegment / ImageSegment 交替序列。"""
     segments: list[ContentSegment] = []
     body = body or ""
 
-    pos = 0
+    # 两种图片语法按出现位置统一排序
+    occurrences: list[tuple[int, int, str, str]] = []
     for m in MD_IMAGE_RE.finditer(body):
-        before = body[pos : m.start()]
+        occurrences.append(
+            (
+                m.start(),
+                m.end(),
+                m.group(1).strip(),
+                _resolve_image_url(m.group(2).strip(), repo_html_url, gitea_base_url),
+            )
+        )
+    for m in HTML_IMG_RE.finditer(body):
+        attrs = _parse_html_attrs(m.group(0))
+        if not attrs.get("src"):
+            continue  # 无 src 的 img 标签按普通文本保留
+        occurrences.append(
+            (
+                m.start(),
+                m.end(),
+                attrs.get("alt", "").strip(),
+                _resolve_image_url(attrs["src"].strip(), repo_html_url, gitea_base_url),
+            )
+        )
+    occurrences.sort(key=lambda item: item[0])
+
+    pos = 0
+    for start, end, alt, url in occurrences:
+        before = body[pos:start]
         if before:
             segments.append(TextSegment(text=before))
 
-        alt = m.group(1).strip()
-        url = _resolve_image_url(m.group(2).strip(), repo_html_url, gitea_base_url)
         segments.append(ImageSegment(url=url, alt=alt))
-        pos = m.end()
+        pos = end
 
     tail = body[pos:]
     if tail:

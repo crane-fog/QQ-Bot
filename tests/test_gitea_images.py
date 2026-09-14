@@ -277,3 +277,59 @@ def test_issue_comment_forward_returns_forwardplan_with_segments():
     assert isinstance(plan.nodes[1].segments[3], TextSegment)
     assert plan.nodes[1].segments[1].text == "reply "
     assert plan.nodes[1].segments[3].text == " end\n\n"
+
+
+def test_parse_segments_supports_pasted_html_img():
+    """Gitea 粘贴生成的 <img> 标签应解析为图片段，且与 markdown 图片按位置混排。"""
+    body = (
+        '<img width="963" alt="image.png" src="attachments/d54e5170-5d5a-4371-b855-956339ee4ebe">'
+        " 看这张 ![md](/attachments/md.png)"
+    )
+    segments = _parse_comment_segments(body, [], REPO_HTML_URL, GITEA_BASE_URL)
+
+    assert [type(s).__name__ for s in segments] == ["ImageSegment", "TextSegment", "ImageSegment"]
+    assert segments[0].alt == "image.png"
+    assert segments[0].url == f"{GITEA_BASE_URL}/attachments/d54e5170-5d5a-4371-b855-956339ee4ebe"
+    assert segments[1].text == " 看这张 "
+    assert segments[2].url == f"{GITEA_BASE_URL}/attachments/md.png"
+
+
+def test_parse_segments_html_img_attribute_order_and_quotes():
+    """属性顺序、单双引号、无引号值都应能取到 src/alt。"""
+    body = (
+        '<img src=\'/attachments/a.png\' width=100 alt=shot><IMG ALT="b" SRC="/attachments/b.png">'
+    )
+    segments = _parse_comment_segments(body, [], REPO_HTML_URL, GITEA_BASE_URL)
+
+    assert segments[0].url == f"{GITEA_BASE_URL}/attachments/a.png"
+    assert segments[0].alt == "shot"
+    assert segments[1].url == f"{GITEA_BASE_URL}/attachments/b.png"
+    assert segments[1].alt == "b"
+
+
+def test_parse_segments_html_img_without_src_stays_text():
+    body = '<img width="10">前后文'
+    segments = _parse_comment_segments(body, [], REPO_HTML_URL, GITEA_BASE_URL)
+
+    assert len(segments) == 1
+    assert segments[0].text == body + "\n\n"
+
+
+def test_resolve_image_url_treats_bare_attachments_as_site_root():
+    """粘贴生成的 src="attachments/uuid" 不带前导斜杠，也应解析到站点根，含子路径部署。"""
+    gitea_base_url = "http://10.80.42.185/tjhlp"
+    repo_html_url = f"{gitea_base_url}/owner/repo"
+
+    assert (
+        _resolve_image_url("attachments/d54e5170", repo_html_url, GITEA_BASE_URL)
+        == f"{GITEA_BASE_URL}/attachments/d54e5170"
+    )
+    assert (
+        _resolve_image_url("attachments/d54e5170", repo_html_url, gitea_base_url)
+        == f"{gitea_base_url}/attachments/d54e5170"
+    )
+    # 非 attachments 的裸相对路径仍按仓库相对解析
+    assert (
+        _resolve_image_url("raw/main/img.png", REPO_HTML_URL, GITEA_BASE_URL)
+        == "https://gitea.example.com/org/raw/main/img.png"
+    )

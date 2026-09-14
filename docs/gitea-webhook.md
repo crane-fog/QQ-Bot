@@ -199,6 +199,8 @@ https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 
 图片通过 Gitea API 鉴权下载到本地临时目录，以 `file://` 路径注入合并转发。发送完成后自动清理临时目录。单张图片下载失败不阻塞整体发送，对应位置显示 `[图片下载失败]`。
 
+正文中的图片支持两种写法：markdown 的 `![alt](url)`，以及 Gitea 编辑器粘贴生成的 `<img width="..." alt="..." src="attachments/...">` 标签（`src` 不带前导斜杠时按站点根解析，兼容子路径部署）。
+
 ---
 
 ## 测试
