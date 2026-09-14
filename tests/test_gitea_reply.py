@@ -5,12 +5,18 @@ from typing import Any, cast
 from unittest.mock import AsyncMock, MagicMock, patch
 
 import pytest
+from PIL import Image
 
-from plugins.GiteaReply.GiteaReply import GiteaReply
+from plugins.GiteaReply.GiteaReply import (
+    MEDIA_FAILED_TEXT,
+    GiteaReply,
+    build_comment_markdown,
+    parse_reply_segments,
+)
 from src.Bot import Bot
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.gitea.GiteaApi import GiteaApi, GiteaApiError
-from src.gitea.Models import Comment, Issue
+from src.gitea.Models import Attachment, Comment, Issue
 
 ISSUE_PAYLOAD = {
     "id": 1,
@@ -34,6 +40,16 @@ COMMENT_PAYLOAD = {
     "body": "来自 QQ 群反馈",
     "created_at": "2026-09-13T00:00:00Z",
     "updated_at": "2026-09-13T00:00:00Z",
+}
+
+ATTACHMENT_PAYLOAD = {
+    "id": 5,
+    "name": "image_0.png",
+    "size": 100,
+    "download_count": 0,
+    "created_at": "2026-09-14T00:00:00Z",
+    "uuid": "uuid-1",
+    "browser_download_url": "https://gitea.example.com/attachments/uuid-1",
 }
 
 
@@ -94,12 +110,35 @@ def _make_event(message: str) -> GroupMessageEvent:
     )
 
 
-def _mock_gitea(issue=None, comment=None, error: Exception | None = None):
+def _mock_gitea(
+    issue=None,
+    comment=None,
+    attachment=None,
+    error: Exception | None = None,
+    upload_error: Exception | None = None,
+    patch_error: Exception | None = None,
+):
     get_issue = AsyncMock(return_value=issue)
     create_issue_comment = AsyncMock(return_value=comment)
+    create_comment_attachment = AsyncMock(return_value=attachment)
+    update_issue_comment = AsyncMock()
     if error is not None:
         get_issue.side_effect = error
-    return SimpleNamespace(get_issue=get_issue, create_issue_comment=create_issue_comment)
+    if upload_error is not None:
+        create_comment_attachment.side_effect = upload_error
+    if patch_error is not None:
+        update_issue_comment.side_effect = patch_error
+    return SimpleNamespace(
+        get_issue=get_issue,
+        create_issue_comment=create_issue_comment,
+        create_comment_attachment=create_comment_attachment,
+        update_issue_comment=update_issue_comment,
+    )
+
+
+def _download_saves_png(dest):
+    """生成一张真实 PNG，让图片格式嗅探走完整路径。"""
+    Image.new("RGB", (1, 1)).save(dest, "PNG")
 
 
 @pytest.mark.asyncio
@@ -236,3 +275,238 @@ def test_plugin_construction_reads_repo_config():
 
     assert plugin.repo == "owner/repo"
     assert plugin.gitea.api_url == "https://gitea.example.com"
+
+
+# ---------- 消息解析 ----------
+
+
+def test_parse_reply_segments_mixed_content_in_order():
+    message = (
+        "登录报500[CQ:image,file=shot.image,url=https://qq/img?a=1&amp;b=2]"
+        "[CQ:at,qq=10001][CQ:face,id=21]看下[CQ:json,data={...}]"
+    )
+    segments = parse_reply_segments(message)
+
+    kinds = [type(s).__name__ for s in segments]
+    assert kinds == ["ReplyText", "ReplyMedia", "ReplyText", "ReplyText", "ReplyText"]
+
+    assert segments[0].text == "登录报500"
+    media = segments[1]
+    assert media.url == "https://qq/img?a=1&b=2"  # CQ 转义已还原
+    assert media.is_image
+    assert segments[2].text == "@10001"
+    assert segments[3].text == "[表情]"
+    assert segments[4].text == "看下"  # 未支持的 CQ 码被丢弃
+
+
+def test_parse_reply_segments_media_without_url_is_kept_as_failure():
+    segments = parse_reply_segments("[CQ:image,file=abc.image]")
+    assert len(segments) == 1
+    assert segments[0].url is None
+
+
+def test_build_comment_markdown_places_media_on_own_line():
+    segments = parse_reply_segments("看这个[CQ:image,file=a.image,url=https://qq/a]")
+    body = build_comment_markdown("李四", segments)
+
+    assert body.startswith("**来自 QQ 群反馈**（李四）：\n\n看这个")
+    assert "{{QQ_MEDIA_0}}" in body
+    # 占位符独立成行，保证 Gitea markdown 正确渲染
+    assert body.splitlines()[-1].strip() == "{{QQ_MEDIA_0}}"
+
+
+def test_build_comment_markdown_pure_text_unchanged():
+    body = build_comment_markdown("张三", parse_reply_segments("登录一直报 500"))
+    assert body == "**来自 QQ 群反馈**（张三）：\n\n登录一直报 500"
+
+
+# ---------- GiteaApi 附件与编辑评论 ----------
+
+
+@pytest.mark.asyncio
+async def test_gitea_api_create_comment_attachment_builds_multipart(tmp_path):
+    file = tmp_path / "x.png"
+    file.write_bytes(b"fake png bytes")
+    client_class, client = _fake_client_factory(_FakeResponse(201, ATTACHMENT_PAYLOAD))
+    api = GiteaApi("https://gitea.example.com", "token")
+
+    with patch("src.gitea.GiteaApi.AsyncClient", client_class):
+        attachment = await api.create_comment_attachment(
+            "owner/repo", 10, str(file), "image_0.png", "image/png"
+        )
+
+    call = client.calls[0]
+    assert call["method"] == "POST"
+    assert (
+        call["url"] == "https://gitea.example.com/api/v1/repos/owner/repo/issues/comments/10/assets"
+    )
+    uploaded = call["files"]["attachment"]
+    assert uploaded[0] == "image_0.png"
+    assert uploaded[1] == b"fake png bytes"
+    assert uploaded[2] == "image/png"
+    assert attachment.uuid == "uuid-1"
+
+
+@pytest.mark.asyncio
+async def test_gitea_api_update_issue_comment_patches_body():
+    client_class, client = _fake_client_factory(_FakeResponse(200, COMMENT_PAYLOAD))
+    api = GiteaApi("https://gitea.example.com", "token")
+
+    with patch("src.gitea.GiteaApi.AsyncClient", client_class):
+        await api.update_issue_comment("owner/repo", 10, "更新后的正文")
+
+    call = client.calls[0]
+    assert call["method"] == "PATCH"
+    assert call["url"] == "https://gitea.example.com/api/v1/repos/owner/repo/issues/comments/10"
+    assert call["json"] == {"body": "更新后的正文"}
+
+
+# ---------- 插件媒体流程 ----------
+
+
+def _make_media_plugin():
+    gitea = _mock_gitea(
+        issue=Issue.model_validate(ISSUE_PAYLOAD),
+        comment=Comment.model_validate(COMMENT_PAYLOAD),
+        attachment=Attachment.model_validate(ATTACHMENT_PAYLOAD),
+    )
+    plugin = _make_plugin(gitea=gitea)
+    service = SimpleNamespace(send_group_msg=AsyncMock())
+    return plugin, gitea, service
+
+
+@pytest.mark.asyncio
+async def test_reply_with_image_uploads_attachment_and_patches_body():
+    plugin, gitea, service = _make_media_plugin()
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin,
+            _make_event("#7 看这个[CQ:image,file=shot.image,url=https://qq/img]"),
+            debug=False,
+        )
+
+    gitea.create_comment_attachment.assert_awaited_once()
+    args = gitea.create_comment_attachment.await_args.args
+    assert args[:2] == ("owner/repo", 10)
+    assert args[3] == "image_0.png"  # 按真实图片格式命名
+    assert args[4] == "image/png"
+
+    patched_body = gitea.update_issue_comment.await_args.args[2]
+    assert "![image_0.png](/attachments/uuid-1)" in patched_body
+    assert "{{QQ_MEDIA_0}}" not in patched_body
+
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert COMMENT_PAYLOAD["html_url"] in receipt
+    assert "上传失败" not in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_file_attachment_links_without_image_syntax():
+    plugin, gitea, service = _make_media_plugin()
+
+    async def fake_download(url, dest):
+        dest.write_bytes(b"zip data")
+        return True
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 [CQ:file,name=报告.pdf,url=https://qq/f]"), debug=False
+        )
+
+    args = gitea.create_comment_attachment.await_args.args
+    assert args[3] == "报告.pdf"
+    assert args[4] == "application/pdf"
+    patched_body = gitea.update_issue_comment.await_args.args[2]
+    assert "[报告.pdf](/attachments/uuid-1)" in patched_body
+    assert "![image" not in patched_body  # 非图片附件不用图片语法
+
+
+@pytest.mark.asyncio
+async def test_reply_download_failure_replaces_placeholder_and_notes_in_receipt():
+    plugin, gitea, service = _make_media_plugin()
+
+    async def fake_download(url, dest):
+        return False
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 [CQ:image,file=a.image,url=https://qq/a]"), debug=False
+        )
+
+    gitea.create_comment_attachment.assert_not_awaited()
+    patched_body = gitea.update_issue_comment.await_args.args[2]
+    assert MEDIA_FAILED_TEXT in patched_body
+
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "1 个图片/附件上传失败" in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_upload_api_error_marks_placeholder_and_notes_in_receipt():
+    plugin, gitea, service = _make_media_plugin()
+    gitea.create_comment_attachment.side_effect = GiteaApiError("Gitea API 返回 413", 413)
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 [CQ:image,file=a.image,url=https://qq/a]"), debug=False
+        )
+
+    patched_body = gitea.update_issue_comment.await_args.args[2]
+    assert MEDIA_FAILED_TEXT in patched_body
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "1 个图片/附件上传失败" in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_patch_failure_notes_attachment_area_in_receipt():
+    plugin, gitea, service = _make_media_plugin()
+    gitea.update_issue_comment.side_effect = GiteaApiError("Gitea API 请求失败：timeout")
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 [CQ:image,file=a.image,url=https://qq/a]"), debug=False
+        )
+
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "评论正文更新失败" in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_without_media_skips_attachment_flow():
+    plugin, gitea, service = _make_media_plugin()
+
+    with patch("src.Api.api.asyncService", service):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 纯文本反馈"), debug=False
+        )
+
+    gitea.create_comment_attachment.assert_not_awaited()
+    gitea.update_issue_comment.assert_not_awaited()

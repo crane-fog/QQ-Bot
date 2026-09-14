@@ -1,7 +1,7 @@
 # Gitea REST API 的最小客户端，仅覆盖 QQ 群回帖所需的端点。
 from httpx import AsyncClient, Timeout
 
-from src.gitea.Models import Comment, Issue
+from src.gitea.Models import Attachment, Comment, Issue
 from src.PrintLog import Log
 
 
@@ -42,6 +42,23 @@ class GiteaApi:
         url = self._issue_url(full_name, number, "comments")
         payload = await self._request_json("POST", url, json={"body": body})
         return Comment.model_validate(payload)
+
+    async def update_issue_comment(self, full_name: str, comment_id: int, body: str) -> None:
+        """编辑已有评论正文，用于附件上传后回填图片链接。"""
+        url = f"{self.api_url}/api/v1/repos/{full_name}/issues/comments/{comment_id}"
+        await self._request_json("PATCH", url, json={"body": body})
+
+    async def create_comment_attachment(
+        self, full_name: str, comment_id: int, file_path: str, filename: str, mime: str
+    ) -> Attachment:
+        """上传文件作为评论附件，返回含 uuid 的附件信息。"""
+        url = f"{self.api_url}/api/v1/repos/{full_name}/issues/comments/{comment_id}/assets"
+        with open(file_path, "rb") as f:
+            data = f.read()
+        payload = await self._request_json(
+            "POST", url, files={"attachment": (filename, data, mime)}
+        )
+        return Attachment.model_validate(payload)
 
     async def _request_json(self, method: str, url: str, **kwargs) -> dict:
         try:
