@@ -236,7 +236,7 @@ async def test_reply_api_error_sends_failure_hint():
 
 
 @pytest.mark.asyncio
-@pytest.mark.parametrize("message", ["#abc 内容", "#7", "#7 ", "#0731话题闲聊", "随便聊聊 #7"])
+@pytest.mark.parametrize("message", ["#abc 内容", "#7", "#7 ", "# ", "随便聊聊 #7"])
 async def test_reply_ignores_malformed_message(message):
     gitea = _mock_gitea(issue=ISSUE_PAYLOAD, comment=COMMENT_PAYLOAD)
     plugin = _make_plugin(gitea=gitea)
@@ -247,6 +247,24 @@ async def test_reply_ignores_malformed_message(message):
 
     gitea.get_issue.assert_not_awaited()
     service.send_group_msg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("message", ["#7内容不能有空格", "#7    多个空格也行", "#7\t制表符分隔"])
+async def test_reply_accepts_optional_space_after_number(message):
+    gitea = _mock_gitea(
+        issue=Issue.model_validate(ISSUE_PAYLOAD), comment=Comment.model_validate(COMMENT_PAYLOAD)
+    )
+    plugin = _make_plugin(gitea=gitea)
+    service = SimpleNamespace(send_group_msg=AsyncMock())
+
+    with patch("src.Api.api.asyncService", service):
+        await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event(message), debug=False)
+
+    args = gitea.create_issue_comment.await_args.args
+    assert args[1] == 7
+    assert "来自 QQ 群反馈" in args[2]
+    service.send_group_msg.assert_awaited_once()
 
 
 @pytest.mark.asyncio

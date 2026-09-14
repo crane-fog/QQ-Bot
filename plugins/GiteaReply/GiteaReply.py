@@ -15,8 +15,8 @@ from src.gitea.GiteaApi import GiteaApi, GiteaApiError
 from src.PrintLog import Log
 from utils.TextUtils import sanitize_filename
 
-# #<issue编号> <内容>，要求编号后有空格且内容非空，避免群里的 #话题# 式闲聊误触
-REPLY_PATTERN = re.compile(r"^#(?P<number>\d+)\s+(?P<body>\S.*)$", re.DOTALL)
+# #<issue编号> + 内容，编号和内容间的空格可有可无；纯编号（无内容）不触发
+REPLY_PATTERN = re.compile(r"^#(?P<number>\d+)\s*(?P<body>\S.*)$", re.DOTALL)
 
 # CQ 码参数值按 CQ 转义规则编码（逗号转义为 &#44;），所以按裸逗号切分参数是安全的
 CQ_CODE_PATTERN = re.compile(r"\[CQ:(?P<type>\w+)(?:,(?P<params>[^\]]*))?\]")
@@ -128,7 +128,7 @@ class GiteaReply(Plugins):
         self.author = "oierxjn"
         self.introduction = """
                                 把 QQ 群消息回复到 Gitea issue
-                                usage: #<issue编号> <内容>（支持图片和文件附件）
+                                usage: #<issue编号><内容>（编号后空格可省略，支持图片和文件附件）
                             """
         self.repo = str(self.bot.bot_config.get("Gitea", {}).get("reply_repo", "")).strip()
         if not self.repo:
