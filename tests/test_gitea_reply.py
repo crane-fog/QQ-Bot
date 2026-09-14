@@ -89,7 +89,7 @@ def _make_plugin(repo: str = "owner/repo", gitea=None) -> GiteaReply:
     plugin = object.__new__(GiteaReply)
     plugin.name = "GiteaReply"
     plugin.status = "running"
-    plugin.repo = repo
+    plugin.config = {"reply_repo": repo}
     plugin.gitea = gitea if gitea is not None else cast(Any, SimpleNamespace())
     return cast(GiteaReply, plugin)
 
@@ -290,13 +290,13 @@ def test_gitea_api_strips_trailing_slash():
     assert api.api_url == "https://gitea.example.com"
 
 
-def test_plugin_construction_reads_repo_config():
+def test_plugin_construction_builds_gitea_client_from_bot_config():
     bot = cast(
         Bot,
         cast(
             object,
             SimpleNamespace(
-                bot_config={"Gitea": {"reply_repo": "owner/repo"}},
+                bot_config={"Gitea": {}},
                 gitea_api_url="https://gitea.example.com",
                 gitea_api_token="token",
             ),
@@ -305,8 +305,8 @@ def test_plugin_construction_reads_repo_config():
     with patch("plugins.GiteaReply.GiteaReply.Plugins.init_status", MagicMock()):
         plugin = GiteaReply(bot)
 
-    assert plugin.repo == "owner/repo"
     assert plugin.gitea.api_url == "https://gitea.example.com"
+    assert plugin.gitea.api_token == "token"
 
 
 # ---------- 消息解析 ----------

@@ -22,13 +22,12 @@
 
 ## 配置项
 
-`bot.toml`（`[Gitea]` 节）：
+`bot.toml`（`[Gitea]` 节，与 webhook 通知共享）：
 
 ```toml
 [Gitea]
 api_url = "https://gitea.example.com"
 api_token = "<token，启用回帖需 write:issue 权限>"
-reply_repo = "owner/repo"   # 回帖目标仓库（owner/repo，单仓库）
 ```
 
 `plugins.toml`：
@@ -36,6 +35,8 @@ reply_repo = "owner/repo"   # 回帖目标仓库（owner/repo，单仓库）
 ```toml
 [GiteaReply]
 enable = false
+# 回帖目标仓库（owner/repo，单仓库）
+reply_repo = "owner/repo"
 ```
 
 ## 执行逻辑

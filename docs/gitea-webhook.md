@@ -74,8 +74,6 @@ webhook_handler_address = "0.0.0.0:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
 api_token = "<your-token>"
-# GiteaReply 插件回帖的目标仓库（owner/repo）
-reply_repo = "owner/repo"
 ```
 
 | 配置项 | 说明 | 必填 |
@@ -84,7 +82,6 @@ reply_repo = "owner/repo"
 | `webhook_response_group` | 通知发送目标 QQ 群号 | 是 |
 | `api_url` | Gitea 对 Bot 可访问的基础地址；若部署在子路径，必须包含该子路径。尾部 `/` 会自动兼容，建议省略 | 是 |
 | `api_token` | Gitea 个人访问令牌 | 是 |
-| `reply_repo` | GiteaReply 插件回帖的目标仓库，格式 `owner/repo`（单仓库） | 启用 GiteaReply 时必填 |
 
 `api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
 
@@ -108,7 +105,7 @@ api_url = "http://gitea.example.com/QA"
 
 ## 从 QQ 群回复 Issue（GiteaReply 插件）
 
-GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`（空格可省略），Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。消息中的图片和文件会作为评论附件上传。触发格式、媒体处理细节与启用步骤见 [GiteaReply 插件文档](plugins/GiteaReply.md)，启用所需配置见上方 `[Gitea]` 节的 `reply_repo` 与 Token 权限说明。
+GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`（空格可省略），Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。消息中的图片和文件会作为评论附件上传。触发格式、媒体处理细节与启用配置（`reply_repo` 在 `plugins.toml` 的 `[GiteaReply]` 节）见 [GiteaReply 插件文档](plugins/GiteaReply.md)。
 
 ---
 

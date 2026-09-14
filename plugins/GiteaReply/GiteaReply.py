@@ -130,16 +130,19 @@ class GiteaReply(Plugins):
                                 把 QQ 群消息回复到 Gitea issue
                                 usage: #<issue编号><内容>（编号后空格可省略，支持图片和文件附件）
                             """
-        self.repo = str(self.bot.bot_config.get("Gitea", {}).get("reply_repo", "")).strip()
-        if not self.repo:
-            Log.error("GiteaReply 插件未配置 [Gitea] reply_repo，收到回帖请求时将被忽略")
+        # 框架在 __init__ 之后才注入 config，插件配置只能在 main 里读取
         self.gitea = GiteaApi(self.bot.gitea_api_url, self.bot.gitea_api_token)
         self.init_status()
 
     @plugin_main(call_word=["#"])
     async def main(self, event: GroupMessageEvent, debug: bool):
         match = REPLY_PATTERN.match(event.message.strip())
-        if not match or not self.repo:
+        if not match:
+            return
+
+        repo = str((self.config or {}).get("reply_repo", "")).strip()
+        if not repo:
+            Log.warning("GiteaReply 未配置 reply_repo（plugins.toml [GiteaReply]），忽略回帖请求")
             return
 
         segments = parse_reply_segments(match["body"])
@@ -154,8 +157,8 @@ class GiteaReply(Plugins):
         comment_body = build_comment_markdown(sender, segments)
 
         try:
-            issue = await self.gitea.get_issue(self.repo, number)
-            comment = await self.gitea.create_issue_comment(self.repo, number, comment_body)
+            issue = await self.gitea.get_issue(repo, number)
+            comment = await self.gitea.create_issue_comment(repo, number, comment_body)
         except GiteaApiError as e:
             hint = (
                 f"issue #{number} 不存在，请确认编号" if e.status_code == 404 else f"回复失败：{e}"
@@ -168,7 +171,7 @@ class GiteaReply(Plugins):
         failed_count, patched = 0, True
         if media_list:
             failed_count, patched = await self._attach_media(
-                self.repo, comment.id, media_list, comment_body
+                repo, comment.id, media_list, comment_body
             )
 
         Log.info(f"GiteaReply 已回复 issue #{number}（群{event.group_id}，{sender}）")
