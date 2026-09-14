@@ -59,13 +59,19 @@ class AIService:
             "get_group_member_info": api.groupService.get_group_member_info,
             "set_group_ban": api.groupService.set_group_ban,
             "set_group_kick": api.groupService.set_group_kick,
+            "delete_msg": api.groupService.delete_msg,
             "get_group_info": api.groupService.get_group_info,
+            "set_msg_emoji_like": api.groupService.set_msg_emoji_like,
             "send_group_poke": api.groupService.send_group_poke,
+            "get_msg": api.messageService.get_msg,
             "shell": self.restricted_shell,
         }
         self.async_funcs = {
             "travily_search": self.travily_search,
             "travily_extract": self.travily_extract,
+        }
+        self.not_text_funcs = {
+            "read_img_file": self.read_img_file,
         }
 
     async def generate(
@@ -114,15 +120,18 @@ class AIService:
                     if (
                         tool_call.function.name in self.funcs
                         or tool_call.function.name in self.async_funcs
+                        or tool_call.function.name in self.not_text_funcs
                     ):
                         Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
                         args = json.loads(tool_call.function.arguments)
                         if tool_call.function.name == "shell":
                             args["caller_is_owner"] = caller_is_owner
                         if tool_call.function.name in self.funcs:
-                            result = self.funcs[tool_call.function.name](**args)
+                            result = str(self.funcs[tool_call.function.name](**args))
+                        elif tool_call.function.name in self.async_funcs:
+                            result = str(await self.async_funcs[tool_call.function.name](**args))
                         else:
-                            result = await self.async_funcs[tool_call.function.name](**args)
+                            result = self.not_text_funcs[tool_call.function.name](**args)
                         Log.info(f"轮{turn + 1}工具调用结果：{result}")
                     else:
                         Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_call.function.name} 不存在")
@@ -131,7 +140,7 @@ class AIService:
                         {
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": f"{result}",
+                            "content": result,
                         }
                     )
             Log.warning(
@@ -196,6 +205,16 @@ class AIService:
             + (f"stderr:\n{result.stderr}\n" if result.stderr else "stderr: (None)\n")
         )
         return output
+
+    def read_img_file(self, path: str | None = None, url: str | None = None) -> list[dict]:
+        if path is not None:
+            if not os.path.isfile(path):
+                return [{"type": "text", "text": f"File not found: {path}"}]
+            return [{"type": "image_url", "image_url": {"url": self.encode_image(path, 1024)}}]
+        elif url is not None:
+            return [{"type": "image_url", "image_url": {"url": url}}]
+        else:
+            return [{"type": "text", "text": "Either path or url must be provided."}]
 
     async def travily_search(
         self,

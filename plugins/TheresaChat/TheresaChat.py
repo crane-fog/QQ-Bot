@@ -61,9 +61,6 @@ class TheresaChat(Plugins):
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
-        if event.user_id == 1478624641:
-            return
-
         # 从数据库读取的上下文消息条数
         self.context_length = self.config.get("context_length", 100)
         self.extra_context = self.config.get("extra_context", 100)
@@ -243,23 +240,21 @@ class TheresaChat(Plugins):
                             0,
                             {
                                 "type": "text",
-                                "text": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
+                                "text": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
                             },
                         )
-                        context.extend(
-                            [
-                                {
-                                    "role": "user",
-                                    "content": img_msgs,
-                                    "name": str(row.user_id),
-                                }
-                            ]
+                        context.append(
+                            {
+                                "role": "user",
+                                "content": img_msgs,
+                                "name": str(row.user_id),
+                            }
                         )
                     else:
                         context.append(
                             {
                                 "role": "user",
-                                "content": f"{row.formatted_time}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
+                                "content": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
                                 "name": str(row.user_id),
                             }
                         )
