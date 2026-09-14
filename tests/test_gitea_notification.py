@@ -205,16 +205,18 @@ async def test_issues_notification_sends_markdown_images_and_attachments(monkeyp
         assert plain_message[0] == {
             "type": "text",
             "data": {
-                "text": "[Gitea] issues #1 opened in org/repo\nIssue with image",
+                "text": "[Gitea] issues #1 opened in org/repo\nIssue with image\n",
             },
         }
-        assert plain_message[1:4] == [
+        # 正文内容前插入作者块：首行作者名、第二行按显示宽度画分隔线
+        assert plain_message[1] == {"type": "text", "data": {"text": "alice\n-----\n"}}
+        assert plain_message[2:5] == [
             {"type": "text", "data": {"text": "before "}},
             {"type": "image", "data": {"file": "file://C:/tmp/inline.png"}},
             {"type": "text", "data": {"text": " after\n\n"}},
         ]
-        assert "report.txt" in plain_message[4]["data"]["text"]
-        assert plain_message[5] == {
+        assert "report.txt" in plain_message[5]["data"]["text"]
+        assert plain_message[6] == {
             "type": "text",
             "data": {"text": "\nurl: https://gitea.example.com/org/repo/issues/1"},
         }
@@ -224,8 +226,11 @@ async def test_issues_notification_sends_markdown_images_and_attachments(monkeyp
         assert forward_message[0]["data"]["content"][0]["data"]["text"] == (
             "[Gitea] issues #1 opened in org/repo\nTitle: Issue with image\nLabels: bug\nAuthor: alice"
         )
-        assert forward_message[1]["data"]["content"][0:3] == plain_message[1:4]
-        assert "report.txt" in forward_message[1]["data"]["content"][3]["data"]["text"]
+        # 合并转发正文节点带作者块，节点昵称为作者
+        assert forward_message[1]["data"]["name"] == "alice"
+        assert forward_message[1]["data"]["content"][0] == plain_message[1]
+        assert forward_message[1]["data"]["content"][1:4] == plain_message[2:5]
+        assert "report.txt" in forward_message[1]["data"]["content"][4]["data"]["text"]
 
 
 @pytest.mark.asyncio
@@ -263,3 +268,89 @@ async def test_download_images_sends_token_only_to_configured_gitea_host(
         "https://gitea.example.com/attachments/inside.png": {"Authorization": "token token"},
         "https://images.example.net/outside.png": {},
     }
+
+
+# ---------- 作者块格式 ----------
+
+
+def test_author_block_width_matches_display_width():
+    from src.gitea.GiteaEventFormatter import author_block
+
+    # ASCII 按字符数，CJK 按双宽计算
+    assert author_block("alice") == "alice\n-----\n"
+    assert author_block("张三") == "张三\n----\n"
+    assert author_block("bin") == "bin\n---\n"
+
+
+def test_author_block_caps_long_names():
+    from src.gitea.GiteaEventFormatter import AUTHOR_LINE_MAX_WIDTH, author_block
+
+    long_name = "a" * 60
+    block = author_block(long_name)
+    lines = block.splitlines()
+    assert lines[0] == long_name  # 名字不截断
+    assert len(lines[1]) == AUTHOR_LINE_MAX_WIDTH  # 分隔线封顶
+
+
+def test_author_block_empty_author_falls_back_to_gitea():
+    from src.gitea.GiteaEventFormatter import author_block
+
+    assert author_block("") == "Gitea\n-----\n"
+    assert author_block("  ") == "Gitea\n-----\n"
+
+
+def test_forward_plan_comment_nodes_carry_author_block():
+    """合并转发每个评论节点应有作者块首段，且节点昵称为作者。"""
+    from src.gitea.GiteaEventFormatter import GiteaEventFormatter
+    from src.gitea.Models import Comment, GiteaIssueCommentEvent
+
+    payload = {
+        "action": "created",
+        "issue": {
+            "id": 1,
+            "url": "https://gitea.example.com/api/issues/1",
+            "html_url": "https://gitea.example.com/org/repo/issues/1",
+            "number": 1,
+            "user": {"id": 1, "login": "alice"},
+            "title": "T",
+            "body": "body",
+            "labels": [],
+            "state": "open",
+            "is_locked": False,
+            "comments": 1,
+            "created_at": "2026-09-01T00:00:00Z",
+            "updated_at": "2026-09-01T00:00:00Z",
+            "assets": [],
+        },
+        "comment": {
+            "id": 2,
+            "html_url": "https://gitea.example.com/org/repo/issues/1#comment-2",
+            "issue_url": "https://gitea.example.com/api/issues/1",
+            "user": {"id": 2, "login": "bob"},
+            "body": "hi",
+            "assets": [],
+            "created_at": "2026-09-01T00:00:00Z",
+            "updated_at": "2026-09-01T00:00:00Z",
+        },
+        "repository": {
+            "id": 100,
+            "name": "repo",
+            "owner": {"id": 1, "login": "org"},
+            "full_name": "org/repo",
+            "private": False,
+            "fork": False,
+            "html_url": "https://gitea.example.com/org/repo",
+        },
+        "sender": {"id": 1, "login": "alice"},
+        "is_pull": False,
+    }
+    event = GiteaIssueCommentEvent.model_validate(payload)
+    comment = Comment.model_validate(payload["comment"] | {"user": {"id": 2, "login": "bob"}})
+
+    plan = GiteaEventFormatter("https://gitea.example.com").issue_comment_forward(event, [comment])
+
+    assert plan.nodes[0].sender_name == "alice"
+    assert plan.nodes[0].segments[0].text == "alice\n-----\n"
+    assert plan.nodes[1].sender_name == "bob"
+    assert plan.nodes[1].segments[0].text == "bob\n---\n"
+    assert plan.nodes[1].segments[1].text.startswith("hi")

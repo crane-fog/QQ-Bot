@@ -234,8 +234,9 @@ async def test_issues_event_sends_mixed_message_and_three_node_forward_message()
     assert plain_message == [
         {
             "type": "text",
-            "data": {"text": "[Gitea] issues #1 opened in org/repo\nFix webhook"},
+            "data": {"text": "[Gitea] issues #1 opened in org/repo\nFix webhook\n"},
         },
+        {"type": "text", "data": {"text": "alice\n-----\n"}},
         {"type": "text", "data": {"text": "long body\n" + ("x" * 600) + "\n\n"}},
         {
             "type": "text",
@@ -255,8 +256,11 @@ async def test_issues_event_sends_mixed_message_and_three_node_forward_message()
     assert "Title: Fix webhook" in forward_message[0]["data"]["content"][0]["data"]["text"]
     assert "Labels: bug" in forward_message[0]["data"]["content"][0]["data"]["text"]
     assert "Author: alice" in forward_message[0]["data"]["content"][0]["data"]["text"]
+    # issue 正文节点带作者块，且节点昵称与作者一致
+    assert forward_message[1]["data"]["name"] == "alice"
+    assert forward_message[1]["data"]["content"][0]["data"]["text"] == "alice\n-----\n"
     assert (
-        forward_message[1]["data"]["content"][0]["data"]["text"]
+        forward_message[1]["data"]["content"][1]["data"]["text"]
         == "long body\n" + ("x" * 600) + "\n\n"
     )
     assert (

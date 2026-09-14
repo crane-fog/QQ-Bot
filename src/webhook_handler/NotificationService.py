@@ -18,7 +18,9 @@ from src.gitea.GiteaEventFormatter import (
     ImageSegment,
     TextSegment,
     _extract_images,
+    _issue_author,
     _parse_comment_segments,
+    prepend_author_block,
 )
 from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
@@ -179,12 +181,23 @@ class NotificationService:
                 {
                     "type": "text",
                     "data": {
-                        "text": f"[Gitea] {event_name} on {target} #{data.issue.number} {data.action} in {data.repository.full_name}\n{data.issue.title}"
+                        "text": (
+                            f"[Gitea] {event_name} on {target} #{data.issue.number}"
+                            f" {data.action} in {data.repository.full_name}\n"
+                            f"{data.issue.title}\n"
+                        )
                     },
                 },
             ]
+            comment_author = data.comment.original_author or data.comment.user.login
             msg.extend(
-                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+                self._node_segments(
+                    ContentNode(
+                        sender_name="",
+                        segments=prepend_author_block(comment_author, segments),
+                    ),
+                    path_map,
+                )
             )
             msg.append({"type": "text", "data": {"text": f"\nurl: {data.comment.html_url}"}})
             await api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
@@ -232,13 +245,20 @@ class NotificationService:
                     "type": "text",
                     "data": {
                         "text": (
-                            f"{self.formatter.issues_summary(data, event_type)}\n{data.issue.title}"
+                            f"{self.formatter.issues_summary(data, event_type)}\n"
+                            f"{data.issue.title}\n"
                         )
                     },
                 }
             ]
             message.extend(
-                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+                self._node_segments(
+                    ContentNode(
+                        sender_name="",
+                        segments=prepend_author_block(_issue_author(data), segments),
+                    ),
+                    path_map,
+                )
             )
             message.append({"type": "text", "data": {"text": f"\nurl: {data.issue.html_url}"}})
             await api.asyncService.send_group_msg(

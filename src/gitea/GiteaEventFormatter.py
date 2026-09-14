@@ -1,4 +1,5 @@
 import re
+import unicodedata
 from dataclasses import dataclass, field
 from urllib.parse import urljoin
 
@@ -152,6 +153,27 @@ def _extract_images(segments: list[ContentSegment]) -> list[ImageSegment]:
     return [s for s in segments if isinstance(s, ImageSegment)]
 
 
+# 作者分隔线的最大显示宽度，超过后在手机端会折行，观感变差
+AUTHOR_LINE_MAX_WIDTH = 30
+
+
+def _display_width(text: str) -> int:
+    """按聊天界面的渲染宽度计算文本宽度，全角与 CJK 字符计 2。"""
+    return sum(2 if unicodedata.east_asian_width(ch) in ("F", "W") else 1 for ch in text)
+
+
+def author_block(author: str) -> str:
+    """评论内容的作者头：首行作者名，第二行按名字显示宽度画分隔线。"""
+    name = (author or "Gitea").strip() or "Gitea"
+    width = min(_display_width(name), AUTHOR_LINE_MAX_WIDTH)
+    return f"{name}\n{'-' * width}\n"
+
+
+def prepend_author_block(author: str, segments: list[ContentSegment]) -> list[ContentSegment]:
+    """在内容段最前插入作者块，使每条评论在合并转发中显式带出作者。"""
+    return [TextSegment(text=author_block(author)), *segments]
+
+
 def _label_text(event_or_issue: GiteaIssuesEvent | Issue) -> str:
     """提取 issue 的标签，以逗号分隔；无标签返回 "none"。"""
     issue = event_or_issue.issue if isinstance(event_or_issue, GiteaIssuesEvent) else event_or_issue
@@ -265,9 +287,15 @@ class GiteaEventFormatter:
             event.repository.html_url,
             self.gitea_base_url,
         )
+        author = _issue_author(event)
         return ForwardPlan(
             header_text=header_text,
-            nodes=[ContentNode(sender_name="Gitea", segments=body_segments)],
+            nodes=[
+                ContentNode(
+                    sender_name=author,
+                    segments=prepend_author_block(author, body_segments),
+                )
+            ],
             url_text=f"url: {event.issue.html_url}",
         )
 
@@ -328,10 +356,16 @@ class GiteaEventFormatter:
         nodes: list[ContentNode] = []
 
         # 节点1: issue 正文（也解析其内联图片）
+        issue_author = _issue_author(event.issue)
         issue_segments = _parse_comment_segments(
             event.issue.body or "(empty body)", [], repo_html_url, self.gitea_base_url
         )
-        nodes.append(ContentNode(sender_name="Gitea", segments=issue_segments))
+        nodes.append(
+            ContentNode(
+                sender_name=issue_author,
+                segments=prepend_author_block(issue_author, issue_segments),
+            )
+        )
 
         # 节点2~N: 每条评论（正序）
         for comment in comments:
@@ -339,7 +373,9 @@ class GiteaEventFormatter:
             segments = _parse_comment_segments(
                 comment.body or "(empty)", comment.assets, repo_html_url, self.gitea_base_url
             )
-            nodes.append(ContentNode(sender_name=author, segments=segments))
+            nodes.append(
+                ContentNode(sender_name=author, segments=prepend_author_block(author, segments))
+            )
 
         url_text = f"url: {event.issue.html_url}"
         return ForwardPlan(header_text=header_text, nodes=nodes, url_text=url_text)

@@ -175,7 +175,8 @@ https://gitea.example.com/crane-fog/QQ-Bot/compare/abc123...def456
 ```
 [Gitea] issues on issue #42 opened in crane-fog/QQ-Bot
 登录页面样式错乱
-
+alice
+-----
 描述：
 在 Chrome 124 下，登录按钮偏移到页面左侧……
 附件: screenshot.png (245.6 KB) https://gitea.example.com/.../screenshot.png
@@ -183,17 +184,17 @@ https://gitea.example.com/crane-fog/QQ-Bot/compare/abc123...def456
 https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 ```
 
-正文超过 500 字符时自动截断，末尾追加 `...`。
+正文超过 500 字符时自动截断，末尾追加 `...`。正文内容前会插入作者块：首行作者名，第二行按名字的显示宽度画分隔线（CJK 字符按双宽计，最长 30 列）。
 
 ### Issue Comment 事件
 
 发送**两条**消息：
 
-1. **混合消息**（文本 + 图片）：当前评论的正文、内嵌图片、附件链接。
+1. **混合消息**（文本 + 图片）：当前评论的作者块、正文、内嵌图片、附件链接。
 2. **合并转发消息**：完整的时间线视图——
    - 第 1 条：Issue 标题和作者
-   - 第 2 条：Issue 正文
-   - 第 3 ~ N+2 条：每条历史评论（含图片），按时间正序排列
+   - 第 2 条：Issue 正文（节点昵称与内容首行均为 issue 作者）
+   - 第 3 ~ N+2 条：每条历史评论（含图片），节点昵称与内容首行均为该评论作者，按时间正序排列
    - 最后一条：Issue URL
 
 图片通过 Gitea API 鉴权下载到本地临时目录，以 `file://` 路径注入合并转发。发送完成后自动清理临时目录。单张图片下载失败不阻塞整体发送，对应位置显示 `[图片下载失败]`。

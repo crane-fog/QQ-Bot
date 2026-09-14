@@ -262,14 +262,18 @@ def test_issue_comment_forward_returns_forwardplan_with_segments():
     plan = GiteaEventFormatter(GITEA_BASE_URL).issue_comment_forward(event, comments)
 
     assert isinstance(plan, ForwardPlan)
-    # 节点1: issue 正文
-    assert len(plan.nodes[0].segments) == 1
-    assert isinstance(plan.nodes[0].segments[0], TextSegment)
-    assert plan.nodes[0].segments[0].text == "issue body\n\n"
-    # 节点2: 评论，保留文字-图片-文字顺序
-    assert len(plan.nodes[1].segments) == 3
-    assert isinstance(plan.nodes[1].segments[0], TextSegment)
-    assert isinstance(plan.nodes[1].segments[1], ImageSegment)
-    assert isinstance(plan.nodes[1].segments[2], TextSegment)
-    assert plan.nodes[1].segments[0].text == "reply "
-    assert plan.nodes[1].segments[2].text == " end\n\n"
+    # 节点1: issue 正文，最前是作者块
+    assert plan.nodes[0].sender_name == "alice"
+    assert len(plan.nodes[0].segments) == 2
+    assert plan.nodes[0].segments[0].text == "alice\n-----\n"
+    assert isinstance(plan.nodes[0].segments[1], TextSegment)
+    assert plan.nodes[0].segments[1].text == "issue body\n\n"
+    # 节点2: 评论，作者块之后保留文字-图片-文字顺序
+    assert plan.nodes[1].sender_name == "alice"
+    assert len(plan.nodes[1].segments) == 4
+    assert plan.nodes[1].segments[0].text == "alice\n-----\n"
+    assert isinstance(plan.nodes[1].segments[1], TextSegment)
+    assert isinstance(plan.nodes[1].segments[2], ImageSegment)
+    assert isinstance(plan.nodes[1].segments[3], TextSegment)
+    assert plan.nodes[1].segments[1].text == "reply "
+    assert plan.nodes[1].segments[3].text == " end\n\n"
