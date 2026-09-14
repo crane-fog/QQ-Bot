@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from httpx import AsyncClient, Timeout
 
 from src.Api import api
+from src.gitea.GiteaApi import GiteaApi
 from src.gitea.GiteaEventFormatter import (
     ContentNode,
     FileSegment,
@@ -19,7 +20,7 @@ from src.gitea.GiteaEventFormatter import (
     _extract_images,
     _parse_comment_segments,
 )
-from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
+from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
 from src.webhook_handler.EventConfig import EventConfig
 from utils.CQType import Forward
@@ -30,13 +31,14 @@ class NotificationService:
     response_group: int
     gitea_api_url: str
     gitea_api_token: str
+    gitea: GiteaApi
     formatter: GiteaEventFormatter
 
     def __init__(self, response_group: int, gitea_api_url: str, gitea_api_token: str):
+        self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
-        self.gitea_api_url = gitea_api_url.strip().rstrip("/")
-        if not self.gitea_api_url:
-            raise ValueError("[Gitea] api_url 不能为空")
+        # GiteaApi 已校验非空并去除尾部 /
+        self.gitea_api_url = self.gitea.api_url
         self.gitea_api_token = gitea_api_token
         self.formatter = GiteaEventFormatter(self.gitea_api_url)
 
@@ -53,16 +55,6 @@ class NotificationService:
                 await self._send_plain_text(data, event_type)
         except Exception as e:
             Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
-
-    async def _fetch_issue_comments(self, full_name: str, issue_number: int) -> list[Comment]:
-        url = f"{self.gitea_api_url}/api/v1/repos/{full_name}/issues/{issue_number}/comments"
-        async with AsyncClient(timeout=Timeout(10)) as client:
-            resp = await client.get(
-                url,
-                headers={"Authorization": f"token {self.gitea_api_token}"},
-            )
-            resp.raise_for_status()
-            return [Comment.model_validate(c) for c in resp.json()]
 
     async def _download_images(
         self, images: list[ImageSegment], temp_dir: Path
@@ -198,7 +190,7 @@ class NotificationService:
             await api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
 
             # 2. 拉取历史评论并发送合并转发
-            comments = await self._fetch_issue_comments(
+            comments = await self.gitea.list_issue_comments(
                 data.repository.full_name, data.issue.number
             )
             plan = self.formatter.issue_comment_forward(data, comments)

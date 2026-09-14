@@ -159,6 +159,20 @@ async def test_gitea_api_create_issue_comment_builds_request():
 
 
 @pytest.mark.asyncio
+async def test_gitea_api_list_issue_comments_returns_models():
+    client_class, client = _fake_client_factory(_FakeResponse(200, [COMMENT_PAYLOAD]))
+    api = GiteaApi("https://gitea.example.com", "token")
+
+    with patch("src.gitea.GiteaApi.AsyncClient", client_class):
+        comments = await api.list_issue_comments("owner/repo", 7)
+
+    call = client.calls[0]
+    assert call["method"] == "GET"
+    assert call["url"] == "https://gitea.example.com/api/v1/repos/owner/repo/issues/7/comments"
+    assert [c.html_url for c in comments] == [COMMENT_PAYLOAD["html_url"]]
+
+
+@pytest.mark.asyncio
 async def test_gitea_api_get_issue_not_found_raises_with_status():
     client_class, _ = _fake_client_factory(_FakeResponse(404))
     api = GiteaApi("https://gitea.example.com", "token")

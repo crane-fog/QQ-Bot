@@ -37,6 +37,12 @@ class GiteaApi:
             await self._request_json("GET", self._issue_url(full_name, number))
         )
 
+    async def list_issue_comments(self, full_name: str, number: int) -> list[Comment]:
+        """拉取 issue 的全部评论，用于构建合并转发消息。"""
+        url = self._issue_url(full_name, number, "comments")
+        payload = await self._request_json("GET", url)
+        return [Comment.model_validate(c) for c in payload]
+
     async def create_issue_comment(self, full_name: str, number: int, body: str) -> Comment:
         """在 issue 下新建评论，返回创建后的评论（含 html_url）。"""
         url = self._issue_url(full_name, number, "comments")
