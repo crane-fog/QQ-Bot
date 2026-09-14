@@ -17,7 +17,5 @@ enable_webhook_handler = false
 webhook_handler_address = "127.0.0.1:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
-# webhook 通知只读权限即可；启用 GiteaReply 回帖插件需要 issue 写权限
 api_token = "<your-token>"
-# GiteaReply 插件回帖的目标仓库（owner/repo）
 reply_repo = "owner/repo"
