@@ -4,6 +4,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
+from urllib.parse import urlsplit
 
 from httpx import AsyncClient, Timeout
 from PIL import Image
@@ -26,6 +27,10 @@ MEDIA_FAILED_TEXT = "*[图片/附件上传失败]*"
 
 # 作为附件上传的媒体类型；其余 CQ 码（表情、json 卡片等）不转发
 MEDIA_CQ_TYPES = {"image", "file", "video"}
+
+# 媒体下载仅允许腾讯 CDN 域名（后缀匹配），防止伪造 CQ 码让 Bot 探测内网
+# NTQQ 实现的媒体在 multimedia.nt.qq.com.cn（qq.com.cn 后缀），老版本图片在 gchat.qpic.cn
+ALLOWED_MEDIA_HOST_SUFFIXES = ("qpic.cn", "qq.com", "qq.com.cn")
 
 
 @dataclass
@@ -57,7 +62,19 @@ def parse_cq_params(raw: str) -> dict[str, str]:
     return params
 
 
-def parse_reply_segments(body: str) -> list[ReplyText | ReplyMedia]:
+def is_allowed_media_url(url: str) -> bool:
+    """校验媒体 URL 的 scheme 与 host 是否在腾讯 CDN 白名单内。"""
+    try:
+        parts = urlsplit(url)
+    except Exception:
+        return False
+    if parts.scheme not in ("http", "https") or not parts.netloc:
+        return False
+    host = parts.hostname or ""
+    return any(host == s or host.endswith("." + s) for s in ALLOWED_MEDIA_HOST_SUFFIXES)
+
+
+def parse_reply_segments(body: str, debug: bool = False) -> list[ReplyText | ReplyMedia]:
     """把 OneBot 字符串消息按序拆成文本和媒体段。
 
     图片/文件/视频提取为 ReplyMedia；@人 和表情转为可读文本；其余 CQ 码丢弃。
@@ -86,7 +103,7 @@ def parse_reply_segments(body: str) -> list[ReplyText | ReplyMedia]:
         elif cq_type in ("face", "mface"):
             segments.append(ReplyText("[表情]"))
         else:
-            Log.debug(f"GiteaReply 忽略 CQ 码：{cq_type}")
+            Log.debug(f"GiteaReply 忽略 CQ 码：{cq_type}", debug)
     if pos < len(body):
         segments.append(ReplyText(cq_unescape(body[pos:])))
     return segments
@@ -145,7 +162,7 @@ class GiteaReply(Plugins):
             Log.warning("GiteaReply 未配置 reply_repo（plugins.toml [GiteaReply]），忽略回帖请求")
             return
 
-        segments = parse_reply_segments(match["body"])
+        segments = parse_reply_segments(match["body"], debug)
         media_list = [s for s in segments if isinstance(s, ReplyMedia)]
         text = "".join(s.text for s in segments if isinstance(s, ReplyText)).strip()
         # 只剩无法转发的内容（如纯表情刷屏）时不产生空评论
@@ -205,7 +222,7 @@ class GiteaReply(Plugins):
                     body = body.replace(media.placeholder, MEDIA_FAILED_TEXT)
                     failed += 1
                     continue
-                link = f"/attachments/{attachment.uuid}"
+                link = attachment.browser_download_url
                 rendered = f"![{filename}]({link})" if media.is_image else f"[{filename}]({link})"
                 body = body.replace(media.placeholder, rendered)
             try:
@@ -226,12 +243,17 @@ class GiteaReply(Plugins):
 
     @staticmethod
     async def _download_media(url: str, dest: Path) -> bool:
-        """下载 QQ 媒体到本地；QQ CDN 无需鉴权，单张失败返回 False。"""
+        """流式下载 QQ 媒体到本地；仅允许腾讯 CDN 域名，失败返回 False。"""
+        if not is_allowed_media_url(url):
+            Log.warning(f"GiteaReply 拒绝非白名单媒体 URL：{url}")
+            return False
         try:
-            async with AsyncClient(timeout=Timeout(30)) as client:
-                resp = await client.get(url)
-                resp.raise_for_status()
-                dest.write_bytes(resp.content)
+            async with AsyncClient(timeout=Timeout(30), follow_redirects=True) as client:
+                async with client.stream("GET", url) as resp:
+                    resp.raise_for_status()
+                    with open(dest, "wb") as f:
+                        async for chunk in resp.aiter_bytes():
+                            f.write(chunk)
             return True
         except Exception as e:
             Log.warning(f"GiteaReply 下载 QQ 媒体失败：url={url}, error={e}")

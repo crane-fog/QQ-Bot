@@ -205,10 +205,10 @@ https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 ### 单元测试
 
 ```bash
-uv run pytest test_gitea_webhook.py -v
-uv run pytest test_gitea_notification.py -v
-uv run pytest test_gitea_images.py -v
-uv run pytest test_gitea_reply.py -v
+uv run pytest tests/test_gitea_webhook.py -v
+uv run pytest tests/test_gitea_notification.py -v
+uv run pytest tests/test_gitea_images.py -v
+uv run pytest tests/test_gitea_reply.py -v
 ```
 
 测试文件覆盖：

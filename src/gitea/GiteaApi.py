@@ -57,16 +57,15 @@ class GiteaApi:
     async def create_comment_attachment(
         self, full_name: str, comment_id: int, file_path: str, filename: str, mime: str
     ) -> Attachment:
-        """上传文件作为评论附件，返回含 uuid 的附件信息。"""
+        """上传文件作为评论附件，返回含 uuid 的附件信息；文件对象直传 multipart，避免大文件整体进内存。"""
         url = f"{self.api_url}/api/v1/repos/{full_name}/issues/comments/{comment_id}/assets"
         with open(file_path, "rb") as f:
-            data = f.read()
-        payload = await self._request_json(
-            "POST", url, files={"attachment": (filename, data, mime)}
-        )
+            payload = await self._request_json(
+                "POST", url, files={"attachment": (filename, f, mime)}
+            )
         return Attachment.model_validate(payload)
 
-    async def _request_json(self, method: str, url: str, **kwargs) -> dict:
+    async def _request_json(self, method: str, url: str, **kwargs) -> dict | list:
         try:
             async with AsyncClient(timeout=Timeout(10)) as client:
                 resp = await client.request(method, url, headers=self._headers(), **kwargs)
@@ -75,4 +74,7 @@ class GiteaApi:
         if resp.status_code >= 400:
             Log.warning(f"Gitea API 返回 {resp.status_code}：url={url}, body={resp.text[:200]}")
             raise GiteaApiError(f"Gitea API 返回 {resp.status_code}", resp.status_code)
-        return resp.json()
+        try:
+            return resp.json()
+        except Exception as e:
+            raise GiteaApiError(f"Gitea API 响应解析失败：{e}") from e
