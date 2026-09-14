@@ -102,40 +102,13 @@ api_url = "http://gitea.example.com/QA"
 
 > 如果 Token 权限不足或过期，图片将无法显示（会被替换为 `[图片下载失败]` 占位文本），纯文本通知仍可正常工作。
 >
-> 若启用 [GiteaReply 插件](#从-qq-群回复-issue-giteareply-插件)，Token 还需要 `write:issue` 权限（用于发表评论）。
+> 若启用 [GiteaReply 插件](plugins/GiteaReply.md)，Token 还需要 `write:issue` 权限（用于发表评论）。
 
 ---
 
 ## 从 QQ 群回复 Issue（GiteaReply 插件）
 
-GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`，Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。
-
-### 使用方式
-
-```
-#7 登录一直报 500，麻烦看一下
-#7登录一直报 500（编号后的空格可省略）
-```
-
-- 触发格式匹配 `#数字 + 非空内容`，编号和内容之间的空格可有可无；`#话题#` 式闲聊（# 后不是数字）、缺内容的 `#7` 都不会触发。注意 `#0731话题闲聊` 这类「#数字」开头的消息会被视为回复 issue #731。
-- 发送前 Bot 会先校验 issue 是否存在，编号无效时在群内提示；评论发表成功后回执中带有 Gitea 评论链接。
-- 评论正文会带上发送者的群名片/昵称，例如：`**来自 QQ 群反馈**（张三）：\n\n<内容>`。
-
-### 图片与附件
-
-消息中支持的媒体会作为 Gitea 评论附件上传，并在正文中回填链接：
-
-- **图片**（`[CQ:image]`）：上传后以 `![image_0.png](/attachments/...)` 内嵌显示，位置与消息中的出现顺序一致。
-- **文件 / 视频**（`[CQ:file]` / `[CQ:video]`）：上传为附件，以文件名链接形式展示。
-- 图片链接由 OneBot 实现提供（QQ CDN），Bot 直接下载后上传到 Gitea，此过程不需要 Gitea 之外的凭据。
-- 表情转为 `[表情]` 文本、@人转为 `@QQ号`；其余 CQ 码（json 卡片、语音等）不转发。
-- 单个媒体下载或上传失败时，对应位置在评论中标注占位文本，回执中会提示失败数量；回复引用（`[CQ:reply]`）暂不支持——带引用的消息以 `[CQ:reply,...]` 开头，不会触发插件。
-
-### 启用配置
-
-1. `bot.toml` 的 `[Gitea]` 节配置 `reply_repo = "owner/repo"`，并确保 `api_token` 有 `write:issue` 权限。
-2. `plugins.toml` 中 `[GiteaReply]` 设 `enable = true`。
-3. `groups.toml` 中在需要的群下加 `GiteaReply = true` —— 插件只在配置了的群生效，即群白名单。
+GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`（空格可省略），Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。消息中的图片和文件会作为评论附件上传。触发格式、媒体处理细节与启用步骤见 [GiteaReply 插件文档](plugins/GiteaReply.md)，启用所需配置见上方 `[Gitea]` 节的 `reply_repo` 与 Token 权限说明。
 
 ---
 
