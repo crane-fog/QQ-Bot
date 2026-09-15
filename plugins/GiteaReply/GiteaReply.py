@@ -124,7 +124,7 @@ class GiteaReply(Plugins):
         self.author = "oierxjn"
         self.introduction = """
                                 把 QQ 群消息回复到 Gitea issue
-                                usage: #<issue编号><内容>（编号后空格可省略，支持图片和文件附件）
+                                usage: #<issue编号><内容>
                             """
         # 框架在 __init__ 之后才注入 config，插件配置只能在 main 里读取
         self.gitea = GiteaApi(self.bot.gitea_api_url, self.bot.gitea_api_token)
