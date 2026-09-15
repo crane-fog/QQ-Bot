@@ -4,7 +4,7 @@ import shutil
 import tempfile
 from dataclasses import dataclass
 from pathlib import Path
-from urllib.parse import urlsplit
+from urllib.parse import urljoin, urlsplit
 
 from httpx import AsyncClient, Timeout
 from PIL import Image
@@ -23,12 +23,18 @@ REPLY_PATTERN = re.compile(r"^#(?P<number>\d+)\s*(?P<body>\S.*)$", re.DOTALL)
 # 占位符需要足够怪异，避免和群友输入的普通文本撞车
 MEDIA_FAILED_TEXT = "*[图片/附件上传失败]*"
 
-# 作为附件上传的媒体类型；其余 CQ 码（表情、json 卡片等）不转发
-MEDIA_CQ_TYPES = {"image", "file", "video"}
+# 作为附件上传的媒体类型；其余 CQ 码（表情、json 卡片等）不转发。
+# 注意 file 不是消息段：QQ 群文件走独立的群文件上传事件，不会出现在消息文本里
+MEDIA_CQ_TYPES = {"image", "video"}
 
 # 媒体下载仅允许腾讯 CDN 域名（后缀匹配），防止伪造 CQ 码让 Bot 探测内网
 # NTQQ 实现的媒体在 multimedia.nt.qq.com.cn（qq.com.cn 后缀），老版本图片在 gchat.qpic.cn
 ALLOWED_MEDIA_HOST_SUFFIXES = ("qpic.cn", "qq.com", "qq.com.cn")
+
+# 重定向需要逐跳复检白名单，因此手动跟随而不是交给 httpx
+MAX_MEDIA_REDIRECTS = 3
+# 流式下载的体积上限，防止异常响应写满磁盘
+MAX_MEDIA_BYTES = 100 * 1024 * 1024
 
 
 @dataclass
@@ -41,6 +47,8 @@ class ReplyMedia:
     url: str | None
     name: str
     is_image: bool
+    # MessageRecorder 会预先下载图片并把本地路径写进 CQ 码的 path 字段（同时删除 url）
+    local_path: str | None = None
     placeholder: str = ""
 
 
@@ -59,7 +67,7 @@ def is_allowed_media_url(url: str) -> bool:
 def parse_reply_segments(body: str, debug: bool = False) -> list[ReplyText | ReplyMedia]:
     """把 OneBot 字符串消息按序拆成可转发的文本和媒体段。
 
-    图片/文件/视频提取为 ReplyMedia；@人 和表情转为可读文本；其余 CQ 码丢弃。
+    图片/视频提取为 ReplyMedia；@人 和表情转为可读文本；其余 CQ 码丢弃。
     保序拆分与 CQ 反转义由 CQHelper.parse_segments 提供，这里只做 Gitea 语义归类。
     """
     segments: list[ReplyText | ReplyMedia] = []
@@ -77,6 +85,7 @@ def parse_reply_segments(body: str, debug: bool = False) -> list[ReplyText | Rep
                     url=seg.params.get("url"),
                     name=seg.params.get("name") or seg.params.get("file") or f"media_{media_count}",
                     is_image=cq_type == "image",
+                    local_path=seg.params.get("path"),
                 )
             )
         elif cq_type == "at":
@@ -186,8 +195,8 @@ class GiteaReply(Plugins):
         failed = 0
         try:
             for idx, media in enumerate(media_list):
-                local = temp_dir / f"{idx:02d}_{sanitize_filename(media.name) or 'media'}"
-                if not media.url or not await self._download_media(media.url, local):
+                local = await self._resolve_media_file(temp_dir, idx, media)
+                if local is None:
                     body = body.replace(media.placeholder, MEDIA_FAILED_TEXT)
                     failed += 1
                     continue
@@ -197,7 +206,9 @@ class GiteaReply(Plugins):
                         repo, comment_id, str(local), filename, mime
                     )
                 except GiteaApiError as e:
-                    Log.warning(f"GiteaReply 上传附件失败：{media.url}, error={e}")
+                    Log.warning(
+                        f"GiteaReply 上传附件失败：{media.local_path or media.url}, error={e}"
+                    )
                     body = body.replace(media.placeholder, MEDIA_FAILED_TEXT)
                     failed += 1
                     continue
@@ -213,6 +224,22 @@ class GiteaReply(Plugins):
         finally:
             shutil.rmtree(temp_dir, ignore_errors=True)
 
+    async def _resolve_media_file(self, temp_dir: Path, idx: int, media: ReplyMedia) -> Path | None:
+        """定位媒体文件：优先 CQ 码中的本地 path（MessageRecorder 预下载），否则从 url 下载。"""
+        if media.local_path:
+            path = Path(media.local_path)
+            if path.is_file():
+                return path
+            # 码被 MessageRecorder 改写后 url 已删除，本地又读不到（如 OneBot 与 Bot 不同机）时无法回退
+            Log.warning(f"GiteaReply 本地媒体文件不存在：{media.local_path}")
+            return None
+        if not media.url:
+            return None
+        local = temp_dir / f"{idx:02d}_{sanitize_filename(media.name) or 'media'}"
+        if await self._download_media(media.url, local):
+            return local
+        return None
+
     def _upload_file_info(self, local: Path, idx: int, media: ReplyMedia) -> tuple[str, str]:
         if media.is_image:
             return _sniff_image_info(local, idx)
@@ -222,18 +249,43 @@ class GiteaReply(Plugins):
 
     @staticmethod
     async def _download_media(url: str, dest: Path) -> bool:
-        """流式下载 QQ 媒体到本地；仅允许腾讯 CDN 域名，失败返回 False。"""
-        if not is_allowed_media_url(url):
-            Log.warning(f"GiteaReply 拒绝非白名单媒体 URL：{url}")
-            return False
+        """流式下载 QQ 媒体到本地，失败返回 False。
+
+        重定向手动跟随并逐跳复检白名单（follow_redirects=True 会绕过首跳校验），
+        写入时限制最大体积，失败时清理半截文件。
+        """
+        ok = False
         try:
-            async with AsyncClient(timeout=Timeout(30), follow_redirects=True) as client:
-                async with client.stream("GET", url) as resp:
-                    resp.raise_for_status()
-                    with open(dest, "wb") as f:
-                        async for chunk in resp.aiter_bytes():
-                            f.write(chunk)
-            return True
+            async with AsyncClient(timeout=Timeout(30), follow_redirects=False) as client:
+                target = url
+                redirects = 0
+                while True:
+                    if not is_allowed_media_url(target):
+                        Log.warning(f"GiteaReply 拒绝非白名单媒体 URL：{target}")
+                        return False
+                    async with client.stream("GET", target) as resp:
+                        if resp.is_redirect:
+                            redirects += 1
+                            location = resp.headers.get("location", "")
+                            if redirects > MAX_MEDIA_REDIRECTS or not location:
+                                Log.warning(f"GiteaReply 媒体重定向异常，中止下载：{url}")
+                                return False
+                            target = urljoin(target, location)
+                            continue
+                        resp.raise_for_status()
+                        received = 0
+                        with open(dest, "wb") as f:
+                            async for chunk in resp.aiter_bytes():
+                                received += len(chunk)
+                                if received > MAX_MEDIA_BYTES:
+                                    Log.warning(f"GiteaReply 媒体超过大小上限，中止下载：{url}")
+                                    return False
+                                f.write(chunk)
+                    ok = True
+                    return True
         except Exception as e:
             Log.warning(f"GiteaReply 下载 QQ 媒体失败：url={url}, error={e}")
             return False
+        finally:
+            if not ok:
+                dest.unlink(missing_ok=True)

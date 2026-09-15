@@ -447,27 +447,84 @@ async def test_reply_with_image_uploads_attachment_and_patches_body():
 
 
 @pytest.mark.asyncio
-async def test_reply_file_attachment_links_without_image_syntax():
+async def test_reply_file_cq_code_is_ignored():
+    """QQ 群文件走独立上传事件，[CQ:file] 不是消息段；仅剩不支持内容时不产生空评论。"""
     plugin, gitea, service = _make_media_plugin()
 
-    async def fake_download(url, dest):
-        dest.write_bytes(b"zip data")
-        return True
-
-    with (
-        patch("src.Api.api.asyncService", service),
-        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
-    ):
+    with patch("src.Api.api.asyncService", service):
         await cast(Any, GiteaReply.main).__wrapped__(
             plugin, _make_event("#7 [CQ:file,name=报告.pdf,url=https://qq/f]"), debug=False
         )
 
+    gitea.get_issue.assert_not_awaited()
+    gitea.create_issue_comment.assert_not_awaited()
+    gitea.update_issue_comment.assert_not_awaited()
+    service.send_group_msg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reply_file_code_dropped_when_text_present():
+    """正文和 [CQ:file] 混合时，码被丢弃、文本正常发送且不触发附件流程。"""
+    plugin, gitea, service = _make_media_plugin()
+
+    with patch("src.Api.api.asyncService", service):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin, _make_event("#7 看日志[CQ:file,name=报告.pdf,url=https://qq/f]"), debug=False
+        )
+
+    assert gitea.create_issue_comment.await_args.args[2] == "**来自 QQ 群反馈**（张三）：\n\n看日志"
+    gitea.create_comment_attachment.assert_not_awaited()
+    gitea.update_issue_comment.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_reply_prefers_local_path_from_message_recorder(tmp_path):
+    """MessageRecorder 已把图片下到本地并改写 CQ 码（path 字段、删 url），应直接使用本地文件。"""
+    plugin, gitea, service = _make_media_plugin()
+    local_img = tmp_path / "recorder.png"
+    Image.new("RGB", (1, 1)).save(local_img, "PNG")
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin,
+            _make_event(f"#7 [CQ:image,file=a.image,path={local_img.as_posix()}]"),
+            debug=False,
+        )
+
+    fake_download.assert_not_awaited()  # 有本地文件就不该再下载
     args = gitea.create_comment_attachment.await_args.args
-    assert args[3] == "报告.pdf"
-    assert args[4] == "application/pdf"
+    assert args[2] == str(local_img)
+    assert args[3] == "image_0.png"
     patched_body = gitea.update_issue_comment.await_args.args[2]
-    assert f"[报告.pdf]({ATTACHMENT_PAYLOAD['browser_download_url']})" in patched_body
-    assert "![image" not in patched_body  # 非图片附件不用图片语法
+    assert ATTACHMENT_PAYLOAD["browser_download_url"] in patched_body
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "上传失败" not in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_local_path_missing_fails_without_fallback(tmp_path):
+    """path 指向的本地文件不存在（如 OneBot 与 Bot 不同机）且 url 已被删时，无法回退只能失败。"""
+    plugin, gitea, service = _make_media_plugin()
+    missing = tmp_path / "missing.png"
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(
+            plugin,
+            _make_event(f"#7 [CQ:image,file=a.image,path={missing.as_posix()}]"),
+            debug=False,
+        )
+
+    fake_download.assert_not_awaited()
+    patched_body = gitea.update_issue_comment.await_args.args[2]
+    assert MEDIA_FAILED_TEXT in patched_body
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "1 个图片/附件上传失败" in receipt
 
 
 @pytest.mark.asyncio
@@ -657,6 +714,11 @@ class _FakeStreamResponse:
     def __init__(self, chunks, status_code=200):
         self._chunks = chunks
         self.status_code = status_code
+        self.headers: dict[str, str] = {}
+
+    @property
+    def is_redirect(self) -> bool:
+        return False
 
     def raise_for_status(self):
         if self.status_code >= 400:
@@ -767,3 +829,116 @@ async def test_wrapper_ignores_message_without_call_word():
 
     gitea.get_issue.assert_not_awaited()
     service.send_group_msg.assert_not_awaited()
+
+
+class _RedirectResponse:
+    def __init__(self, location: str, status_code: int = 302):
+        self.status_code = status_code
+        self.headers = {"location": location}
+
+    @property
+    def is_redirect(self) -> bool:
+        return self.status_code in (301, 302, 303, 307, 308) and "location" in self.headers
+
+    def raise_for_status(self):
+        if self.status_code >= 400:
+            raise RuntimeError("http error")
+
+
+class _QueueStreamClient:
+    """按请求顺序返回响应的 fake client，记录每次请求的 URL 供断言。"""
+
+    def __init__(self, responses):
+        self.responses = list(responses)
+        self.urls: list[str] = []
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    def stream(self, method, url):
+        self.urls.append(url)
+        response = self.responses.pop(0)
+
+        class _CM:
+            async def __aenter__(self_inner):
+                return response
+
+            async def __aexit__(self_inner, *args):
+                return False
+
+        return _CM()
+
+
+def _import_reply_module():
+    import importlib
+
+    return importlib.import_module("plugins.GiteaReply.GiteaReply")
+
+
+@pytest.mark.asyncio
+async def test_download_media_follows_whitelisted_redirect(tmp_path, monkeypatch):
+    module = _import_reply_module()
+    client = _QueueStreamClient(
+        [
+            _RedirectResponse("https://multimedia.nt.qq.com.cn/real"),
+            _FakeStreamResponse([b"data"]),
+        ]
+    )
+    monkeypatch.setattr(module, "AsyncClient", lambda *a, **k: client)
+    dest = tmp_path / "img.bin"
+
+    ok = await GiteaReply._download_media("https://gchat.qpic.cn/a", dest)
+
+    assert ok
+    assert dest.read_bytes() == b"data"
+    assert client.urls == ["https://gchat.qpic.cn/a", "https://multimedia.nt.qq.com.cn/real"]
+
+
+@pytest.mark.asyncio
+async def test_download_media_rejects_redirect_off_whitelist(tmp_path, monkeypatch):
+    module = _import_reply_module()
+    client = _QueueStreamClient(
+        [_RedirectResponse("https://evil.example.com/x"), _FakeStreamResponse([b"secret"])]
+    )
+    monkeypatch.setattr(module, "AsyncClient", lambda *a, **k: client)
+    dest = tmp_path / "img.bin"
+
+    ok = await GiteaReply._download_media("https://gchat.qpic.cn/a", dest)
+
+    assert not ok
+    # 重定向目标在校验阶段就被拒绝，不会真正请求
+    assert client.urls == ["https://gchat.qpic.cn/a"]
+    assert not dest.exists()
+
+
+@pytest.mark.asyncio
+async def test_download_media_aborts_on_oversize(tmp_path, monkeypatch):
+    module = _import_reply_module()
+    client = _QueueStreamClient([_FakeStreamResponse([b"x" * 30])])
+    monkeypatch.setattr(module, "AsyncClient", lambda *a, **k: client)
+    monkeypatch.setattr(module, "MAX_MEDIA_BYTES", 10)
+    dest = tmp_path / "img.bin"
+
+    ok = await GiteaReply._download_media("https://gchat.qpic.cn/a", dest)
+
+    assert not ok
+    assert not dest.exists()  # 半截文件被清理
+
+
+@pytest.mark.asyncio
+async def test_download_media_gives_up_after_max_redirects(tmp_path, monkeypatch):
+    module = _import_reply_module()
+    client = _QueueStreamClient(
+        [_RedirectResponse(f"https://gchat.qpic.cn/hop{i}") for i in range(6)]
+    )
+    monkeypatch.setattr(module, "AsyncClient", lambda *a, **k: client)
+    dest = tmp_path / "img.bin"
+
+    ok = await GiteaReply._download_media("https://gchat.qpic.cn/a", dest)
+
+    assert not ok
+    # 首跳 + 3 次重定向复检，第 5 次请求前超限中止
+    assert len(client.urls) == 4
