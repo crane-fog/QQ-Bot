@@ -51,7 +51,8 @@ class ReplyMedia:
     url: str | None
     name: str
     is_image: bool
-    # MessageRecorder 会预先下载图片并把本地路径写进 CQ 码的 path 字段（同时删除 url）
+    # MessageRecorder 会预先下载图片并把本地路径写进 CQ 码的 path 字段（同时删除 url）。
+    # 注意 path 由 OneBot 实现落盘产生，指向其所在机器/容器的磁盘，Bot 在另一文件系统时不可读
     local_path: str | None = None
     placeholder: str = ""
 
@@ -267,8 +268,11 @@ class GiteaReply(Plugins):
             path = Path(media.local_path)
             if path.is_file():
                 return path
-            # 码被 MessageRecorder 改写后 url 已删除，本地又读不到（如 OneBot 与 Bot 不同机）时无法回退
-            Log.warning(f"GiteaReply 本地媒体文件不存在：{media.local_path}")
+            # path 由 OneBot 实现落盘产生，指向其所在机器/容器的磁盘：
+            # 与 Bot 不同机或未共享挂载卷时读不到，且改写后的码已删除 url，此场景无法回退下载
+            Log.warning(
+                f"GiteaReply 本地媒体文件不可读（可能 OneBot 与 Bot 不在同一文件系统）：{media.local_path}"
+            )
             return None
         if not media.url:
             return None
