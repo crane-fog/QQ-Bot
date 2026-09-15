@@ -14,13 +14,11 @@ from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.gitea.GiteaApi import GiteaApi, GiteaApiError
 from src.PrintLog import Log
+from utils.CQHelper import CQHelper, CQTextSegment
 from utils.TextUtils import sanitize_filename
 
 # #<issue编号> + 内容，编号和内容间的空格可有可无；纯编号（无内容）不触发
 REPLY_PATTERN = re.compile(r"^#(?P<number>\d+)\s*(?P<body>\S.*)$", re.DOTALL)
-
-# CQ 码参数值按 CQ 转义规则编码（逗号转义为 &#44;），所以按裸逗号切分参数是安全的
-CQ_CODE_PATTERN = re.compile(r"\[CQ:(?P<type>\w+)(?:,(?P<params>[^\]]*))?\]")
 
 # 占位符需要足够怪异，避免和群友输入的普通文本撞车
 MEDIA_FAILED_TEXT = "*[图片/附件上传失败]*"
@@ -46,22 +44,6 @@ class ReplyMedia:
     placeholder: str = ""
 
 
-def cq_unescape(text: str) -> str:
-    """按 CQ 码转义规则还原文本；&amp; 必须最后处理，避免二次反转义。"""
-    return (
-        text.replace("&#44;", ",").replace("&#91;", "[").replace("&#93;", "]").replace("&amp;", "&")
-    )
-
-
-def parse_cq_params(raw: str) -> dict[str, str]:
-    params: dict[str, str] = {}
-    for item in raw.split(","):
-        key, _, value = item.partition("=")
-        if key:
-            params[key] = cq_unescape(value)
-    return params
-
-
 def is_allowed_media_url(url: str) -> bool:
     """校验媒体 URL 的 scheme 与 host 是否在腾讯 CDN 白名单内。"""
     try:
@@ -75,37 +57,34 @@ def is_allowed_media_url(url: str) -> bool:
 
 
 def parse_reply_segments(body: str, debug: bool = False) -> list[ReplyText | ReplyMedia]:
-    """把 OneBot 字符串消息按序拆成文本和媒体段。
+    """把 OneBot 字符串消息按序拆成可转发的文本和媒体段。
 
     图片/文件/视频提取为 ReplyMedia；@人 和表情转为可读文本；其余 CQ 码丢弃。
+    保序拆分与 CQ 反转义由 CQHelper.parse_segments 提供，这里只做 Gitea 语义归类。
     """
     segments: list[ReplyText | ReplyMedia] = []
     media_count = 0
-    pos = 0
-    for m in CQ_CODE_PATTERN.finditer(body):
-        if m.start() > pos:
-            segments.append(ReplyText(cq_unescape(body[pos : m.start()])))
-        pos = m.end()
+    for seg in CQHelper.parse_segments(body):
+        if isinstance(seg, CQTextSegment):
+            segments.append(ReplyText(seg.text))
+            continue
 
-        cq_type = m["type"]
-        params = parse_cq_params(m["params"] or "")
+        cq_type = seg.cq_type
         if cq_type in MEDIA_CQ_TYPES:
             media_count += 1
             segments.append(
                 ReplyMedia(
-                    url=params.get("url"),
-                    name=params.get("name") or params.get("file") or f"media_{media_count}",
+                    url=seg.params.get("url"),
+                    name=seg.params.get("name") or seg.params.get("file") or f"media_{media_count}",
                     is_image=cq_type == "image",
                 )
             )
         elif cq_type == "at":
-            segments.append(ReplyText(f"@{params.get('qq', '?')}"))
+            segments.append(ReplyText(f"@{seg.params.get('qq', '?')}"))
         elif cq_type in ("face", "mface"):
             segments.append(ReplyText("[表情]"))
         else:
             Log.debug(f"GiteaReply 忽略 CQ 码：{cq_type}", debug)
-    if pos < len(body):
-        segments.append(ReplyText(cq_unescape(body[pos:])))
     return segments
 
 
