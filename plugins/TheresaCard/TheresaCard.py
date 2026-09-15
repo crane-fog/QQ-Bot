@@ -117,8 +117,8 @@ class TheresaCard(Plugins):
             stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
         if strict_flag and strict_candidates:
             if check_class_flag:
-                class_ = self.config.get("classes", {}).get(str(event.group_id))
-                db_name_map = await self.check_in_list_batch(semester, stu_ids, class_=class_)
+                classes = self.config.get("classes", {}).get(str(event.group_id))
+                db_name_map = await self.check_in_list_batch(semester, stu_ids, classes=classes)
             else:
                 db_name_map = await self.check_in_list_batch(semester, stu_ids)
             for user_id, stu_id, _, card in strict_candidates:
@@ -126,7 +126,14 @@ class TheresaCard(Plugins):
                     not_allowed_ids.append(user_id)
                     not_allowed_cards.append(card + "\n不在选课名单中")
         if unenter_flag and strict_candidates:
-            not_entered = await self.check_in_list_batch(semester, stu_ids, reverse=True)
+            classes = (
+                self.config.get("classes", {}).get(str(event.group_id))
+                if check_class_flag
+                else None
+            )
+            not_entered = await self.check_in_list_batch(
+                semester, stu_ids, reverse=True, classes=classes
+            )
 
         # 处理检查结果
         if not_allowed_ids:
@@ -202,7 +209,11 @@ class TheresaCard(Plugins):
         return True, stu_id, name
 
     async def check_in_list_batch(
-        self, semester: int, stu_ids: set[int], reverse: bool = False, class_: int | None = None
+        self,
+        semester: int,
+        stu_ids: set[int],
+        reverse: bool = False,
+        classes: list[int] | None = None,
     ) -> dict[int, str]:
         async with self.session_factory() as session:
             if reverse:
@@ -215,8 +226,8 @@ class TheresaCard(Plugins):
                     StuList.semester == semester,
                     StuList.stu_id.in_(stu_ids),
                 )
-            if class_ is not None:
-                stmt = stmt.where(StuList.class_ == class_)
+            if classes is not None:
+                stmt = stmt.where(StuList.class_.in_(classes))
             result = await session.execute(stmt)
 
             return {stu_id: name for stu_id, name in result.all()}
