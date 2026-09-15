@@ -1,7 +1,7 @@
 # GiteaReply
 
 ## 简介
-把 QQ 群消息回复到 Gitea issue：在白名单群发送 `#<issue编号> <内容>`，Bot 将其作为评论发表到 Gitea 对应 issue，并在群内回执评论链接。与 Gitea Webhook 通知（Gitea → QQ）组成双向通道，Webhook 部分见 [gitea-webhook.md](../gitea-webhook.md)。
+把 QQ 群消息回复到 Gitea issue：在白名单群发送 `#<issue编号> <内容>`，Bot 将其作为评论发表到 Gitea 对应 issue，并在群内回执评论链接。
 
 ## 基本信息
 - 插件名：`GiteaReply`
@@ -35,6 +35,7 @@ api_token = "<token，启用回帖需 write:issue 权限>"
 ```toml
 [GiteaReply]
 enable = false
+# 回复的目标仓库（owner/repo，单仓库）
 reply_repo = "owner/repo"
 ```
 
