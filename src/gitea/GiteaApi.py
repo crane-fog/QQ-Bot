@@ -59,7 +59,12 @@ class GiteaApi:
     ) -> Attachment:
         """上传文件作为评论附件，返回含 uuid 的附件信息；文件对象直传 multipart，避免大文件整体进内存。"""
         url = f"{self.api_url}/api/v1/repos/{full_name}/issues/comments/{comment_id}/assets"
-        with open(file_path, "rb") as f:
+        try:
+            f = open(file_path, "rb")
+        except OSError as e:
+            # 打开失败（文件被清理/权限变化）与 HTTP 错误同型处理，避免 OSError 冒泡出调用方的 GiteaApiError 捕获范围
+            raise GiteaApiError(f"打开附件文件失败：{file_path}, error={e}") from e
+        with f:
             payload = await self._request_json(
                 "POST", url, files={"attachment": (filename, f, mime)}
             )

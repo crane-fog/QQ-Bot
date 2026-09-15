@@ -1014,3 +1014,80 @@ async def test_reply_falls_back_to_event_message_when_db_has_no_record(tmp_path)
     gitea.create_comment_attachment.assert_awaited_once()
     receipt = service.send_group_msg.await_args.kwargs["message"]
     assert "上传失败" not in receipt
+
+
+@pytest.mark.asyncio
+async def test_gitea_api_create_comment_attachment_wraps_os_error(tmp_path):
+    """本地文件打开失败（被清理/权限变化）应包装为 GiteaApiError，与 HTTP 错误同型。"""
+    api = GiteaApi("https://gitea.example.com", "token")
+    with pytest.raises(GiteaApiError, match="打开附件文件失败"):
+        await api.create_comment_attachment(
+            "owner/repo", 10, str(tmp_path / "nope.png"), "image_0.png", "image/png"
+        )
+
+
+@pytest.mark.asyncio
+async def test_download_media_rejects_empty_body(tmp_path, monkeypatch):
+    """无 body 的响应（如 304）不应产出 0 字节附件文件。"""
+    module = _import_reply_module()
+    client = _QueueStreamClient([_FakeStreamResponse([])])
+    monkeypatch.setattr(module, "AsyncClient", lambda *a, **k: client)
+    dest = tmp_path / "img.bin"
+
+    ok = await GiteaReply._download_media("https://gchat.qpic.cn/a", dest)
+
+    assert not ok
+    assert not dest.exists()
+
+
+@pytest.mark.asyncio
+async def test_reply_falls_back_when_db_query_fails(tmp_path):
+    """查询消息记录抛异常时记警告并回退按 url 下载，不让 DB 故障阻断回帖。"""
+    plugin, gitea, service = _make_media_plugin()
+
+    def broken_factory():
+        raise RuntimeError("db down")
+
+    plugin.session_factory = broken_factory
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    event = _make_event("#7 [CQ:image,file=a.image,url=https://gchat.qpic.cn/a]")
+    event.sql_id = 42
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
+
+    gitea.create_comment_attachment.assert_awaited_once()
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "上传失败" not in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_falls_back_when_recorded_message_malformed(tmp_path):
+    """入库记录与触发格式不匹配时回退按消息原文解析媒体。"""
+    plugin, gitea, service = _make_media_plugin()
+    plugin.session_factory = lambda: _FakeSession("这不是一条回帖消息")
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    event = _make_event("#7 [CQ:image,file=a.image,url=https://gchat.qpic.cn/a]")
+    event.sql_id = 42
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
+
+    args = gitea.create_comment_attachment.await_args.args
+    assert args[3] == "image_0.png"
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "上传失败" not in receipt

@@ -155,6 +155,10 @@ class GiteaReply(Plugins):
 
         MessageRecorder 只把改写结果写入数据库，event.message 仍是原始码，
         因此要拿到本地文件路径必须查库；查不到或数据库不可用时返回 None。
+        已知边界：入库前 MessageRecorder 会把整条消息的 "&amp;" 预解码为 "&"，
+        双重转义文本在数据库路线与消息原文路线下的解析结果可能不同；
+        parse_segments 先按原始串切分再反转义、反转义结果不会被重新扫描，
+        该差异不会造成 CQ 码注入，属 MessageRecorder 既有行为。
         """
         sql_id = getattr(event, "sql_id", None)
         if not sql_id or self.session_factory is None:
@@ -322,6 +326,10 @@ class GiteaReply(Plugins):
                                     Log.warning(f"GiteaReply 媒体超过大小上限，中止下载：{url}")
                                     return False
                                 f.write(chunk)
+                        if received == 0:
+                            # 304 等无 body 的 3xx 不触发 raise_for_status，避免产出 0 字节附件
+                            Log.warning(f"GiteaReply 媒体响应为空，中止下载：{url}")
+                            return False
                     ok = True
                     return True
         except Exception as e:
