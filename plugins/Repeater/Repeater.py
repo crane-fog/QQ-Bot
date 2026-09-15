@@ -9,7 +9,7 @@ from src.PrintLog import Log
 class Repeater(Plugins):
     """
     插件名：repeater \n
-    插件类型：私聊插件 \n
+    插件类型：群聊插件 \n
     插件功能：当群聊有一定数量条复读消息时，bot会撤回最后一个复读消息并禁言该用户十分钟 \n
     """
 

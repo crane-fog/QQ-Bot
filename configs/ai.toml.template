@@ -14,7 +14,7 @@ extract.url = "https://api.tavily.com/extract"
 
 [profile.example]
 provider = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"} # 可选参数
 reasoning_effort = "xhigh" # 可选参数
 extra_body.thinking.type = "disabled" # 可选参数，用于 deepseek
@@ -24,35 +24,35 @@ insert_persona = false # 可选参数，默认 false
 
 [profile.default]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 
 [profile.group_sum]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"}
 insert_persona = true
 
 [profile.Theresa_simple]
 provider = "deepseek"
-model = "deepseek-v4-pro"
+model = "deepseek-flash"
 insert_persona = true
 
 [profile.chat]
 provider = "deepseek"
-model = "deepseek-v4-flash-vision-exp"
-tools = ["send_private_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "get_group_info", "send_group_poke", "shell"]
+model = "deepseek-flash"
+tools = ["send_private_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "delete_msg", "get_group_info", "set_msg_emoji_like", "send_group_poke", "get_msg", "shell", "read_img_file"]
 max_turns = 10
 insert_persona = true
 
 [profile.chat_face]
 provider = "deepseek"
-model = "deepseek-v4-flash"
+model = "deepseek-flash"
 response_format = {"type" = "json_object"}
 insert_persona = true
 
 [profile.image_simple]
-provider = "mnapi"
-model = "gemini-3-flash-preview"
+provider = "deepseek"
+model = "deepseek-flash"
 
 [tool.send_private_msg]
 name = "send_private_msg"
@@ -118,6 +118,16 @@ parameters.properties.user_id.description = "The user ID of the person to kick."
 parameters.required = ["group_id", "user_id"]
 parameters.additionalProperties = false
 
+[tool.delete_msg]
+name = "delete_msg"
+strict = false
+description = "Delete / Recall a group message by its ID. The message will be deleted for all users in the group. You should prudently use this tool."
+parameters.type = "object"
+parameters.properties.message_id.type = "integer"
+parameters.properties.message_id.description = "The ID of the message to delete."
+parameters.required = ["message_id"]
+parameters.additionalProperties = false
+
 [tool.get_group_info]
 name = "get_group_info"
 strict = false
@@ -126,6 +136,18 @@ parameters.type = "object"
 parameters.properties.group_id.type = "integer"
 parameters.properties.group_id.description = "The group ID to retrieve information for."
 parameters.required = ["group_id"]
+parameters.additionalProperties = false
+
+[tool.set_msg_emoji_like]
+name = "set_msg_emoji_like"
+strict = false
+description = "Like an emoji on a message."
+parameters.type = "object"
+parameters.properties.message_id.type = "integer"
+parameters.properties.message_id.description = "The ID of the message to like."
+parameters.properties.emoji_id.type = "string"
+parameters.properties.emoji_id.description = "The ID of the emoji to like."
+parameters.required = ["message_id", "emoji_id"]
 parameters.additionalProperties = false
 
 [tool.send_group_poke]
@@ -140,6 +162,16 @@ parameters.properties.user_id.description = "The user ID of the person to poke."
 parameters.required = ["group_id", "user_id"]
 parameters.additionalProperties = false
 
+[tool.get_msg]
+name = "get_msg"
+strict = false
+description = "Get the content of a message by its ID."
+parameters.type = "object"
+parameters.properties.message_id.type = "integer"
+parameters.properties.message_id.description = "The ID of the message to retrieve."
+parameters.required = ["message_id"]
+parameters.additionalProperties = false
+
 [tool.shell]
 name = "shell"
 strict = false
@@ -148,6 +180,18 @@ parameters.type = "object"
 parameters.properties.cmd.type = "string"
 parameters.properties.cmd.description = "The shell command to execute."
 parameters.required = ["cmd"]
+parameters.additionalProperties = false
+
+[tool.read_img_file]
+name = "read_img_file"
+strict = false
+description = "Read an image file with its full path or URL. You must provide one of the two parameters."
+parameters.type = "object"
+parameters.properties.path.type = "string"
+parameters.properties.path.description = "The path of the image file to read."
+parameters.properties.url.type = "string"
+parameters.properties.url.description = "The URL of the image to read."
+parameters.required = []
 parameters.additionalProperties = false
 
 [tool.travily_search]

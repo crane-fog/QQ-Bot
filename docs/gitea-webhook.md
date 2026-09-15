@@ -73,7 +73,7 @@ enable_webhook_handler = true
 webhook_handler_address = "0.0.0.0:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
-api_token = "<your-readonly-token>"
+api_token = "<your-token>"
 ```
 
 | 配置项 | 说明 | 必填 |
@@ -98,6 +98,14 @@ api_url = "http://gitea.example.com/QA"
 - 下载 issue 正文和评论中内嵌的图片
 
 > 如果 Token 权限不足或过期，图片将无法显示（会被替换为 `[图片下载失败]` 占位文本），纯文本通知仍可正常工作。
+>
+> 若启用 [GiteaReply 插件](plugins/GiteaReply.md)，Token 还需要 `write:issue` 权限（用于发表评论）。
+
+---
+
+## 从 QQ 群回复 Issue
+
+见 [GiteaReply 插件文档](plugins/GiteaReply.md)。
 
 ---
 
@@ -167,7 +175,8 @@ https://gitea.example.com/crane-fog/QQ-Bot/compare/abc123...def456
 ```
 [Gitea] issues on issue #42 opened in crane-fog/QQ-Bot
 登录页面样式错乱
-
+alice
+-----
 描述：
 在 Chrome 124 下，登录按钮偏移到页面左侧……
 附件: screenshot.png (245.6 KB) https://gitea.example.com/.../screenshot.png
@@ -175,20 +184,22 @@ https://gitea.example.com/crane-fog/QQ-Bot/compare/abc123...def456
 https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 ```
 
-正文超过 500 字符时自动截断，末尾追加 `...`。
+正文超过 500 字符时自动截断，末尾追加 `...`。正文内容前会插入作者块：首行作者名，第二行按名字的显示宽度画分隔线（CJK 字符按双宽计，最长 30 列）。
 
 ### Issue Comment 事件
 
 发送**两条**消息：
 
-1. **混合消息**（文本 + 图片）：当前评论的正文、内嵌图片、附件链接。
+1. **混合消息**（文本 + 图片）：当前评论的作者块、正文、内嵌图片、附件链接。
 2. **合并转发消息**：完整的时间线视图——
    - 第 1 条：Issue 标题和作者
-   - 第 2 条：Issue 正文
-   - 第 3 ~ N+2 条：每条历史评论（含图片），按时间正序排列
+   - 第 2 条：Issue 正文（节点昵称与内容首行均为 issue 作者）
+   - 第 3 ~ N+2 条：每条历史评论（含图片），节点昵称与内容首行均为该评论作者，按时间正序排列
    - 最后一条：Issue URL
 
 图片通过 Gitea API 鉴权下载到本地临时目录，以 `file://` 路径注入合并转发。发送完成后自动清理临时目录。单张图片下载失败不阻塞整体发送，对应位置显示 `[图片下载失败]`。
+
+正文中的图片支持两种写法：markdown 的 `![alt](url)`，以及 Gitea 编辑器粘贴生成的 `<img width="..." alt="..." src="attachments/...">` 标签（`src` 不带前导斜杠时按站点根解析，兼容子路径部署）。
 
 ---
 
@@ -197,15 +208,17 @@ https://gitea.example.com/crane-fog/QQ-Bot/issues/42
 ### 单元测试
 
 ```bash
-uv run pytest test_gitea_webhook.py -v
-uv run pytest test_gitea_notification.py -v
-uv run pytest test_gitea_images.py -v
+uv run pytest tests/test_gitea_webhook.py -v
+uv run pytest tests/test_gitea_notification.py -v
+uv run pytest tests/test_gitea_images.py -v
+uv run pytest tests/test_gitea_reply.py -v
 ```
 
-三个测试文件覆盖：
+测试文件覆盖：
 - `test_gitea_webhook.py`：端到端事件解析与路由（push / issues / issue_comment / issue_assign / issue_label）
 - `test_gitea_notification.py`：通知发送逻辑（纯文本 / 合并转发 / 异常处理）
 - `test_gitea_images.py`：图片下载与合并转发组装
+- `test_gitea_reply.py`：GiteaApi 客户端与 GiteaReply 回帖插件（触发解析 / 回执 / 错误提示）
 
 ### 手动模拟
 
@@ -254,7 +267,7 @@ curl -X POST http://localhost:8000/api/tjhlp \
 ## 注意事项
 
 - **端口冲突：** `webhook_handler_address` 的端口不要与 LLBot 的 HTTP 服务端口或 Bot 的 `server_address` / `client_address` 端口冲突。
-- **Token 安全：** `api_token` 存储在 `bot.toml` 明文，目前只建议使用只读权限的 Token，并确保 `bot.toml` 不会被提交到公开仓库。
+- **Token 安全：** `api_token` 存储在 `bot.toml` 明文，未启用 GiteaReply 时建议使用只读权限的 Token；启用后 Token 需要 issue 写权限，务必确保 `bot.toml` 不会被提交到公开仓库，并限定插件生效群（`groups.toml`）以缩小可回帖人群。
 - **图片存储：** 图片下载到系统临时目录（`tempfile.mkdtemp`），发送后自动清理。如果 Bot 进程异常退出，残留的 `gitea_img_*` 目录需手动清理。
 - **PR 评论支持：** `issue_comment` 事件同时覆盖 Issue 和 Pull Request 的评论（由 `is_pull` 字段区分）。
 

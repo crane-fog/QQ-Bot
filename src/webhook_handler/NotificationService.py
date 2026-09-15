@@ -9,6 +9,7 @@ from urllib.parse import urlsplit
 from httpx import AsyncClient, Timeout
 
 from src.Api import api
+from src.gitea.GiteaApi import GiteaApi
 from src.gitea.GiteaEventFormatter import (
     ContentNode,
     FileSegment,
@@ -17,9 +18,11 @@ from src.gitea.GiteaEventFormatter import (
     ImageSegment,
     TextSegment,
     _extract_images,
+    _issue_author,
     _parse_comment_segments,
+    prepend_author_block,
 )
-from src.gitea.Models import Comment, GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
+from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
 from src.PrintLog import Log
 from src.webhook_handler.EventConfig import EventConfig
 from utils.CQType import Forward
@@ -30,13 +33,14 @@ class NotificationService:
     response_group: int
     gitea_api_url: str
     gitea_api_token: str
+    gitea: GiteaApi
     formatter: GiteaEventFormatter
 
     def __init__(self, response_group: int, gitea_api_url: str, gitea_api_token: str):
+        self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
-        self.gitea_api_url = gitea_api_url.strip().rstrip("/")
-        if not self.gitea_api_url:
-            raise ValueError("[Gitea] api_url 不能为空")
+        # GiteaApi 已校验非空并去除尾部 /
+        self.gitea_api_url = self.gitea.api_url
         self.gitea_api_token = gitea_api_token
         self.formatter = GiteaEventFormatter(self.gitea_api_url)
 
@@ -53,16 +57,6 @@ class NotificationService:
                 await self._send_plain_text(data, event_type)
         except Exception as e:
             Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
-
-    async def _fetch_issue_comments(self, full_name: str, issue_number: int) -> list[Comment]:
-        url = f"{self.gitea_api_url}/api/v1/repos/{full_name}/issues/{issue_number}/comments"
-        async with AsyncClient(timeout=Timeout(10)) as client:
-            resp = await client.get(
-                url,
-                headers={"Authorization": f"token {self.gitea_api_token}"},
-            )
-            resp.raise_for_status()
-            return [Comment.model_validate(c) for c in resp.json()]
 
     async def _download_images(
         self, images: list[ImageSegment], temp_dir: Path
@@ -187,18 +181,29 @@ class NotificationService:
                 {
                     "type": "text",
                     "data": {
-                        "text": f"[Gitea] {event_name} on {target} #{data.issue.number} {data.action} in {data.repository.full_name}\n{data.issue.title}"
+                        "text": (
+                            f"[Gitea] {event_name} on {target} #{data.issue.number}"
+                            f" {data.action} in {data.repository.full_name}\n"
+                            f"{data.issue.title}\n"
+                        )
                     },
                 },
             ]
+            comment_author = data.comment.original_author or data.comment.user.login
             msg.extend(
-                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+                self._node_segments(
+                    ContentNode(
+                        sender_name="",
+                        segments=prepend_author_block(comment_author, segments),
+                    ),
+                    path_map,
+                )
             )
             msg.append({"type": "text", "data": {"text": f"\nurl: {data.comment.html_url}"}})
             await api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
 
             # 2. 拉取历史评论并发送合并转发
-            comments = await self._fetch_issue_comments(
+            comments = await self.gitea.list_issue_comments(
                 data.repository.full_name, data.issue.number
             )
             plan = self.formatter.issue_comment_forward(data, comments)
@@ -240,13 +245,20 @@ class NotificationService:
                     "type": "text",
                     "data": {
                         "text": (
-                            f"{self.formatter.issues_summary(data, event_type)}\n{data.issue.title}"
+                            f"{self.formatter.issues_summary(data, event_type)}\n"
+                            f"{data.issue.title}\n"
                         )
                     },
                 }
             ]
             message.extend(
-                self._node_segments(ContentNode(sender_name="", segments=segments), path_map)
+                self._node_segments(
+                    ContentNode(
+                        sender_name="",
+                        segments=prepend_author_block(_issue_author(data), segments),
+                    ),
+                    path_map,
+                )
             )
             message.append({"type": "text", "data": {"text": f"\nurl: {data.issue.html_url}"}})
             await api.asyncService.send_group_msg(

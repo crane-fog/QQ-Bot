@@ -59,13 +59,19 @@ class AIService:
             "get_group_member_info": api.groupService.get_group_member_info,
             "set_group_ban": api.groupService.set_group_ban,
             "set_group_kick": api.groupService.set_group_kick,
+            "delete_msg": api.groupService.delete_msg,
             "get_group_info": api.groupService.get_group_info,
+            "set_msg_emoji_like": api.groupService.set_msg_emoji_like,
             "send_group_poke": api.groupService.send_group_poke,
+            "get_msg": api.messageService.get_msg,
             "shell": self.restricted_shell,
         }
         self.async_funcs = {
             "travily_search": self.travily_search,
             "travily_extract": self.travily_extract,
+        }
+        self.not_text_funcs = {
+            "read_img_file": self.read_img_file,
         }
 
     async def generate(
@@ -114,15 +120,18 @@ class AIService:
                     if (
                         tool_call.function.name in self.funcs
                         or tool_call.function.name in self.async_funcs
+                        or tool_call.function.name in self.not_text_funcs
                     ):
                         Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
                         args = json.loads(tool_call.function.arguments)
                         if tool_call.function.name == "shell":
                             args["caller_is_owner"] = caller_is_owner
                         if tool_call.function.name in self.funcs:
-                            result = self.funcs[tool_call.function.name](**args)
+                            result = str(self.funcs[tool_call.function.name](**args))
+                        elif tool_call.function.name in self.async_funcs:
+                            result = str(await self.async_funcs[tool_call.function.name](**args))
                         else:
-                            result = await self.async_funcs[tool_call.function.name](**args)
+                            result = self.not_text_funcs[tool_call.function.name](**args)
                         Log.info(f"轮{turn + 1}工具调用结果：{result}")
                     else:
                         Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_call.function.name} 不存在")
@@ -131,7 +140,7 @@ class AIService:
                         {
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": f"{result}",
+                            "content": result,
                         }
                     )
             Log.warning(
@@ -197,6 +206,16 @@ class AIService:
         )
         return output
 
+    def read_img_file(self, path: str | None = None, url: str | None = None) -> list[dict]:
+        if path is not None:
+            if not os.path.isfile(path):
+                return [{"type": "text", "text": f"File not found: {path}"}]
+            return [{"type": "image_url", "image_url": {"url": self.encode_image(path, 1024)}}]
+        elif url is not None:
+            return [{"type": "image_url", "image_url": {"url": url}}]
+        else:
+            return [{"type": "text", "text": "Either path or url must be provided."}]
+
     async def travily_search(
         self,
         query: str,
@@ -250,22 +269,25 @@ class AIService:
         return value
 
     @staticmethod
-    def encode_image(image_path: str, max_kb: int | None = None) -> str:
+    def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int = 4096) -> str:
         extension = os.path.splitext(image_path)[1].lower().replace(".", "")
         if extension in ["png", "webp", "gif"]:
             mime_type = f"image/{extension}"
         else:
             mime_type = "image/jpeg"
-        with open(image_path, "rb") as f:
-            image_data = f.read()
 
-        if max_kb is None or max_kb <= 0 or len(image_data) <= max_kb * 1024:
+        image_size = os.path.getsize(image_path)
+        target_bytes = int(max_kb * 1024) if (max_kb and max_kb > 0) else None
+
+        img = Image.open(image_path)
+        width, height = img.size
+        need_resize = width > max_dimension or height > max_dimension
+
+        if not need_resize and (target_bytes is None or image_size <= target_bytes):
+            with open(image_path, "rb") as f:
+                image_data = f.read()
             return f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
 
-        # 超过大小限制，压缩
-        Log.debug(f"图片大小 {len(image_data)} bytes 触发压缩")
-        target_bytes = int(max_kb * 1024)
-        img = Image.open(io.BytesIO(image_data))
         if img.mode != "RGB":
             if img.mode in ("RGBA", "LA", "P"):
                 img = img.convert("RGBA")
@@ -275,6 +297,21 @@ class AIService:
             else:
                 img = img.convert("RGB")
 
+        # 超过尺寸限制
+        if need_resize:
+            # 缩放逻辑
+            scale = min(max_dimension / width, max_dimension / height)
+            new_width = max(1, int(width * scale))
+            new_height = max(1, int(height * scale))
+            img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+            # 检查是否这时超过大小限制
+            buf = io.BytesIO()
+            img.save(buf, format="JPEG", quality=100, optimize=True)
+            if target_bytes is None or len(buf.getvalue()) <= target_bytes:
+                return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+
+        # 超过大小限制
         quality = 90
         scale = 1.0
         while True:

@@ -17,4 +17,4 @@ enable_webhook_handler = false
 webhook_handler_address = "127.0.0.1:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
-api_token = "<your-readonly-token>"
+api_token = "<your-token>"
