@@ -35,7 +35,6 @@ api_token = "<token，启用回帖需 write:issue 权限>"
 ```toml
 [GiteaReply]
 enable = false
-# 回帖目标仓库（owner/repo，单仓库）
 reply_repo = "owner/repo"
 ```
 

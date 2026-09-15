@@ -103,9 +103,9 @@ api_url = "http://gitea.example.com/QA"
 
 ---
 
-## 从 QQ 群回复 Issue（GiteaReply 插件）
+## 从 QQ 群回复 Issue
 
-GiteaReply 插件提供反向通道：群成员在白名单群里发送 `#<issue编号> <内容>`（空格可省略），Bot 会将其作为评论发表到 Gitea 对应 issue 下，并发送含评论链接的回执。消息中的图片和文件会作为评论附件上传。触发格式、媒体处理细节与启用配置（`reply_repo` 在 `plugins.toml` 的 `[GiteaReply]` 节）见 [GiteaReply 插件文档](plugins/GiteaReply.md)。
+见 [GiteaReply 插件文档](plugins/GiteaReply.md)。
 
 ---
 
