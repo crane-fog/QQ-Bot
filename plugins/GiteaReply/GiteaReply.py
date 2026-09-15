@@ -8,11 +8,15 @@ from urllib.parse import urljoin, urlsplit
 
 from httpx import AsyncClient, Timeout
 from PIL import Image
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.gitea.GiteaApi import GiteaApi, GiteaApiError
+from src.Models import Message
 from src.PrintLog import Log
 from utils.CQHelper import CQHelper, CQTextSegment
 from utils.TextUtils import sanitize_filename
@@ -137,7 +141,30 @@ class GiteaReply(Plugins):
                             """
         # 框架在 __init__ 之后才注入 config，插件配置只能在 main 里读取
         self.gitea = GiteaApi(self.bot.gitea_api_url, self.bot.gitea_api_token)
+        # MessageRecorder 的记录表用于取预下载图片的本地路径；无数据库时回退从消息原文下载
+        self.session_factory = (
+            sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)
+            if self.bot.database is not None
+            else None
+        )
         self.init_status()
+
+    async def _load_recorded_message(self, event: GroupMessageEvent) -> str | None:
+        """按 sql_id 取 MessageRecorder 入库的改写消息（image 码已带本地 path、url 已删）。
+
+        MessageRecorder 只把改写结果写入数据库，event.message 仍是原始码，
+        因此要拿到本地文件路径必须查库；查不到或数据库不可用时返回 None。
+        """
+        sql_id = getattr(event, "sql_id", None)
+        if not sql_id or self.session_factory is None:
+            return None
+        try:
+            async with self.session_factory() as session:
+                result = await session.execute(select(Message.msg).where(Message.id == sql_id))
+                return result.scalar_one_or_none()
+        except Exception as e:
+            Log.warning(f"GiteaReply 查询消息记录失败，回退从消息原文解析媒体：{e}")
+            return None
 
     @plugin_main(call_word=["#"])
     async def main(self, event: GroupMessageEvent, debug: bool):
@@ -150,7 +177,17 @@ class GiteaReply(Plugins):
             Log.warning("GiteaReply 未配置 reply_repo（plugins.toml [GiteaReply]），忽略回帖请求")
             return
 
-        segments = parse_reply_segments(match["body"], debug)
+        # 优先用入库的改写消息解析媒体（带本地 path），取不到再退回消息原文
+        body = match["body"]
+        recorded = await self._load_recorded_message(event)
+        if recorded:
+            recorded_match = REPLY_PATTERN.match(recorded.strip())
+            if recorded_match:
+                body = recorded_match["body"]
+            else:
+                Log.warning("GiteaReply 消息记录格式异常，回退从消息原文解析媒体")
+
+        segments = parse_reply_segments(body, debug)
         media_list = [s for s in segments if isinstance(s, ReplyMedia)]
         text = "".join(s.text for s in segments if isinstance(s, ReplyText)).strip()
         # 只剩无法转发的内容（如纯表情刷屏）时不产生空评论

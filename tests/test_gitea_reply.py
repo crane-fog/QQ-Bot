@@ -303,6 +303,7 @@ def test_plugin_construction_builds_gitea_client_from_bot_config():
         cast(
             object,
             SimpleNamespace(
+                database=None,
                 gitea_api_url="https://gitea.example.com",
                 gitea_api_token="token",
             ),
@@ -942,3 +943,74 @@ async def test_download_media_gives_up_after_max_redirects(tmp_path, monkeypatch
     assert not ok
     # 首跳 + 3 次重定向复检，第 5 次请求前超限中止
     assert len(client.urls) == 4
+
+
+class _FakeResult:
+    def __init__(self, value):
+        self._value = value
+
+    def scalar_one_or_none(self):
+        return self._value
+
+
+class _FakeSession:
+    def __init__(self, value):
+        self._value = value
+
+    async def __aenter__(self):
+        return self
+
+    async def __aexit__(self, *args):
+        return False
+
+    async def execute(self, query):
+        return _FakeResult(self._value)
+
+
+@pytest.mark.asyncio
+async def test_reply_uses_recorded_message_from_db(tmp_path):
+    """MessageRecorder 的改写副本只入库：应按 sql_id 查库取本地 path，而不是从 event.message 下载。"""
+    plugin, gitea, service = _make_media_plugin()
+    local_img = tmp_path / "recorder.png"
+    Image.new("RGB", (1, 1)).save(local_img, "PNG")
+    recorded = f"#7 [CQ:image,file=a.image,path={local_img.as_posix()}]"
+    plugin.session_factory = lambda: _FakeSession(recorded)
+
+    event = _make_event("#7 [CQ:image,file=a.image,url=https://gchat.qpic.cn/a]")
+    event.sql_id = 42  # event.message 是原始码，path 只在数据库副本里
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
+
+    fake_download.assert_not_awaited()
+    args = gitea.create_comment_attachment.await_args.args
+    assert args[2] == str(local_img)
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "上传失败" not in receipt
+
+
+@pytest.mark.asyncio
+async def test_reply_falls_back_to_event_message_when_db_has_no_record(tmp_path):
+    """查无记录（MessageRecorder 未启用/写库失败）时回退按 url 下载。"""
+    plugin, gitea, service = _make_media_plugin()
+    plugin.session_factory = lambda: _FakeSession(None)
+
+    async def fake_download(url, dest):
+        _download_saves_png(dest)
+        return True
+
+    event = _make_event("#7 [CQ:image,file=a.image,url=https://gchat.qpic.cn/a]")
+    event.sql_id = 42
+
+    with (
+        patch("src.Api.api.asyncService", service),
+        patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
+    ):
+        await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
+
+    gitea.create_comment_attachment.assert_awaited_once()
+    receipt = service.send_group_msg.await_args.kwargs["message"]
+    assert "上传失败" not in receipt
