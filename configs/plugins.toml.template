@@ -26,6 +26,7 @@ strict = false
 [RecallPrevent]
 enable = false
 ban = true
+for_administer = false
 for_everyone = true
 ignored_ids = [123,456]
 ban_time = "00:00:00-00:05:00"

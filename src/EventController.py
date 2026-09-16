@@ -104,7 +104,6 @@ class Event:
 
     async def run_plugins_by_types(self, event, allowed_types: set[str]) -> None:
         plugins_to_run = [plugin for plugin in self.plugins_list if plugin.type in allowed_types]
-        plugins_to_run.sort(key=lambda plugin: 0 if plugin.type == "Record" else 1)
 
         for plugin in plugins_to_run:
             try:
@@ -120,7 +119,8 @@ class Event:
         await self.run_plugins_by_types(event, {"Private"})
 
     async def run_group_plugins(self, event) -> None:
-        await self.run_plugins_by_types(event, {"Group", "Record"})
+        await self.run_plugins_by_types(event, {"Record"})
+        await self.run_plugins_by_types(event, {"Group"})
 
     async def run_group_recall(self, event) -> None:
         await self.run_plugins_by_types(event, {"GroupRecall"})
@@ -132,7 +132,8 @@ class Event:
         await self.run_plugins_by_types(event, {"Poke"})
 
     async def run_send_event(self, event) -> None:
-        await self.run_plugins_by_types(event, {"Send", "Record"})
+        await self.run_plugins_by_types(event, {"Record"})
+        await self.run_plugins_by_types(event, {"Send"})
 
     async def run_group_emoji_like(self, event) -> None:
         await self.run_plugins_by_types(event, {"GroupEmojiLike"})

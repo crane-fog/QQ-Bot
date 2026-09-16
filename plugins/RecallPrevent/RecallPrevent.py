@@ -32,8 +32,17 @@ class RecallPrevent(Plugins):
         )
         self.init_status()
 
-    @plugin_main(check_call_word=False)
+    @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupRecallEvent, debug: bool):
+        user_info = api.groupService.get_group_member_info(
+            group_id=event.group_id, user_id=event.user_id
+        ).get("data", {})
+        print(user_info)
+        if not self.config.get("for_administer", False):
+            print(user_info.get("role"))
+            if user_info.get("role") == "admin" or user_info.get("role") == "owner":
+                return
+
         # 获取消息数据
         async with self.session_factory() as session:
             stmt = (
@@ -45,10 +54,6 @@ class RecallPrevent(Plugins):
             result = await session.scalar(stmt)
             if not result:
                 return
-
-        user_info = api.groupService.get_group_member_info(
-            group_id=event.group_id, user_id=event.user_id
-        ).get("data", {})
 
         card_cuts = user_info["card"].split("-")
         recalled_message = result
