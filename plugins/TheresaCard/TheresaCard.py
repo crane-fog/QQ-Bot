@@ -150,8 +150,10 @@ class TheresaCard(Plugins):
 
             if kick_flag:
                 suffix = "\n\n已将不符合要求的成员踢出群聊"
-            else:
+            if strict_flag:
                 suffix = "\n\n以上成员不在选课名单或群名片不符合要求，请参照群公告修改"
+            else:
+                suffix = "\n\n以上成员群名片不符合要求，请参照群公告修改"
 
             if len(entry_lines) > 20:
                 for entry_chunk in chunked(entry_lines, 20):
