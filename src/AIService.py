@@ -59,13 +59,19 @@ class AIService:
             "get_group_member_info": api.groupService.get_group_member_info,
             "set_group_ban": api.groupService.set_group_ban,
             "set_group_kick": api.groupService.set_group_kick,
+            "delete_msg": api.groupService.delete_msg,
             "get_group_info": api.groupService.get_group_info,
+            "set_msg_emoji_like": api.groupService.set_msg_emoji_like,
             "send_group_poke": api.groupService.send_group_poke,
+            "get_msg": api.messageService.get_msg,
             "shell": self.restricted_shell,
         }
         self.async_funcs = {
             "travily_search": self.travily_search,
             "travily_extract": self.travily_extract,
+        }
+        self.not_text_funcs = {
+            "read_img_file": self.read_img_file,
         }
 
     async def generate(
@@ -114,15 +120,18 @@ class AIService:
                     if (
                         tool_call.function.name in self.funcs
                         or tool_call.function.name in self.async_funcs
+                        or tool_call.function.name in self.not_text_funcs
                     ):
                         Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
                         args = json.loads(tool_call.function.arguments)
                         if tool_call.function.name == "shell":
                             args["caller_is_owner"] = caller_is_owner
                         if tool_call.function.name in self.funcs:
-                            result = self.funcs[tool_call.function.name](**args)
+                            result = str(self.funcs[tool_call.function.name](**args))
+                        elif tool_call.function.name in self.async_funcs:
+                            result = str(await self.async_funcs[tool_call.function.name](**args))
                         else:
-                            result = await self.async_funcs[tool_call.function.name](**args)
+                            result = self.not_text_funcs[tool_call.function.name](**args)
                         Log.info(f"轮{turn + 1}工具调用结果：{result}")
                     else:
                         Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_call.function.name} 不存在")
@@ -131,7 +140,7 @@ class AIService:
                         {
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": f"{result}",
+                            "content": result,
                         }
                     )
             Log.warning(
@@ -197,6 +206,20 @@ class AIService:
         )
         return output
 
+    def read_img_file(self, path: str | None = None, url: str | None = None) -> list[dict]:
+        if url is not None:
+            return [{"type": "image_url", "image_url": {"url": url}}]
+        if path is None:
+            return [{"type": "text", "text": "Either path or url must be provided."}]
+        parts = os.path.normpath(path).split(os.sep)
+        if parts[-4:-1] != ["llbot", "data", "temp"]:
+            return [{"type": "text", "text": f"File path not allowed: {path}"}]
+        if not os.path.isfile(path):
+            return [{"type": "text", "text": f"File not found: {path}"}]
+        if not path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+            return [{"type": "text", "text": f"Unsupported file type: {path}"}]
+        return [{"type": "image_url", "image_url": {"url": self.encode_image(path, 1024)}}]
+
     async def travily_search(
         self,
         query: str,
@@ -250,56 +273,84 @@ class AIService:
         return value
 
     @staticmethod
-    def encode_image(image_path: str, max_kb: int | None = None) -> str:
-        extension = os.path.splitext(image_path)[1].lower().replace(".", "")
-        if extension in ["png", "webp", "gif"]:
-            mime_type = f"image/{extension}"
-        else:
-            mime_type = "image/jpeg"
-        with open(image_path, "rb") as f:
-            image_data = f.read()
-
-        if max_kb is None or max_kb <= 0 or len(image_data) <= max_kb * 1024:
-            return f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
-
-        # 超过大小限制，压缩
-        Log.debug(f"图片大小 {len(image_data)} bytes 触发压缩")
-        target_bytes = int(max_kb * 1024)
-        img = Image.open(io.BytesIO(image_data))
-        if img.mode != "RGB":
-            if img.mode in ("RGBA", "LA", "P"):
-                img = img.convert("RGBA")
-                bg = Image.new("RGB", img.size, (255, 255, 255))
-                bg.paste(img, mask=img.split()[3])
-                img = bg
+    def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int = 4096) -> str:
+        try:
+            need_reformat = False
+            extension = os.path.splitext(image_path)[1].lower().replace(".", "")
+            if extension == "jpg":
+                extension = "jpeg"
+            if extension in ["png", "webp", "gif", "jpeg"]:
+                mime_type = f"image/{extension}"
             else:
-                img = img.convert("RGB")
+                need_reformat = True
+            image_size = os.path.getsize(image_path)
+            target_bytes = int(max_kb * 1024) if (max_kb and max_kb > 0) else None
+            with Image.open(image_path) as img:
+                width, height = img.size
+                need_resize = width > max_dimension or height > max_dimension
 
-        quality = 90
-        scale = 1.0
-        while True:
-            buffer = io.BytesIO()
-            if scale < 1.0:
-                new_width = max(1, int(img.width * scale))
-                new_height = max(1, int(img.height * scale))
-                curr_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-            else:
-                curr_img = img
+                if (
+                    not need_resize
+                    and (target_bytes is None or image_size <= target_bytes)
+                    and not need_reformat
+                ):
+                    with open(image_path, "rb") as f:
+                        image_data = f.read()
+                    return f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
 
-            curr_img.save(buffer, format="JPEG", quality=quality, optimize=True)
-            compressed_data = buffer.getvalue()
-            if len(compressed_data) <= target_bytes:
-                image_data = compressed_data
-                break
+                if img.mode != "RGB":
+                    if img.mode in ("RGBA", "LA", "P", "PA"):
+                        img = img.convert("RGBA")
+                        bg = Image.new("RGB", img.size, (255, 255, 255))
+                        bg.paste(img, mask=img.split()[3])
+                        img = bg
+                    else:
+                        img = img.convert("RGB")
 
-            if quality > 30:
-                quality -= 10
-            else:
-                scale *= 0.8
+                # 超过尺寸限制
+                if need_resize:
+                    # 缩放逻辑
+                    scale = min(max_dimension / width, max_dimension / height)
+                    new_width = max(1, int(width * scale))
+                    new_height = max(1, int(height * scale))
+                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+
+                if need_resize or need_reformat:
+                    # 检查是否这时超过大小限制
+                    buf = io.BytesIO()
+                    img.save(buf, format="JPEG", quality=90, optimize=True)
+                    if target_bytes is None or len(buf.getvalue()) <= target_bytes:
+                        return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+
+                # 超过大小限制
                 quality = 80
+                scale = 1.0
+                while True:
+                    buffer = io.BytesIO()
+                    if scale < 1.0:
+                        new_width = max(1, int(img.width * scale))
+                        new_height = max(1, int(img.height * scale))
+                        curr_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
+                    else:
+                        curr_img = img
 
-            if scale < 0.05:
-                image_data = compressed_data
-                break
+                    curr_img.save(buffer, format="JPEG", quality=quality, optimize=True)
+                    compressed_data = buffer.getvalue()
+                    if len(compressed_data) <= target_bytes:
+                        image_data = compressed_data
+                        break
 
-        return f"data:image/jpeg;base64,{base64.b64encode(image_data).decode('utf-8')}"
+                    if quality > 30:
+                        quality -= 10
+                    else:
+                        scale *= 0.8
+                        quality = 80
+
+                    if scale < 0.05:
+                        image_data = compressed_data
+                        break
+
+                return f"data:image/jpeg;base64,{base64.b64encode(image_data).decode('utf-8')}"
+        except Exception:
+            # 兜底空白图
+            return "data:image/gif;base64,R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="

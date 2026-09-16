@@ -4,10 +4,13 @@
     <meta charset="UTF-8">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: "霞鹜文楷","Microsoft YaHei", sans-serif; background-color: #ffffff; width: 450px; } /* 固定宽度 */
+        body { font-family: "霞鹜文楷 GB","Microsoft YaHei", sans-serif; background-color: #ffffff; width: 450px; } /* 固定宽度 */
 
         .container {
-            padding: 20px;
+            padding-left: 20px;
+            padding-right: 20px;
+            padding-top: 10px;
+            padding-bottom: 10px;
             background: #ffffff;
             /* 想要圆角背景可以加这里 */
         }
@@ -70,20 +73,26 @@
         .badge.current { background-color: #f54a45; }  /* 红色 - 正在上 */
 
         /* 课程详情文字 */
-        .detail-text { font-size: 13px; color: #444; font-weight: bold; }
+        .detail-text { font-size: 13px; color: #333; font-weight: bold; }
 
         /* 次级文本（时间、地点、老师） */
-        .sub-text { font-size: 12px; color: #777; display: flex; align-items: center; gap: 3px; }
+        .sub-text { font-size: 12px; color: #666; display: flex; align-items: center; gap: 3px; }
 
-        /* 名言/个性签名样式 (无课时显示) */
-        .quote-text { font-size: 12px; color: #888; font-style: italic; }
+        /* 底部居中小字样式 */
+        .footer {
+            text-align: center;
+            font-size: 12px;
+            color: #666;
+            margin-top: 20px;
+            margin-bottom: 0px;
+            line-height: 1.5;
+        }
 
     </style>
 </head>
 <body>
     <div class="container" id="capture-area">
         <div class="header">
-            <h3>数据时间: {{ current_time }}</h3>
         </div>
 
         <div class="user-list">
@@ -111,6 +120,13 @@
                 </div>
             </div>
             {% endfor %}
+        </div>
+        <div class="footer">
+            <span style="font-size: 13px; color: #333;">使用 Theresa help Schedule 命令获取帮助</span>
+            <br/>
+            数据时间: {{ current_time }}
+            <br/>
+            Theresa Schedule by Heai
         </div>
     </div>
 </body>

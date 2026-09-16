@@ -34,6 +34,7 @@
 | [`EmojiLike`](plugins/EmojiLike.md) | `Group` | 自动给消息添加表情回应。 | 自动触发 | 是 |
 | [`ExamplePlugin`](plugins/ExamplePlugin.md) | `Group` | 插件模板示例，用于演示插件基本结构。 | 自动触发 | 是 |
 | [`GetStuId`](plugins/GetStuId.md) | `Group` | 获取指定群成员 QQ 号和学号映射并写入数据库。 | 命令触发：`GetStuId <群号>` | 是 |
+| [`GiteaReply`](plugins/GiteaReply.md) | `Group` | 把白名单群的消息回帖到 Gitea issue，支持图片/视频附件。 | 命令触发：`#<issue编号> <内容>` | 是 |
 | [`GroupApprove`](plugins/GroupApprove.md) | `GroupRequest` | 自动处理入群申请。 | 群请求事件触发 | 是 |
 | [`GroupSum`](plugins/GroupSum.md) | `Group` | 总结群聊消息，通过 LLM 生成摘要和话题分析。 | 命令触发：`Summary <消息条数>` | 是 |
 | [`I_like_you`](plugins/I_like_you.md) | `Group` | 根据固定台词发送本地语音。 | 命令触发：`我喜欢你`、`我不喜欢你` | 是 |

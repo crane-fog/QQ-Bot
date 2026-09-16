@@ -26,13 +26,10 @@ strict = false
 [RecallPrevent]
 enable = false
 ban = true
-for_everyone = true
 for_administer = false
+for_everyone = true
 ignored_ids = [123,456]
 ban_time = "00:00:00-00:05:00"
-host = "localhost"
-port = 6379
-db = 0
 
 [Repeater]
 enable = false
@@ -58,9 +55,9 @@ permission_ids = [123,456]
 "67890" = 252620
 
 [TheresaCard.classes]
-"11111" = 1
-"22222" = 2
-"33333" = 3
+"11111" = [1,2]
+"22222" = [3,4]
+"33333" = [5,6]
 
 [TheresaAI]
 enable = false
@@ -92,10 +89,7 @@ enable = false
 context_length = 200
 extra_context = 100
 context_length_for_face = 20
-
-[MoeGoe]
-enable = false
-url = "http://127.0.0.1:8080/tts"
+model_support_image = false
 
 [GetStuId]
 enable = false
@@ -158,3 +152,7 @@ max_length = 1000
 enable = false
 current_calendar = 121
 first_day = "2026-03-02"
+
+[GiteaReply]
+enable = false
+reply_repo = "owner/repo"
