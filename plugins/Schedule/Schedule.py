@@ -24,8 +24,8 @@ class Schedule(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                查看群友课表\n导入个人课表：1系统-个人课表-(下滑)查看教材-导出-将导出的 textbook.xls 文件发送到群聊中
-                                usage: Schedule
+                                查看群友课表\n导入个人课表：1系统-个人课表-(下滑)查看教材-导出-将导出的 textbook.xls 文件发送到群聊中\n查看排名：rank，默认今日 + 显示课时数，week = 本周，time = 显示时长
+                                usage: Schedule (rank (week) (time))
                             """
         self.TIME_MAP = [
             time(8, 0),
@@ -51,6 +51,14 @@ class Schedule(Plugins):
         calendar = self.config.get("current_calendar", 121)
         first_day = datetime.strptime(self.config.get("first_day"), "%Y-%m-%d").date()
 
+        # 排名
+        if "rank" in event.message:
+            is_week_rank = "week" in event.message
+            show_time = "time" in event.message
+            await self._handle_rank(event, calendar, first_day, is_week_rank, show_time)
+            return
+
+        # 导入课表
         if event.message.startswith("[CQ:file,file=textbook"):
             cq = CQHelper.load_cq(event.message)
             file_data = api.messageService.get_group_file_url(
@@ -95,6 +103,7 @@ class Schedule(Plugins):
                 )
             return
 
+        # 查看课表
         current_time = datetime.now()
         today = date.today()
         delta_days = (today - first_day).days
@@ -231,3 +240,134 @@ class Schedule(Plugins):
 
         api.groupService.send_group_img(group_id=event.group_id, image_path=output_image_path)
         return
+
+    async def _handle_rank(
+        self,
+        event: GroupMessageEvent,
+        calendar: int,
+        first_day: date,
+        is_week: bool,
+        show_time: bool,
+    ):
+        """处理课时数排名请求"""
+        today = date.today()
+        delta_days = (today - first_day).days
+        current_week = (delta_days // 7) + 1
+        weekday_num = today.isoweekday()
+
+        # 获取所有用户的排名数据
+        rank_data = []
+        async with self.session_factory() as session:
+            stmt = select(PersonalSchedule).where(
+                PersonalSchedule.group_id == event.group_id,
+                PersonalSchedule.calendar_id == calendar,
+            )
+            persons: list[PersonalSchedule] = (await session.execute(stmt)).scalars().all()
+
+            for person in persons:
+                total_periods = 0
+
+                if is_week:
+                    # 本周排名：统计周一到周日的所有课时
+                    for day in range(1, 8):  # 1-7 表示周一到周日
+                        periods = await self._get_day_periods(
+                            session, person, calendar, current_week, day
+                        )
+                        total_periods += periods
+                else:
+                    # 今日排名：只统计今天的课时
+                    total_periods = await self._get_day_periods(
+                        session, person, calendar, current_week, weekday_num
+                    )
+
+                if total_periods > 0:  # 只统计有课的用户
+                    user_info = api.groupService.get_group_member_info(
+                        group_id=person.group_id, user_id=person.user_id
+                    )
+                    rank_data.append(
+                        {
+                            "name": user_info["data"]["card_or_nickname"],
+                            "user_id": person.user_id,
+                            "periods": total_periods,
+                        }
+                    )
+
+        # 按课时数降序排序
+        rank_data.sort(key=lambda x: x["periods"], reverse=True)
+
+        # 构造模板渲染数据
+        current_time = datetime.now()
+        rank_type = "本周" if is_week else "今日"
+        render_data = {
+            "current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "is_rank_mode": True,
+            "rank_title": f"{rank_type}{'总时长' if show_time else '总课时数'}排名",
+            "show_time": show_time,
+            "users": [],
+        }
+
+        # 添加排名数据
+        for idx, data in enumerate(rank_data, 1):
+            if show_time:
+                hours = data["periods"] * self.COURSE_TIME / timedelta(hours=1)
+                value_text = f"{hours:.2f}小时"
+            else:
+                value_text = f"{data['periods']}节"
+
+            render_data["users"].append(
+                {
+                    "rank": idx,
+                    "name": data["name"],
+                    "id": data["user_id"],
+                    "value": value_text,
+                }
+            )
+
+        # 渲染模板并生成图片
+        template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.j2")
+        with open(template_path, encoding="utf-8") as f:
+            template = Template(f.read())
+        html_content = template.render(**render_data)
+
+        output_image_path = os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            f"temp/pic/rank_{event.group_id}_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.png",
+        )
+
+        async with async_playwright() as p:
+            browser = await p.chromium.launch(headless=True)
+            page = await browser.new_page(device_scale_factor=2)
+            await page.set_content(html_content)
+            await page.wait_for_load_state("networkidle")
+            element = await page.query_selector("#capture-area")
+            await element.screenshot(path=output_image_path)
+            await browser.close()
+
+        api.groupService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+
+    async def _get_day_periods(
+        self, session: AsyncSession, person: PersonalSchedule, calendar: int, week: int, day: int
+    ) -> int:
+        """获取指定日期的课时节次数"""
+        if person.is_new_code:
+            stmt = select(Courses).where(
+                Courses.calendar_id == calendar,
+                Courses.new_course_code.in_(person.new_course_codes),
+                Courses.time_info.contains([{"day_of_week": day, "weeks": [week]}]),
+            )
+        else:
+            stmt = select(Courses).where(
+                Courses.calendar_id == calendar,
+                Courses.course_code.in_(person.course_codes),
+                Courses.time_info.contains([{"day_of_week": day, "weeks": [week]}]),
+            )
+
+        courses: list[Courses] = (await session.execute(stmt)).scalars().all()
+        total_periods = 0
+
+        for course in courses:
+            for info in course.time_info:
+                if info["day_of_week"] == day and week in info["weeks"]:
+                    total_periods += len(info["periods"])
+
+        return total_periods
