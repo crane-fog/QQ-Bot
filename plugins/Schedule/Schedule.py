@@ -5,7 +5,7 @@ import requests
 import xlrd
 from jinja2 import Template
 from playwright.async_api import async_playwright
-from sqlalchemy import select
+from sqlalchemy import or_, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -264,21 +264,53 @@ class Schedule(Plugins):
             )
             persons: list[PersonalSchedule] = (await session.execute(stmt)).scalars().all()
 
+            # 收集所有需要查询的课程代码
+            all_new_codes = []
+            all_old_codes = []
+            for p in persons:
+                if p.is_new_code:
+                    all_new_codes.extend(p.new_course_codes)
+                else:
+                    all_old_codes.extend(p.course_codes)
+
+            # 单次查询获取所有课程数据（数据库自动去重）
+            stmt = select(Courses).where(
+                Courses.calendar_id == calendar,
+                or_(
+                    Courses.new_course_code.in_(all_new_codes),
+                    Courses.course_code.in_(all_old_codes),
+                ),
+            )
+            all_courses = (await session.execute(stmt)).scalars().all()
+
+            # 计算每个用户的课时数
             for person in persons:
                 total_periods = 0
 
+                # 筛选出属于该用户的课程
+                if person.is_new_code:
+                    person_courses = [
+                        c for c in all_courses if c.new_course_code in person.new_course_codes
+                    ]
+                else:
+                    person_courses = [
+                        c for c in all_courses if c.course_code in person.course_codes
+                    ]
+
+                # 统计课时
                 if is_week:
                     # 本周排名：统计周一到周日的所有课时
-                    for day in range(1, 8):  # 1-7 表示周一到周日
-                        periods = await self._get_day_periods(
-                            session, person, calendar, current_week, day
-                        )
-                        total_periods += periods
+                    for day in range(1, 8):
+                        for course in person_courses:
+                            for info in course.time_info:
+                                if info["day_of_week"] == day and current_week in info["weeks"]:
+                                    total_periods += len(info["periods"])
                 else:
                     # 今日排名：只统计今天的课时
-                    total_periods = await self._get_day_periods(
-                        session, person, calendar, current_week, weekday_num
-                    )
+                    for course in person_courses:
+                        for info in course.time_info:
+                            if info["day_of_week"] == weekday_num and current_week in info["weeks"]:
+                                total_periods += len(info["periods"])
 
                 if total_periods > 0:  # 只统计有课的用户
                     user_info = api.groupService.get_group_member_info(
@@ -344,30 +376,3 @@ class Schedule(Plugins):
             await browser.close()
 
         api.groupService.send_group_img(group_id=event.group_id, image_path=output_image_path)
-
-    async def _get_day_periods(
-        self, session: AsyncSession, person: PersonalSchedule, calendar: int, week: int, day: int
-    ) -> int:
-        """获取指定日期的课时节次数"""
-        if person.is_new_code:
-            stmt = select(Courses).where(
-                Courses.calendar_id == calendar,
-                Courses.new_course_code.in_(person.new_course_codes),
-                Courses.time_info.contains([{"day_of_week": day, "weeks": [week]}]),
-            )
-        else:
-            stmt = select(Courses).where(
-                Courses.calendar_id == calendar,
-                Courses.course_code.in_(person.course_codes),
-                Courses.time_info.contains([{"day_of_week": day, "weeks": [week]}]),
-            )
-
-        courses: list[Courses] = (await session.execute(stmt)).scalars().all()
-        total_periods = 0
-
-        for course in courses:
-            for info in course.time_info:
-                if info["day_of_week"] == day and week in info["weeks"]:
-                    total_periods += len(info["periods"])
-
-        return total_periods
