@@ -18,3 +18,4 @@
 - 为 Api 引入 TypedDict
 - 小特完整 agent 流程（记忆）
 - bot 名称加入触发词
+- 实现 reload / 文件监听热重载能力

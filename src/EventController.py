@@ -107,7 +107,6 @@ class Event:
 
         for plugin in plugins_to_run:
             try:
-                plugin.load_effected_groups()
                 await plugin.main(event, self.debug)
             except Exception as e:
                 traceback_info = traceback.format_exc()
