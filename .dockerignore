@@ -14,10 +14,6 @@ plugins/**/data/**
 .venv
 log.out*
 
-# local plugins
-plugins/TheresaLuck
-plugins/TheresaCardSP
-
 # docker extra
 .git
 .gitignore

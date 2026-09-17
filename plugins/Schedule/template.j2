@@ -19,11 +19,11 @@
         .header {
             text-align: center;
             margin-bottom: 20px;
-            padding-bottom: 15px;
+            padding-bottom: 5px;
             border-bottom: 2px solid #a3d2ca; /* 类似图中的青色下划线 */
             position: relative;
         }
-        .header h2 { color: #333; letter-spacing: 2px; }
+        .header h3 { color: #333; letter-spacing: 2px; }
         .header .time { font-size: 12px; color: #888; margin-top: 5px; }
 
         /* 用户列表容器 */
@@ -31,6 +31,9 @@
 
         /* 单个用户行 Flex 布局 */
         .user-row { display: flex; align-items: center; gap: 15px; }
+
+        /* 排名模式下的紧凑布局 */
+        .user-row.rank-mode { gap: 10px; }
 
         /* 头像 */
         .avatar {
@@ -40,6 +43,12 @@
             object-fit: cover;
             border: 1px solid #eee;
             flex-shrink: 0;
+        }
+
+        /* 排名模式下的小头像 */
+        .avatar.rank-mode {
+            width: 32px;
+            height: 32px;
         }
 
         /* 右侧信息区 */
@@ -78,6 +87,27 @@
         /* 次级文本（时间、地点、老师） */
         .sub-text { font-size: 12px; color: #666; display: flex; align-items: center; gap: 3px; }
 
+        /* 排名模式下的三列对齐 */
+        .rank-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        .rank-col {
+            display: inline-block;
+            min-width: 50px;
+            text-align: left;
+        }
+        .value-col {
+            display: inline-block;
+            min-width: {% if show_time %}75{% else %}40{% endif %}px;
+            text-align: right;
+        }
+        .name-col {
+            flex: 1;
+            text-align: left;
+        }
+
         /* 底部居中小字样式 */
         .footer {
             text-align: center;
@@ -92,16 +122,32 @@
 </head>
 <body>
     <div class="container" id="capture-area">
-        <div class="header">
-        </div>
+        <div class="header"><h3>
+            {% if is_rank_mode %}
+            {{ rank_title }}
+            {% else %}
+            当前上课
+            {% endif %}
+        </h3></div>
 
         <div class="user-list">
             {% for user in users %}
-            <div class="user-row">
+            <div class="user-row {% if is_rank_mode %}rank-mode{% endif %}">
                 <!-- 直接调用 QQ 头像 API -->
-                <img class="avatar" src="http://q1.qlogo.cn/g?b=qq&nk={{ user.id }}&s=100" />
+                <img class="avatar {% if is_rank_mode %}rank-mode{% endif %}" src="http://q1.qlogo.cn/g?b=qq&nk={{ user.id }}&s=100" />
 
                 <div class="info-area">
+                    {% if is_rank_mode %}
+                    <!-- 排名模式：三列对齐显示排名、分数、名字 -->
+                    <div class="status-row">
+                        <span class="user-name rank-info">
+                            <span class="rank-col">第{{ user.rank }}名</span>
+                            <span class="value-col">{{ user.value }}</span>
+                            <span class="name-col">{{ user.name }}</span>
+                        </span>
+                    </div>
+                    {% else %}
+                    <!-- 课表模式 -->
                     <div class="user-name">{{ user.name }}</div>
 
                     <!-- 第一行：状态徽章 + 课程名称 -->
@@ -116,6 +162,7 @@
                         <span class="sub-text">{{ user.teacher }}</span>
                         <span class="sub-text">{{ user.time_info }}</span>
                     </div>
+                    {% endif %}
 
                 </div>
             </div>
