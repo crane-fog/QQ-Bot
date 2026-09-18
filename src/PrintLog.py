@@ -5,7 +5,7 @@ from logging.handlers import RotatingFileHandler
 from colorama import Fore, Style, init
 
 # 初始化colorama以支持控制台彩色输出
-init(autoreset=True)
+init(strip=False, autoreset=True)
 
 logging.getLogger("sqlalchemy").setLevel(logging.CRITICAL)
 logging.getLogger("sqlalchemy.engine").setLevel(logging.CRITICAL)
