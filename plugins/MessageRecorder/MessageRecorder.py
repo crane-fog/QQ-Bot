@@ -1,5 +1,3 @@
-import re
-
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
@@ -9,8 +7,6 @@ from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.event_handler.SendEventHandler import SendEvent
 from src.Models import Message
 from utils.CQHelper import CQHelper
-
-PATTERN = re.compile(r"\[CQ:reply,id=(-?\d+)\]")
 
 
 class MessageRecorder(Plugins):
@@ -28,12 +24,12 @@ class MessageRecorder(Plugins):
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
 
-    def resolve_msg(self, message: str) -> str:
+    async def resolve_msg(self, message: str) -> str:
         cqs = CQHelper.loads_cq(message)
         for cq in cqs:
             if cq.cq_type == "image":
                 msg = str(cq)
-                cq.path = api.messageService.get_image(cq.file).get("data", {}).get("file", None)
+                cq.path = await api.asyncMessageService.get_image(cq.file)
                 del cq.url
                 if cq.path is not None:
                     message = message.replace(msg, str(cq))
@@ -47,7 +43,7 @@ class MessageRecorder(Plugins):
             return
 
         async with self.session_factory() as session:
-            resolved_message = self.resolve_msg(event.message.replace("&amp;", "&"))
+            resolved_message = await self.resolve_msg(event.message.replace("&amp;", "&"))
             new_msg = Message(
                 user_id=event.user_id,
                 group_id=event.group_id,

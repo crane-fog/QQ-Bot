@@ -200,7 +200,7 @@ class NotificationService:
                 )
             )
             msg.append({"type": "text", "data": {"text": f"\nurl: {data.comment.html_url}"}})
-            await api.asyncService.send_group_msg(group_id=self.response_group, message=msg)
+            await api.asyncGroupService.send_group_msg(group_id=self.response_group, message=msg)
 
             # 2. 拉取历史评论并发送合并转发
             comments = await self.gitea.list_issue_comments(
@@ -220,7 +220,7 @@ class NotificationService:
                 plan_path_map = {}
 
             forward: Forward = self._build_forward_from_plan(plan, plan_path_map)
-            await api.asyncService.send_group_forward_msg(
+            await api.asyncGroupService.send_group_forward_msg(
                 group_id=self.response_group, forward_message=forward.message
             )
         finally:
@@ -261,14 +261,14 @@ class NotificationService:
                 )
             )
             message.append({"type": "text", "data": {"text": f"\nurl: {data.issue.html_url}"}})
-            await api.asyncService.send_group_msg(
+            await api.asyncGroupService.send_group_msg(
                 group_id=self.response_group,
                 message=message,
             )
 
             plan = self.formatter.issues_forward_plan(data, event_type)
             forward: Forward = self._build_forward_from_plan(plan, path_map)
-            await api.asyncService.send_group_forward_msg(
+            await api.asyncGroupService.send_group_forward_msg(
                 group_id=self.response_group,
                 forward_message=forward.message,
             )
@@ -281,7 +281,7 @@ class NotificationService:
             Log.warning(f"Empty Gitea webhook message for {event_type}")
             return
 
-        await api.asyncService.send_group_msg(
+        await api.asyncGroupService.send_group_msg(
             group_id=self.response_group,
             message=message,
         )

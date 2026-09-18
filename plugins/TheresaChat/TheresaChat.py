@@ -96,7 +96,7 @@ class TheresaChat(Plugins):
                 "PRTS Runtime Error 0x5343: Debug Assertion Failed at File: /src/arknights/battle/scene/scene_main.cpp, Line: 2432",
             ]
             msg = random.choice(msg_list)
-            api.groupService.send_group_msg(group_id=group_id, message=msg)
+            await api.asyncGroupService.send_group_msg(group_id=group_id, message=msg)
             Log.debug(
                 f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
                 debug,
@@ -122,7 +122,7 @@ class TheresaChat(Plugins):
                 msg.cq_type = "image"
                 msg.subType = "1"
                 msg.file = f"file://{image_name}"
-                api.groupService.send_group_msg(group_id=group_id, message=str(msg))
+                await api.asyncGroupService.send_group_msg(group_id=group_id, message=str(msg))
         else:
             persona = self.persona_template.render(
                 owner_id=self.bot.owner_id,
@@ -155,7 +155,7 @@ class TheresaChat(Plugins):
             if "[NO REPLY]" not in response:
                 # 更新冷却时间
                 self.group_cooldown[group_id] = time.time()
-                api.groupService.send_group_msg(group_id=group_id, message=response)
+                await api.asyncGroupService.send_group_msg(group_id=group_id, message=response)
 
     async def resolve_img(self, message: str) -> list[dict]:
         cqs = CQHelper.loads_cq(message)

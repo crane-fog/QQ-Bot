@@ -210,7 +210,7 @@ class GiteaReply(Plugins):
             hint = (
                 f"issue #{number} 不存在，请确认编号" if e.status_code == 404 else f"回复失败：{e}"
             )
-            await api.asyncService.send_group_msg(
+            await api.asyncGroupService.send_group_msg(
                 group_id=event.group_id, message=f"[Gitea] {hint}"
             )
             return
@@ -227,7 +227,7 @@ class GiteaReply(Plugins):
             receipt += f"\n注意：有 {failed_count} 个图片/附件上传失败"
         elif media_list and not patched:
             receipt += "\n注意：评论正文更新失败，图片请到 Gitea 评论附件区查看"
-        await api.asyncService.send_group_msg(group_id=event.group_id, message=receipt)
+        await api.asyncGroupService.send_group_msg(group_id=event.group_id, message=receipt)
 
     async def _attach_media(
         self, repo: str, comment_id: int, media_list: list[ReplyMedia], body: str

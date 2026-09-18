@@ -120,7 +120,7 @@ class Schedule(Plugins):
         render_data = {"current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"), "users": []}
 
         # 一次性获取所有群成员信息并构建字典
-        group_members_data = await api.asyncService.get_group_member_list(
+        group_members_data = await api.asyncGroupService.get_group_member_list(
             group_id=event.group_id, no_cache=False
         )
         member_dict = {
@@ -251,7 +251,9 @@ class Schedule(Plugins):
             f"temp/pic/schedule_{event.group_id}_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.png",
         )
         await self._render_html_to_image(html_content, output_image_path)
-        await api.asyncService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+        await api.asyncGroupService.send_group_img(
+            group_id=event.group_id, image_path=output_image_path
+        )
         return
 
     async def _handle_rank(
@@ -272,7 +274,7 @@ class Schedule(Plugins):
         rank_data = []
 
         # 一次性获取所有群成员信息并构建字典
-        group_members_data = await api.asyncService.get_group_member_list(
+        group_members_data = await api.asyncGroupService.get_group_member_list(
             group_id=event.group_id, no_cache=False
         )
         member_dict = {
@@ -392,7 +394,9 @@ class Schedule(Plugins):
             await element.screenshot(path=output_image_path)
             await browser.close()
 
-        await api.asyncService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+        await api.asyncGroupService.send_group_img(
+            group_id=event.group_id, image_path=output_image_path
+        )
 
     async def _get_browser(self):
         if self.browser is None or not self.browser.is_connected():

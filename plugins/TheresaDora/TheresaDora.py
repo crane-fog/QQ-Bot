@@ -260,7 +260,7 @@ class TheresaDora(Plugins):
 
         cmd = " ".join(message.split()[1:])
         if not cmd:
-            api.groupService.send_group_msg(group_id=group_id, message="请输入内容")
+            await api.asyncGroupService.send_group_msg(group_id=group_id, message="请输入内容")
             return
         cmd += "！"
 
@@ -268,5 +268,5 @@ class TheresaDora(Plugins):
 
         generate_img(cmd, path)
 
-        api.groupService.send_group_img(group_id=group_id, image_path=path)
+        await api.asyncGroupService.send_group_img(group_id=group_id, image_path=path)
         return

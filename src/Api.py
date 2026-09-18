@@ -9,6 +9,7 @@ from utils.CQType import Forward
 
 class Api:
     def __init__(self):
+        # 由 Bot.py 在初始化后通过 set_server_address 设置
         self.bot_api_address: str = ""
 
         # 传递Api类的实例引用
@@ -16,7 +17,13 @@ class Api:
         self.privateService: Api.PrivateService = self.PrivateService(self)
         self.groupService: Api.GroupService = self.GroupService(self)
         self.messageService: Api.MessageService = self.MessageService(self)
-        self.asyncService: Api.AsyncService = self.AsyncService(self)
+
+        self.asyncPrivateService: Api.AsyncPrivateService = self.AsyncPrivateService(self)
+        self.asyncGroupService: Api.AsyncGroupService = self.AsyncGroupService(self)
+        self.asyncMessageService: Api.AsyncMessageService = self.AsyncMessageService(self)
+
+        # async 相关
+        self.client = AsyncClient(timeout=Timeout(180))
 
     def set_server_address(self, server_address: str):
         self.bot_api_address = f"http://{server_address}/"
@@ -189,85 +196,6 @@ class Api:
             response = requests.post(self.api.bot_api_address + "group_poke", json=params)
             return response.json()
 
-    class AsyncService:
-        def __init__(self, api_instance):
-            self.api: Api = api_instance
-            self.timeout = Timeout(180)
-            self._client: AsyncClient | None = None
-
-        @property
-        def client(self) -> AsyncClient:
-            if self._client is None or self._client.is_closed:
-                self._client = AsyncClient(timeout=self.timeout)
-            return self._client
-
-        async def aclose(self) -> None:
-            if self._client is not None and not self._client.is_closed:
-                await self._client.aclose()
-
-        async def get_group_member_list(self, group_id: int, no_cache: bool = True) -> dict:
-            params = {"group_id": group_id, "no_cache": no_cache}
-            response = await self.client.post(
-                self.api.bot_api_address + "get_group_member_list", json=params
-            )
-            return response.json()
-
-        async def send_group_file(
-            self, group_id: int, file_path: str, name: str, folder_id: str = None
-        ) -> dict:
-            if folder_id:
-                params = json.dumps(
-                    {
-                        "group_id": group_id,
-                        "file": f"file://{file_path}",
-                        "name": name,
-                        "folder_id": folder_id,
-                    }
-                )
-            else:
-                params = json.dumps(
-                    {"group_id": group_id, "file": f"file://{file_path}", "name": name}
-                )
-            headers = {"Content-Type": "application/json"}
-            response = await self.client.post(
-                self.api.bot_api_address + "upload_group_file",
-                data=params,
-                headers=headers,
-            )
-
-            return response.json()
-
-        async def send_group_msg(self, group_id: int, message: str | list[dict]) -> dict:
-            params = {"group_id": group_id, "message": message}
-            response = await self.client.post(
-                self.api.bot_api_address + "send_group_msg", json=params
-            )
-            return response.json()
-
-        async def send_group_img(self, group_id: int, image_path: str) -> dict:
-            params = {
-                "group_id": group_id,
-                "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
-            }
-            response = await self.client.post(
-                self.api.bot_api_address + "send_group_msg", json=params
-            )
-            return response.json()
-
-        async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
-            params = {"group_id": group_id, "messages": forward_message}
-            response = await self.client.post(
-                self.api.bot_api_address + "send_group_forward_msg", json=params
-            )
-            return response.json()
-
-        async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
-            params = {"user_id": user_id, "messages": forward_message}
-            response = await self.client.post(
-                self.api.bot_api_address + "send_private_forward_msg", json=params
-            )
-            return response.json()
-
     class MessageService:
         def __init__(self, api_instance):
             self.api: Api = api_instance  # 保存对Api类实例的引用
@@ -313,6 +241,90 @@ class Api:
                     msg=msg,
                 )
             return return_dict.message
+
+    class AsyncPrivateService:
+        def __init__(self, api_instance):
+            self.api: Api = api_instance
+
+        async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
+            params = {"user_id": user_id, "messages": forward_message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_private_forward_msg", json=params
+            )
+            return response.json()
+
+    class AsyncGroupService:
+        def __init__(self, api_instance):
+            self.api: Api = api_instance
+
+        async def get_group_member_list(self, group_id: int, no_cache: bool = True) -> dict:
+            params = {"group_id": group_id, "no_cache": no_cache}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "get_group_member_list", json=params
+            )
+            return response.json()
+
+        async def send_group_file(
+            self, group_id: int, file_path: str, name: str, folder_id: str = None
+        ) -> dict:
+            if folder_id:
+                params = {
+                    "group_id": group_id,
+                    "file": f"file://{file_path}",
+                    "name": name,
+                    "folder_id": folder_id,
+                }
+            else:
+                params = {"group_id": group_id, "file": f"file://{file_path}", "name": name}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "upload_group_file", json=params
+            )
+            return response.json()
+
+        async def send_group_msg(self, group_id: int, message: str | list[dict]) -> dict:
+            params = {"group_id": group_id, "message": message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
+        async def send_group_record_msg(self, group_id: int, file_path: str) -> dict:
+            params = {
+                "group_id": group_id,
+                "message": [{"type": "record", "data": {"file": f"file://{file_path}"}}],
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
+        async def send_group_img(self, group_id: int, image_path: str) -> dict:
+            params = {
+                "group_id": group_id,
+                "message": [{"type": "image", "data": {"file": f"file://{image_path}"}}],
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
+        async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
+            params = {"group_id": group_id, "messages": forward_message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_group_forward_msg", json=params
+            )
+            return response.json()
+
+    class AsyncMessageService:
+        def __init__(self, api_instance):
+            self.api: Api = api_instance
+
+        async def get_image(self, file_name: str) -> dict:
+            params = {"file": file_name}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "get_image", json=params
+            )
+            return response.json()
 
 
 api: Api = Api()
