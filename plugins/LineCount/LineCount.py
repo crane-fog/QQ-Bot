@@ -30,7 +30,7 @@ class LineCount(Plugins):
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
-            api.groupService.send_group_msg(
+            await api.asyncGroupService.send_group_msg(
                 group_id=group_id,
                 message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询",
             )
@@ -47,19 +47,19 @@ class LineCount(Plugins):
                 query_user_id = select_result.get("user_id")
                 total = self.config.get("total_people", {}).get(str(semester_id))
                 if int(query_user_id) != user_id:
-                    api.groupService.send_group_msg(
+                    await api.asyncGroupService.send_group_msg(
                         group_id=group_id,
                         message=f"{At(qq=user_id)} "
                         f"该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
                     )
                     return
                 else:
-                    api.groupService.send_group_msg(
+                    await api.asyncGroupService.send_group_msg(
                         group_id=group_id,
                         message=f"{At(qq=user_id)} 本学期你一共提交了 {count} 行代码，代码量超过了同期课程的 {(rank / total) * 100:.0f}% 的学生！",
                     )
             else:
-                api.groupService.send_group_msg(
+                await api.asyncGroupService.send_group_msg(
                     group_id=group_id,
                     message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！",
                 )

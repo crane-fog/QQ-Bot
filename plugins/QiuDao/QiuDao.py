@@ -41,7 +41,7 @@ class QiuDao(Plugins):
         user_id = event.user_id
         sender_card = event.card.split("-")
         if len(sender_card) != 3:
-            api.groupService.send_group_msg(
+            await api.asyncGroupService.send_group_msg(
                 group_id=group_id,
                 message=f"{At(qq=user_id)} 群名片格式不正确，请改正后再进行查询",
             )
@@ -56,18 +56,18 @@ class QiuDao(Plugins):
                 score = select_result.get("score")
                 query_user_id = select_result.get("user_id")
                 if int(query_user_id) != user_id:
-                    api.groupService.send_group_msg(
+                    await api.asyncGroupService.send_group_msg(
                         group_id=group_id,
                         message=f"{At(qq=user_id)} 该学号所有者的QQ号{query_user_id}，与你的QQ号{user_id}不匹配，不予查询！",
                     )
                     return
                 else:
-                    api.groupService.send_group_msg(
+                    await api.asyncGroupService.send_group_msg(
                         group_id=group_id,
                         message=f"{At(qq=user_id)} {self.trans_score(score)}",
                     )
             else:
-                api.groupService.send_group_msg(
+                await api.asyncGroupService.send_group_msg(
                     group_id=group_id,
                     message=f"{At(qq=user_id)} 未查询到学号{stu_id}，QQ号{user_id}的信息！",
                 )
