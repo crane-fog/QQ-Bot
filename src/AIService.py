@@ -53,6 +53,7 @@ class AIService:
             self._config = tomlkit.load(f)
         with open(persona_path, encoding="utf-8") as f:
             self.persona = f.read()
+        self._client = AsyncOpenAI(api_key="placeholder")
         self.funcs = {
             "send_private_msg": api.privateService.send_private_msg,
             "get_group_member_list": api.groupService.get_group_member_list,
@@ -88,7 +89,7 @@ class AIService:
         if profile.insert_persona:
             messages.insert(0, {"role": "system", "content": self.persona})
 
-        client = AsyncOpenAI(
+        client = self._client.with_options(
             api_key=profile.provider.api_key,
             base_url=profile.provider.base_url,
             timeout=profile.provider.timeout_seconds,
