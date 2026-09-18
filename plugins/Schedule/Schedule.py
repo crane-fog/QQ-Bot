@@ -45,6 +45,13 @@ class Schedule(Plugins):
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
+        self.playwright = None
+        self.browser = None
+        with open(
+            os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.j2"),
+            encoding="utf-8",
+        ) as f:
+            self.template = Template(f.read())
 
     @plugin_main(call_word=["Schedule", "[CQ:file,file=textbook"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
@@ -111,30 +118,53 @@ class Schedule(Plugins):
         weekday_num = today.isoweekday()
 
         render_data = {"current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"), "users": []}
+
+        # 一次性获取所有群成员信息并构建字典
+        group_members_data = await api.asyncService.get_group_member_list(
+            group_id=event.group_id, no_cache=False
+        )
+        member_dict = {
+            member["user_id"]: member["card_or_nickname"]
+            for member in group_members_data.get("data", [])
+        }
+
         async with self.session_factory() as session:
             stmt = select(PersonalSchedule).where(
                 PersonalSchedule.group_id == event.group_id,
                 PersonalSchedule.calendar_id == calendar,
             )
             persons: list[PersonalSchedule] = (await session.execute(stmt)).scalars().all()
-            for person in persons:
-                if person.is_new_code:
-                    stmt = select(Courses).where(
-                        Courses.calendar_id == calendar,
-                        Courses.new_course_code.in_(person.new_course_codes),
-                        Courses.time_info.contains(
-                            [{"day_of_week": weekday_num, "weeks": [current_week]}]
-                        ),
-                    )
+
+            # 收集所有需要查询的课程代码
+            all_new_codes = []
+            all_old_codes = []
+            for p in persons:
+                if p.is_new_code:
+                    all_new_codes.extend(p.new_course_codes)
                 else:
-                    stmt = select(Courses).where(
-                        Courses.calendar_id == calendar,
-                        Courses.course_code.in_(person.course_codes),
-                        Courses.time_info.contains(
-                            [{"day_of_week": weekday_num, "weeks": [current_week]}]
-                        ),
-                    )
-                today_courses: list[Courses] = (await session.execute(stmt)).scalars().all()
+                    all_old_codes.extend(p.course_codes)
+
+            # 单次查询获取所有今日课程数据
+            stmt = select(Courses).where(
+                Courses.calendar_id == calendar,
+                or_(
+                    Courses.new_course_code.in_(all_new_codes),
+                    Courses.course_code.in_(all_old_codes),
+                ),
+                Courses.time_info.contains([{"day_of_week": weekday_num, "weeks": [current_week]}]),
+            )
+            all_today_courses = (await session.execute(stmt)).scalars().all()
+
+            for person in persons:
+                # 筛选出属于该用户的今日课程
+                if person.is_new_code:
+                    today_courses = [
+                        c for c in all_today_courses if c.new_course_code in person.new_course_codes
+                    ]
+                else:
+                    today_courses = [
+                        c for c in all_today_courses if c.course_code in person.course_codes
+                    ]
 
                 schedule_blocks = []
                 # 1. 扁平化提取所有的【今日课程时间块】
@@ -159,9 +189,7 @@ class Schedule(Plugins):
                 schedule_blocks.sort(key=lambda x: x["start_dt"])
                 # 3. 构造默认数据模型（默认状态为今天没课）
                 person_data = {
-                    "name": api.groupService.get_group_member_info(
-                        group_id=person.group_id, user_id=person.user_id
-                    )["data"]["card_or_nickname"],
+                    "name": member_dict.get(person.user_id, "未知用户"),
                     "id": person.user_id,
                     "status_type": "none",
                     "status_text": "今天没课",
@@ -217,28 +245,13 @@ class Schedule(Plugins):
         sorted_users = sorted(render_data["users"], key=lambda x: x["time_info"][:5])
         render_data["users"] = sorted_users
 
-        template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.j2")
-        with open(template_path, encoding="utf-8") as f:
-            template = Template(f.read())
-        html_content = template.render(**render_data)
+        html_content = self.template.render(**render_data)
         output_image_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
             f"temp/pic/schedule_{event.group_id}_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.png",
         )
-        async with async_playwright() as p:
-            # 启动无头浏览器
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(device_scale_factor=2)
-            # 将渲染好的 HTML 塞进网页
-            await page.set_content(html_content)
-            # 【关键点】等待网络空闲，确保所有的 QQ 头像图片都已经加载完毕
-            await page.wait_for_load_state("networkidle")
-            # 定位到包含所有内容的容器，并对其进行截图 (确保不会截到大片空白)
-            element = await page.query_selector("#capture-area")
-            await element.screenshot(path=output_image_path)
-            await browser.close()
-
-        api.groupService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+        await self._render_html_to_image(html_content, output_image_path)
+        await api.asyncService.send_group_img(group_id=event.group_id, image_path=output_image_path)
         return
 
     async def _handle_rank(
@@ -257,6 +270,16 @@ class Schedule(Plugins):
 
         # 获取所有用户的排名数据
         rank_data = []
+
+        # 一次性获取所有群成员信息并构建字典
+        group_members_data = await api.asyncService.get_group_member_list(
+            group_id=event.group_id, no_cache=False
+        )
+        member_dict = {
+            member["user_id"]: member["card_or_nickname"]
+            for member in group_members_data.get("data", [])
+        }
+
         async with self.session_factory() as session:
             stmt = select(PersonalSchedule).where(
                 PersonalSchedule.group_id == event.group_id,
@@ -313,12 +336,9 @@ class Schedule(Plugins):
                                 total_periods += len(info["periods"])
 
                 if total_periods > 0:  # 只统计有课的用户
-                    user_info = api.groupService.get_group_member_info(
-                        group_id=person.group_id, user_id=person.user_id
-                    )
                     rank_data.append(
                         {
-                            "name": user_info["data"]["card_or_nickname"],
+                            "name": member_dict.get(person.user_id, "未知用户"),
                             "user_id": person.user_id,
                             "periods": total_periods,
                         }
@@ -356,10 +376,7 @@ class Schedule(Plugins):
             )
 
         # 渲染模板并生成图片
-        template_path = os.path.join(os.path.dirname(os.path.abspath(__file__)), "template.j2")
-        with open(template_path, encoding="utf-8") as f:
-            template = Template(f.read())
-        html_content = template.render(**render_data)
+        html_content = self.template.render(**render_data)
 
         output_image_path = os.path.join(
             os.path.dirname(os.path.abspath(__file__)),
@@ -375,4 +392,24 @@ class Schedule(Plugins):
             await element.screenshot(path=output_image_path)
             await browser.close()
 
-        api.groupService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+        await api.asyncService.send_group_img(group_id=event.group_id, image_path=output_image_path)
+
+    async def _get_browser(self):
+        if self.browser is None or not self.browser.is_connected():
+            self.playwright = await async_playwright().start()
+            self.browser = await self.playwright.chromium.launch(headless=True)
+        return self.browser
+
+    async def _render_html_to_image(self, html_content: str, output_image_path: str):
+        browser = await self._get_browser()
+        page = await browser.new_page(device_scale_factor=2)
+        try:
+            await page.set_content(html_content, wait_until="load")
+            await page.evaluate("""async () => {
+                const imgs = Array.from(document.querySelectorAll("img"));
+                await Promise.all(imgs.map(img => img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; })));
+            }""")
+            element = await page.query_selector("#capture-area")
+            await element.screenshot(path=output_image_path)
+        finally:
+            await page.close()

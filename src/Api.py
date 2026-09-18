@@ -205,6 +205,13 @@ class Api:
             if self._client is not None and not self._client.is_closed:
                 await self._client.aclose()
 
+        async def get_group_member_list(self, group_id: int, no_cache: bool = True) -> dict:
+            params = {"group_id": group_id, "no_cache": no_cache}
+            response = await self.client.post(
+                self.api.bot_api_address + "get_group_member_list", json=params
+            )
+            return response.json()
+
         async def send_group_file(
             self, group_id: int, file_path: str, name: str, folder_id: str = None
         ) -> dict:
