@@ -37,9 +37,7 @@ class RecallPrevent(Plugins):
         user_info = api.groupService.get_group_member_info(
             group_id=event.group_id, user_id=event.user_id
         ).get("data", {})
-        print(user_info)
         if not self.config.get("for_administer", False):
-            print(user_info.get("role"))
             if user_info.get("role") == "admin" or user_info.get("role") == "owner":
                 return
 

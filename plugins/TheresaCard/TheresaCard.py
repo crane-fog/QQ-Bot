@@ -66,8 +66,8 @@ class TheresaCard(Plugins):
                 return
 
         # 获取群成员列表，初始化变量
-        group_member_list = await api.asyncGroupService.get_group_member_list(
-            group_id=event.group_id
+        group_member_list = (
+            await api.asyncGroupService.get_group_member_list(group_id=event.group_id)
         ).get("data")
         ignored_ids: list[int] = self.config.get("ignored_ids", [])
         not_allowed_ids = []
