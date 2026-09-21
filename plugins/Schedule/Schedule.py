@@ -99,6 +99,7 @@ class Schedule(Plugins):
                     )
                     await session.merge(new_schedule)
                     await session.commit()
+                api.groupService.delete_msg(message_id=event.message_id)
                 api.groupService.send_group_msg(
                     group_id=event.group_id,
                     message=f"已导入{event.user_id}课表文件",
@@ -337,14 +338,13 @@ class Schedule(Plugins):
                             if info["day_of_week"] == weekday_num and current_week in info["weeks"]:
                                 total_periods += len(info["periods"])
 
-                if total_periods > 0:  # 只统计有课的用户
-                    rank_data.append(
-                        {
-                            "name": member_dict.get(person.user_id, "未知用户"),
-                            "user_id": person.user_id,
-                            "periods": total_periods,
-                        }
-                    )
+                rank_data.append(
+                    {
+                        "name": member_dict.get(person.user_id, "未知用户"),
+                        "user_id": person.user_id,
+                        "periods": total_periods,
+                    }
+                )
 
         # 按课时数降序排序
         rank_data.sort(key=lambda x: x["periods"], reverse=True)
