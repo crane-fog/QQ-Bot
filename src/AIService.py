@@ -68,6 +68,7 @@ class AIService:
             "shell": self.restricted_shell,
         }
         self.async_funcs = {
+            "send_group_msg": api.asyncGroupService.send_group_msg,
             "travily_search": self.travily_search,
             "travily_extract": self.travily_extract,
         }
