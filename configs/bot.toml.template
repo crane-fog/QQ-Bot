@@ -18,3 +18,8 @@ webhook_handler_address = "127.0.0.1:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
 api_token = "<your-token>"
+# issue 新评论私聊提醒（临时会话）。依赖数据库 stu_qq_id_map（学号→QQ，GetStuId 导入），
+# 且被通知人与 bot 同在 webhook_response_group；查不到映射或发送失败时降级为群内 @
+dm_notify = false
+# 不私聊提醒的 Gitea 用户名（学号）名单，例如助教；这些人只保留群内通知
+dm_notify_exclude = []

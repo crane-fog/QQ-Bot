@@ -74,14 +74,18 @@ webhook_handler_address = "0.0.0.0:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
 api_token = "<your-token>"
+dm_notify = false
+dm_notify_exclude = []
 ```
 
 | 配置项 | 说明 | 必填 |
 |---|---|---|
 | `webhook_handler_address` | 监听地址，格式 `IP:端口` | 是 |
-| `webhook_response_group` | 通知发送目标 QQ 群号 | 是 |
+| `webhook_response_group` | 通知发送目标 QQ 群号，同时作为私聊临时会话的来源群 | 是 |
 | `api_url` | Gitea 对 Bot 可访问的基础地址；若部署在子路径，必须包含该子路径。尾部 `/` 会自动兼容，建议省略 | 是 |
 | `api_token` | Gitea 个人访问令牌 | 是 |
+| `dm_notify` | 是否开启 issue 新评论私聊提醒（临时会话），默认 `false` | 否 |
+| `dm_notify_exclude` | 不私聊提醒的 Gitea 用户名（学号）名单，例如助教；这些人只保留群内通知 | 否 |
 
 `api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
 
@@ -106,6 +110,18 @@ api_url = "http://gitea.example.com/QA"
 ## 从 QQ 群回复 Issue
 
 见 [GiteaReply 插件文档](plugins/GiteaReply.md)。
+
+---
+
+## Issue 新评论私聊提醒
+
+`dm_notify = true` 时，issue / PR 收到**新评论**（`issue_comment` 且 `action=created`）后，Bot 会通过 QQ 临时会话私聊 issue 作者与被指派人（无需好友，前提是与 Bot 同在 `webhook_response_group`）；评论者本人不提醒。
+
+- **用户映射：** Gitea 用户名即学号，经数据库 `stu_qq_id_map` 表（由 `GetStuId` 插件从群卡片导入）换算 QQ 号。
+- **排除名单：** `dm_notify_exclude` 中的用户名（如助教）永不私聊。
+- **降级：** 查不到 QQ 映射、未启用数据库或私聊发送失败时，在 `webhook_response_group` 群内 @（已知 QQ）并列出未绑定学号的用户。
+- **触发条件：** 仅 `action=created`；编辑/删除评论不提醒。该功能独立于群通知模式（`forward` 开或关均可）。
+- **前置：** `database_enable = true` 且已导入学号映射；LLBot 需允许向非好友发送群临时会话消息。
 
 ---
 
