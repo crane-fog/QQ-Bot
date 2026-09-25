@@ -359,8 +359,16 @@ class NotificationService:
             except Exception as e:
                 Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
                 failed.append(login)
-        if failed and self.dm_notify_group:
+        if not failed:
+            return
+        if self.dm_notify_group:
             await self._send_dm_failure_notice(data, failed)
+        else:
+            Log.warning(
+                f"私聊通知存在失败且未配置 dm_notify_group，跳过群内提醒："
+                f"{data.repository.full_name} issue #{data.issue.number}，"
+                f"未通知：{'、'.join(failed)}"
+            )
 
     async def _get_assistant_members(self) -> set[int]:
         """assistant_group 群成员 QQ 集合（带 TTL 缓存）；未配置或查询失败时视为没有助教群。"""
