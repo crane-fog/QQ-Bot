@@ -244,6 +244,30 @@ async def test_assistant_members_unconfigured_or_failure_means_empty(service):
 
 
 @pytest.mark.asyncio
+async def test_dm_fallback_group_configurable():
+    """降级提示发到 dm_notify_fallback_group；未配置时回落到 webhook_response_group。"""
+    service = NotificationService(
+        123,
+        "https://gitea.example.com",
+        "token",
+        dm_notify=True,
+        dm_notify_fallback_group=888,
+    )
+    service._lookup_qq = AsyncMock(return_value=None)
+    event = comment_event()
+
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
+        await service._send_comment_dm_notifications(event)
+    assert group.send_group_msg.await_args.kwargs["group_id"] == 888
+
+    default_service = NotificationService(123, "https://gitea.example.com", "token", dm_notify=True)
+    default_service._lookup_qq = AsyncMock(return_value=None)
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
+        await default_service._send_comment_dm_notifications(event)
+    assert group.send_group_msg.await_args.kwargs["group_id"] == 123
+
+
+@pytest.mark.asyncio
 async def test_dm_disabled_by_default():
     """默认不开 dm_notify 时，send() 不产生私聊调用。"""
     service = NotificationService(123, "https://gitea.example.com", "token")

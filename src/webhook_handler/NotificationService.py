@@ -53,6 +53,7 @@ class NotificationService:
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
         assistant_group: int | None = None,
+        dm_notify_fallback_group: int | None = None,
     ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
@@ -63,6 +64,8 @@ class NotificationService:
         self.dm_notify = dm_notify
         self.dm_notify_exclude = list(dm_notify_exclude or [])
         self.assistant_group = assistant_group or 0
+        # 私聊通知失败时的降级群；未配置则与 webhook 群通知同群
+        self.dm_notify_fallback_group = dm_notify_fallback_group or response_group
         self._assistant_members: set[int] | None = None
         self._assistant_members_at: float = 0.0
         # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
@@ -402,7 +405,9 @@ class NotificationService:
             f"以下用户未能私聊通知：{'、'.join(failed_names)}\n"
             f"{data.comment.html_url}"
         )
-        await api.asyncGroupService.send_group_msg(group_id=self.response_group, message=message)
+        await api.asyncGroupService.send_group_msg(
+            group_id=self.dm_notify_fallback_group, message=message
+        )
 
     async def _lookup_qq(self, login: str) -> str | None:
         """Gitea 用户名（学号）→ QQ 号；非数字学号、无数据库或无映射时返回 None。"""
