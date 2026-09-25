@@ -246,6 +246,18 @@ class Api:
         def __init__(self, api_instance):
             self.api: Api = api_instance
 
+        async def send_private_msg(
+            self, user_id: int, message: str | list[dict], group_id: int | None = None
+        ) -> dict:
+            params: dict = {"user_id": user_id, "message": message}
+            # 非好友无法直接解析 uid，带上共同群号 LLBot 会落到群临时会话
+            if group_id is not None:
+                params["group_id"] = group_id
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_private_msg", json=params
+            )
+            return response.json()
+
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
             params = {"user_id": user_id, "messages": forward_message}
             response = await self.api.client.post(
