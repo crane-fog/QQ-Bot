@@ -60,7 +60,7 @@ class WebhookHandler:
         database=None,
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
-        assistant_group: int | None = None,
+        assistant_list: set[int] | None = None,
         dm_notify_group: int | None = None,
     ):
         self.response_group: int = response_group
@@ -71,7 +71,7 @@ class WebhookHandler:
             database=database,
             dm_notify=dm_notify,
             dm_notify_exclude=dm_notify_exclude,
-            assistant_group=assistant_group,
+            assistant_list=assistant_list,
             dm_notify_group=dm_notify_group,
         )
         self.server = None

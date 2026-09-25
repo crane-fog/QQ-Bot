@@ -1,7 +1,6 @@
 import asyncio
 import shutil
 import tempfile
-import time
 from collections.abc import Awaitable
 from pathlib import Path
 from typing import Any
@@ -33,9 +32,6 @@ from src.webhook_handler.EventConfig import EventConfig
 from utils.CQType import Forward
 from utils.TextUtils import format_size, sanitize_filename
 
-# 助教群成员列表的缓存时长；群成员变动低频，无需每条评论都拉一次
-ASSISTANT_MEMBERS_TTL = 600
-
 
 class NotificationService:
     response_group: int
@@ -52,7 +48,7 @@ class NotificationService:
         database: AsyncEngine | None = None,
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
-        assistant_group: int | None = None,
+        assistant_list: set[int] | None = None,
         dm_notify_group: int | None = None,
     ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
@@ -63,11 +59,10 @@ class NotificationService:
         self.formatter = GiteaEventFormatter(self.gitea_api_url)
         self.dm_notify = dm_notify
         self.dm_notify_exclude = list(dm_notify_exclude or [])
-        self.assistant_group = assistant_group or 0
+        # 复用 Bot 启动时从 assistant_group 加载的助教名单（运行期不刷新）
+        self.assistant_list = assistant_list or set()
         # 配置了 dm_notify_group 时，私聊通知失败在该群做纯文本提醒；未配置则不做失败提醒
         self.dm_notify_group = dm_notify_group or 0
-        self._assistant_members: set[int] | None = None
-        self._assistant_members_at: float = 0.0
         # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
         self.session_factory = (
             sessionmaker(bind=database, class_=AsyncSession, expire_on_commit=False)
@@ -324,7 +319,7 @@ class NotificationService:
         """issue 新评论的临时会话提醒：私聊 issue 作者与被指派人。
 
         Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 webhook_response_group
-        为临时会话来源群发送；评论者本人不发；assistant_group 群成员（助教）与
+        为临时会话来源群发送；评论者本人不发；assistant_list 助教名单与
         dm_notify_exclude 名单不发；失败名单在 dm_notify_group 纯文本提醒（未配置则不提醒）。
         """
         if data.action != "created":
@@ -340,7 +335,6 @@ class NotificationService:
         if not targets:
             return
 
-        assistants = await self._get_assistant_members()
         dm_text = f"高程答疑平台在你的 Issue 下有新评论：\n{data.comment.html_url}"
 
         failed: list[str] = []
@@ -349,8 +343,8 @@ class NotificationService:
             if qq_id is None:
                 failed.append(login)
                 continue
-            if int(qq_id) in assistants:
-                # 助教群成员：不私聊，也不视为失败
+            if int(qq_id) in self.assistant_list:
+                # 助教：不私聊，也不视为失败
                 continue
             try:
                 await api.asyncPrivateService.send_private_msg(
@@ -367,30 +361,6 @@ class NotificationService:
         )
         if self.dm_notify_group:
             await self._send_dm_failure_notice(data, failed)
-
-    async def _get_assistant_members(self) -> set[int]:
-        """assistant_group 群成员 QQ 集合（带 TTL 缓存）；未配置或查询失败时视为没有助教群。"""
-        if not self.assistant_group:
-            return set()
-        now = time.monotonic()
-        if (
-            self._assistant_members is not None
-            and now - self._assistant_members_at < ASSISTANT_MEMBERS_TTL
-        ):
-            return self._assistant_members
-        try:
-            resp = await api.asyncGroupService.get_group_member_list(
-                group_id=self.assistant_group, no_cache=False
-            )
-            members = {int(member["user_id"]) for member in resp.get("data") or []}
-        except Exception as e:
-            Log.warning(
-                f"获取助教群成员失败，沿用上次结果：group={self.assistant_group}, error={e}"
-            )
-            return self._assistant_members or set()
-        self._assistant_members = members
-        self._assistant_members_at = now
-        return members
 
     async def _send_dm_failure_notice(
         self, data: GiteaIssueCommentEvent, failed: list[str]
