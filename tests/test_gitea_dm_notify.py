@@ -115,13 +115,14 @@ class FakeSession:
 
 @pytest.fixture
 def service():
-    # 1000003 视为助教学号，进排除名单
+    # 1000003 视为助教学号，进排除名单；888 为失败提醒群
     return NotificationService(
         123,
         "https://gitea.example.com",
         "token",
         dm_notify=True,
         dm_notify_exclude=["1000003"],
+        dm_notify_group=888,
     )
 
 
@@ -168,8 +169,8 @@ async def test_dm_commenter_and_excluded_never_dmed(service):
 
 
 @pytest.mark.asyncio
-async def test_dm_unmapped_or_failed_falls_back_to_group_at(service):
-    """查不到映射的列出学号，发送失败的在群里 @ 对应 QQ。"""
+async def test_dm_failure_notice_lists_failed_logins_without_at(service):
+    """查不到映射与发送失败的学号在 dm_notify_group 纯文本列出，不 @。"""
     patch_lookup(service, {"2553759": None, "2553760": "9000002"})
     event = comment_event(assignees=["2553760"])
 
@@ -181,9 +182,11 @@ async def test_dm_unmapped_or_failed_falls_back_to_group_at(service):
         await service._send_comment_dm_notifications(event)
 
     group.send_group_msg.assert_awaited_once()
+    assert group.send_group_msg.await_args.kwargs["group_id"] == 888
     message = group.send_group_msg.await_args.kwargs["message"]
-    assert "[CQ:at,qq=9000002]" in message
+    assert "[CQ:at" not in message
     assert "2553759" in message
+    assert "2553760" in message
     assert "issues/1#comment-300" in message
 
 
@@ -244,27 +247,28 @@ async def test_assistant_members_unconfigured_or_failure_means_empty(service):
 
 
 @pytest.mark.asyncio
-async def test_dm_fallback_group_configurable():
-    """降级提示发到 dm_notify_fallback_group；未配置时回落到 webhook_response_group。"""
-    service = NotificationService(
+async def test_dm_failure_notice_only_when_configured():
+    """未配置 dm_notify_group 时不做失败提醒；配置了则发到该群。"""
+    event = comment_event()
+
+    unconfigured = NotificationService(123, "https://gitea.example.com", "token", dm_notify=True)
+    unconfigured._lookup_qq = AsyncMock(return_value=None)
+    assert unconfigured.dm_notify_group == 0
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
+        await unconfigured._send_comment_dm_notifications(event)
+    group.send_group_msg.assert_not_awaited()
+
+    configured = NotificationService(
         123,
         "https://gitea.example.com",
         "token",
         dm_notify=True,
-        dm_notify_fallback_group=888,
+        dm_notify_group=888,
     )
-    service._lookup_qq = AsyncMock(return_value=None)
-    event = comment_event()
-
+    configured._lookup_qq = AsyncMock(return_value=None)
     with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
-        await service._send_comment_dm_notifications(event)
+        await configured._send_comment_dm_notifications(event)
     assert group.send_group_msg.await_args.kwargs["group_id"] == 888
-
-    default_service = NotificationService(123, "https://gitea.example.com", "token", dm_notify=True)
-    default_service._lookup_qq = AsyncMock(return_value=None)
-    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
-        await default_service._send_comment_dm_notifications(event)
-    assert group.send_group_msg.await_args.kwargs["group_id"] == 123
 
 
 @pytest.mark.asyncio

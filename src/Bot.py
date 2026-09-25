@@ -92,9 +92,9 @@ class Bot:
         self.gitea_dm_notify_exclude: list[str] = list(
             self.bot_config.get("Gitea", {}).get("dm_notify_exclude") or []
         )
-        # 私聊通知失败的降级群，缺省与 webhook 群通知同群
-        self.gitea_dm_notify_fallback_group: int = int(
-            self.bot_config.get("Gitea", {}).get("dm_notify_fallback_group") or 0
+        # 私聊通知失败的提醒群，未配置则不做失败提醒
+        self.gitea_dm_notify_group: int = int(
+            self.bot_config.get("Gitea", {}).get("dm_notify_group") or 0
         )
         Log.info("成功加载配置文件")
         Log.info("加载的bot初始化配置信息如下：")
@@ -298,7 +298,7 @@ class Bot:
                 dm_notify=self.gitea_dm_notify,
                 dm_notify_exclude=self.gitea_dm_notify_exclude,
                 assistant_group=self.assistant_group,
-                dm_notify_fallback_group=self.gitea_dm_notify_fallback_group,
+                dm_notify_group=self.gitea_dm_notify_group,
             )
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
             Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")

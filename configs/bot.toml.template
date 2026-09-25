@@ -23,5 +23,5 @@ api_token = "<your-token>"
 dm_notify = false
 # 补充的不私聊提醒名单（Gitea 用户名/学号）；assistant_group（助教群）的群成员会自动排除，无需在此重复
 dm_notify_exclude = []
-# 私聊通知失败时降级提示（@ + 列出未绑定学号）发送的群，缺省与 webhook_response_group 同群
-dm_notify_fallback_group = 123456789
+# 私聊通知失败提醒的群：查不到映射/发送失败的学号在该群纯文本列出（不 @）；不配置则不做失败提醒
+dm_notify_group = 123456789

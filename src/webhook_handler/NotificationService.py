@@ -53,7 +53,7 @@ class NotificationService:
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
         assistant_group: int | None = None,
-        dm_notify_fallback_group: int | None = None,
+        dm_notify_group: int | None = None,
     ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
@@ -64,8 +64,8 @@ class NotificationService:
         self.dm_notify = dm_notify
         self.dm_notify_exclude = list(dm_notify_exclude or [])
         self.assistant_group = assistant_group or 0
-        # 私聊通知失败时的降级群；未配置则与 webhook 群通知同群
-        self.dm_notify_fallback_group = dm_notify_fallback_group or response_group
+        # 配置了 dm_notify_group 时，私聊通知失败在该群做纯文本提醒；未配置则不做失败提醒
+        self.dm_notify_group = dm_notify_group or 0
         self._assistant_members: set[int] | None = None
         self._assistant_members_at: float = 0.0
         # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
@@ -325,7 +325,7 @@ class NotificationService:
 
         Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 webhook_response_group
         为临时会话来源群发送；评论者本人不发；assistant_group 群成员（助教）与
-        dm_notify_exclude 名单不发；查不到映射或发送失败的，降级为群内 @ 提示。
+        dm_notify_exclude 名单不发；失败名单在 dm_notify_group 纯文本提醒（未配置则不提醒）。
         """
         if data.action != "created":
             return
@@ -349,12 +349,11 @@ class NotificationService:
             f"「{data.issue.title}」有新评论（{commenter}）：\n{excerpt}\n{data.comment.html_url}"
         )
 
-        unmapped: list[str] = []
-        undelivered: list[tuple[str, str]] = []
+        failed: list[str] = []
         for login in targets:
             qq_id = await self._lookup_qq(login)
             if qq_id is None:
-                unmapped.append(login)
+                failed.append(login)
                 continue
             if int(qq_id) in assistants:
                 # 助教群成员：不私聊，也不视为失败
@@ -365,9 +364,9 @@ class NotificationService:
                 )
             except Exception as e:
                 Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
-                undelivered.append((login, qq_id))
-        if unmapped or undelivered:
-            await self._send_dm_fallback(data, unmapped, undelivered)
+                failed.append(login)
+        if failed and self.dm_notify_group:
+            await self._send_dm_failure_notice(data, failed)
 
     async def _get_assistant_members(self) -> set[int]:
         """assistant_group 群成员 QQ 集合（带 TTL 缓存）；未配置或查询失败时视为没有助教群。"""
@@ -393,21 +392,16 @@ class NotificationService:
         self._assistant_members_at = now
         return members
 
-    async def _send_dm_fallback(
-        self, data: GiteaIssueCommentEvent, unmapped: list[str], undelivered: list[tuple[str, str]]
+    async def _send_dm_failure_notice(
+        self, data: GiteaIssueCommentEvent, failed: list[str]
     ) -> None:
-        """私聊通知未覆盖到的目标，在群里 @ 已知 QQ 的用户并列出未绑定学号的用户。"""
-        mention = "".join(f"[CQ:at,qq={qq_id}]" for _, qq_id in undelivered)
-        failed_names = unmapped + [login for login, _ in undelivered]
+        """在 dm_notify_group 纯文本列出未能私聊通知到的学号；不 @，未配置该群则不提醒。"""
         message = (
-            f"{mention}"
             f"[Gitea] issue #{data.issue.number}「{data.issue.title}」有新评论，"
-            f"以下用户未能私聊通知：{'、'.join(failed_names)}\n"
+            f"以下用户未能私聊通知：{'、'.join(failed)}\n"
             f"{data.comment.html_url}"
         )
-        await api.asyncGroupService.send_group_msg(
-            group_id=self.dm_notify_fallback_group, message=message
-        )
+        await api.asyncGroupService.send_group_msg(group_id=self.dm_notify_group, message=message)
 
     async def _lookup_qq(self, login: str) -> str | None:
         """Gitea 用户名（学号）→ QQ 号；非数字学号、无数据库或无映射时返回 None。"""
