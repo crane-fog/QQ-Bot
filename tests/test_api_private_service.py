@@ -45,3 +45,14 @@ async def test_send_private_msg_with_segments(service):
         "http://127.0.0.1:3001/send_private_msg",
         json={"user_id": 123456, "message": segments},
     )
+
+
+@pytest.mark.asyncio
+async def test_send_private_msg_with_group_id(service):
+    """非好友走群临时会话：group_id 原样透传给 OneBot 端。"""
+    service.api.client.post = AsyncMock(return_value=_fake_response({"retcode": 0}))
+    await service.send_private_msg(123456, "hello", group_id=654321)
+    service.api.client.post.assert_awaited_once_with(
+        "http://127.0.0.1:3001/send_private_msg",
+        json={"user_id": 123456, "message": "hello", "group_id": 654321},
+    )
