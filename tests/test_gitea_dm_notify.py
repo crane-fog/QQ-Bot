@@ -135,7 +135,7 @@ def patch_lookup(service, mapping: dict[str, str | None]):
 
 @pytest.mark.asyncio
 async def test_dm_sent_to_author_and_assignee(service):
-    """作者与被指派人均已绑定 QQ：分别私聊，带 response_group 作为临时会话来源群。"""
+    """作者与被指派人均已绑定 QQ：分别私聊，缺省以 response_group 作为临时会话来源群。"""
     patch_lookup(service, {"2553759": "9000001", "2553760": "9000002"})
     event = comment_event(assignees=["2553760", "1000003"])
 
@@ -219,6 +219,30 @@ async def test_dm_skips_assistant_group_members(service):
     assert private.send_private_msg.await_args.args[0] == 9000001
     assert private.send_private_msg.await_args.kwargs == {"group_id": 123}
     group.send_group_msg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_dm_source_group_configurable():
+    """私聊临时会话来源群可配置；未配置时回落到 webhook_response_group。"""
+    event = comment_event()
+
+    configured = NotificationService(
+        123,
+        "https://gitea.example.com",
+        "token",
+        dm_notify=True,
+        dm_notify_source_group=777,
+    )
+    configured._lookup_qq = AsyncMock(return_value="9000001")
+    with patch("src.Api.api.asyncPrivateService", new=AsyncMock()) as private:
+        await configured._send_comment_dm_notifications(event)
+    assert private.send_private_msg.await_args.kwargs["group_id"] == 777
+
+    default_service = NotificationService(123, "https://gitea.example.com", "token", dm_notify=True)
+    default_service._lookup_qq = AsyncMock(return_value="9000001")
+    with patch("src.Api.api.asyncPrivateService", new=AsyncMock()) as private:
+        await default_service._send_comment_dm_notifications(event)
+    assert private.send_private_msg.await_args.kwargs["group_id"] == 123
 
 
 @pytest.mark.asyncio

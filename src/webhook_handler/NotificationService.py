@@ -50,6 +50,7 @@ class NotificationService:
         dm_notify_exclude: list[str] | None = None,
         assistant_list: set[int] | None = None,
         dm_notify_group: int | None = None,
+        dm_notify_source_group: int | None = None,
     ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
@@ -63,6 +64,8 @@ class NotificationService:
         self.assistant_list = assistant_list or set()
         # 配置了 dm_notify_group 时，私聊通知失败在该群做纯文本提醒；未配置则不做失败提醒
         self.dm_notify_group = dm_notify_group or 0
+        # 私聊临时会话的来源群，缺省与 webhook 群通知同群
+        self.dm_notify_source_group = dm_notify_source_group or response_group
         # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
         self.session_factory = (
             sessionmaker(bind=database, class_=AsyncSession, expire_on_commit=False)
@@ -318,7 +321,7 @@ class NotificationService:
     async def _send_comment_dm_notifications(self, data: GiteaIssueCommentEvent) -> None:
         """issue 新评论的临时会话提醒：私聊 issue 作者与被指派人。
 
-        Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 webhook_response_group
+        Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 dm_notify_source_group
         为临时会话来源群发送；评论者本人不发；assistant_list 助教名单与
         dm_notify_exclude 名单不发；失败名单在 dm_notify_group 纯文本提醒（未配置则不提醒）。
         """
@@ -348,7 +351,7 @@ class NotificationService:
                 continue
             try:
                 await api.asyncPrivateService.send_private_msg(
-                    int(qq_id), dm_text, group_id=self.response_group
+                    int(qq_id), dm_text, group_id=self.dm_notify_source_group
                 )
             except Exception as e:
                 Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
