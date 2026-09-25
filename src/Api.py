@@ -246,6 +246,13 @@ class Api:
         def __init__(self, api_instance):
             self.api: Api = api_instance
 
+        async def send_private_msg(self, user_id: int, message: str | list[dict]) -> dict:
+            params = {"user_id": user_id, "message": message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_private_msg", json=params
+            )
+            return response.json()
+
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
             params = {"user_id": user_id, "messages": forward_message}
             response = await self.api.client.post(
