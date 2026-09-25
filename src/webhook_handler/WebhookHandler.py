@@ -60,6 +60,7 @@ class WebhookHandler:
         database=None,
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
+        assistant_group: int | None = None,
     ):
         self.response_group: int = response_group
         self.notification_service = NotificationService(
@@ -69,6 +70,7 @@ class WebhookHandler:
             database=database,
             dm_notify=dm_notify,
             dm_notify_exclude=dm_notify_exclude,
+            assistant_group=assistant_group,
         )
         self.server = None
         app.state.handler = self

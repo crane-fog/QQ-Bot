@@ -293,6 +293,7 @@ class Bot:
                 database=self.database,
                 dm_notify=self.gitea_dm_notify,
                 dm_notify_exclude=self.gitea_dm_notify_exclude,
+                assistant_group=self.assistant_group,
             )
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
             Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")

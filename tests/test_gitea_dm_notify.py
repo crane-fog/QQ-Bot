@@ -199,6 +199,51 @@ async def test_dm_skipped_for_non_created_action(service):
 
 
 @pytest.mark.asyncio
+async def test_dm_skips_assistant_group_members(service):
+    """assistant_group 群成员（助教）不私聊，也不触发降级提示。"""
+    service.assistant_group = 999
+    patch_lookup(service, {"2553759": "9000001", "2553760": "9000002"})
+    event = comment_event(assignees=["2553760"])
+
+    with (
+        patch("src.Api.api.asyncPrivateService", new=AsyncMock()) as private,
+        patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group,
+    ):
+        group.get_group_member_list.return_value = {"data": [{"user_id": 9000002}]}
+        await service._send_comment_dm_notifications(event)
+
+    assert private.send_private_msg.await_count == 1
+    assert private.send_private_msg.await_args.args[0] == 9000001
+    assert private.send_private_msg.await_args.kwargs == {"group_id": 123}
+    group.send_group_msg.assert_not_awaited()
+
+
+@pytest.mark.asyncio
+async def test_assistant_members_cached_within_ttl(service):
+    """成员列表带缓存，TTL 内不重复拉取。"""
+    service.assistant_group = 999
+
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
+        group.get_group_member_list.return_value = {"data": [{"user_id": 9000002}]}
+        assert await service._get_assistant_members() == {9000002}
+        assert await service._get_assistant_members() == {9000002}
+
+    group.get_group_member_list.assert_awaited_once()
+
+
+@pytest.mark.asyncio
+async def test_assistant_members_unconfigured_or_failure_means_empty(service):
+    """未配置助教群或查询失败时按空集合处理（不影响其余私聊）。"""
+    assert service.assistant_group == 0
+    assert await service._get_assistant_members() == set()
+
+    service.assistant_group = 999
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as group:
+        group.get_group_member_list.side_effect = Exception("bot not in group")
+        assert await service._get_assistant_members() == set()
+
+
+@pytest.mark.asyncio
 async def test_dm_disabled_by_default():
     """默认不开 dm_notify 时，send() 不产生私聊调用。"""
     service = NotificationService(123, "https://gitea.example.com", "token")
