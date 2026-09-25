@@ -341,13 +341,7 @@ class NotificationService:
             return
 
         assistants = await self._get_assistant_members()
-        excerpt = " ".join((data.comment.body or "").split())
-        if len(excerpt) > 80:
-            excerpt = excerpt[:80] + "…"
-        dm_text = (
-            f"[Gitea] {data.repository.full_name} issue #{data.issue.number}"
-            f"「{data.issue.title}」有新评论（{commenter}）：\n{excerpt}\n{data.comment.html_url}"
-        )
+        dm_text = f"高程答疑平台在你的 Issue 下有新评论：\n{data.comment.html_url}"
 
         failed: list[str] = []
         for login in targets:

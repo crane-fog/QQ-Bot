@@ -150,9 +150,10 @@ async def test_dm_sent_to_author_and_assignee(service):
     assert called_ids == [9000001, 9000002]
     for call in private.send_private_msg.await_args_list:
         assert call.kwargs["group_id"] == 123
-        assert "issue #1「登录样式错乱」" in call.args[1]
-        assert "comment body" in call.args[1]
-        assert "2553761" in call.args[1]
+        assert call.args[1] == (
+            "高程答疑平台在你的 Issue 下有新评论：\n"
+            "https://gitea.example.com/org/repo/issues/1#comment-300"
+        )
     group.send_group_msg.assert_not_awaited()
 
 
