@@ -51,6 +51,7 @@ class NotificationService:
         assistant_list: set[int] | None = None,
         dm_notify_group: int | None = None,
         dm_notify_source_group: int | None = None,
+        debug: bool = False,
     ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
@@ -66,6 +67,7 @@ class NotificationService:
         self.dm_notify_group = dm_notify_group or 0
         # 私聊临时会话的来源群，缺省与 webhook 群通知同群
         self.dm_notify_source_group = dm_notify_source_group or response_group
+        self.debug = debug
         # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
         self.session_factory = (
             sessionmaker(bind=database, class_=AsyncSession, expire_on_commit=False)
@@ -338,6 +340,9 @@ class NotificationService:
         if not targets:
             return
 
+        if not targets:
+            return
+        Log.debug(f"issue #{data.issue.number} 私聊通知目标：{'、'.join(targets)}", self.debug)
         dm_text = f"高程答疑平台在你的 Issue 下有新评论：\n{data.comment.html_url}"
 
         failed: list[str] = []
@@ -348,11 +353,13 @@ class NotificationService:
                 continue
             if int(qq_id) in self.assistant_list:
                 # 助教：不私聊，也不视为失败
+                Log.debug(f"助教跳过私聊：login={login}, qq={qq_id}", self.debug)
                 continue
             try:
                 await api.asyncPrivateService.send_private_msg(
                     int(qq_id), dm_text, group_id=self.dm_notify_source_group
                 )
+                Log.debug(f"私聊通知已发送：login={login}, qq={qq_id}", self.debug)
             except Exception as e:
                 Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
                 failed.append(login)

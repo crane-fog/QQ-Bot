@@ -63,6 +63,7 @@ class WebhookHandler:
         assistant_list: set[int] | None = None,
         dm_notify_group: int | None = None,
         dm_notify_source_group: int | None = None,
+        debug: bool = False,
     ):
         self.response_group: int = response_group
         self.notification_service = NotificationService(
@@ -75,6 +76,7 @@ class WebhookHandler:
             assistant_list=assistant_list,
             dm_notify_group=dm_notify_group,
             dm_notify_source_group=dm_notify_source_group,
+            debug=debug,
         )
         self.server = None
         app.state.handler = self

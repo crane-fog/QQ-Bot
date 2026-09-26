@@ -304,6 +304,7 @@ class Bot:
                 assistant_list=self.assistant_list,
                 dm_notify_group=self.gitea_dm_notify_group,
                 dm_notify_source_group=self.gitea_dm_notify_source_group,
+                debug=self.debug,
             )
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
             Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")

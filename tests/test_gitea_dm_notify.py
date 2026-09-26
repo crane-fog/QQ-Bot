@@ -1,5 +1,6 @@
 """issue 新评论私聊提醒（临时会话）的单元测试。"""
 
+import logging
 from unittest.mock import AsyncMock, patch
 
 import pytest
@@ -243,6 +244,24 @@ async def test_dm_source_group_configurable():
     with patch("src.Api.api.asyncPrivateService", new=AsyncMock()) as private:
         await default_service._send_comment_dm_notifications(event)
     assert private.send_private_msg.await_args.kwargs["group_id"] == 123
+
+
+@pytest.mark.asyncio
+async def test_dm_success_writes_debug_log(caplog):
+    """发送成功时输出 DEBUG 日志，便于部署侧确认送达链路。"""
+    service = NotificationService(
+        123, "https://gitea.example.com", "token", dm_notify=True, debug=True
+    )
+    service._lookup_qq = AsyncMock(return_value="9000001")
+    event = comment_event()
+
+    with patch("src.Api.api.asyncPrivateService", new=AsyncMock()) as private:
+        with caplog.at_level(logging.DEBUG):
+            await service._send_comment_dm_notifications(event)
+
+    private.send_private_msg.assert_awaited_once()
+    assert "私聊通知已发送" in caplog.text
+    assert "2553759" in caplog.text
 
 
 @pytest.mark.asyncio
