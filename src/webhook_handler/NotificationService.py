@@ -336,9 +336,6 @@ class NotificationService:
                 targets.append(login)
         if not targets:
             return
-
-        if not targets:
-            return
         Log.debug(f"issue #{data.issue.number} 私聊通知目标：{'、'.join(targets)}", self.debug)
         dm_text = f"高程答疑平台在你的 Issue 下有新评论：\n{data.comment.html_url}"
 
