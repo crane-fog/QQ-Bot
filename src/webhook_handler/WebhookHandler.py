@@ -61,7 +61,6 @@ class WebhookHandler:
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
         assistant_list: set[int] | None = None,
-        dm_notify_group: int | None = None,
         dm_notify_source_group: int | None = None,
         debug: bool = False,
     ):
@@ -74,7 +73,6 @@ class WebhookHandler:
             dm_notify=dm_notify,
             dm_notify_exclude=dm_notify_exclude,
             assistant_list=assistant_list,
-            dm_notify_group=dm_notify_group,
             dm_notify_source_group=dm_notify_source_group,
             debug=debug,
         )

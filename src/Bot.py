@@ -92,10 +92,6 @@ class Bot:
         self.gitea_dm_notify_exclude: list[str] = list(
             self.bot_config.get("Gitea", {}).get("dm_notify_exclude") or []
         )
-        # 私聊通知失败的提醒群，未配置则不做失败提醒
-        self.gitea_dm_notify_group: int = int(
-            self.bot_config.get("Gitea", {}).get("dm_notify_group") or 0
-        )
         # 私聊临时会话的来源群，缺省与 webhook 群通知同群
         self.gitea_dm_notify_source_group: int = int(
             self.bot_config.get("Gitea", {}).get("dm_notify_source_group") or 0
@@ -302,7 +298,6 @@ class Bot:
                 dm_notify=self.gitea_dm_notify,
                 dm_notify_exclude=self.gitea_dm_notify_exclude,
                 assistant_list=self.assistant_list,
-                dm_notify_group=self.gitea_dm_notify_group,
                 dm_notify_source_group=self.gitea_dm_notify_source_group,
                 debug=self.debug,
             )

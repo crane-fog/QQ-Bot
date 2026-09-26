@@ -21,4 +21,3 @@ api_token = "<your-token>"
 dm_notify = false
 dm_notify_source_group = 123456789
 dm_notify_exclude = []
-dm_notify_group = 123456789

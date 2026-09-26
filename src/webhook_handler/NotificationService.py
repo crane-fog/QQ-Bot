@@ -49,7 +49,6 @@ class NotificationService:
         dm_notify: bool = False,
         dm_notify_exclude: list[str] | None = None,
         assistant_list: set[int] | None = None,
-        dm_notify_group: int | None = None,
         dm_notify_source_group: int | None = None,
         debug: bool = False,
     ):
@@ -63,8 +62,6 @@ class NotificationService:
         self.dm_notify_exclude = list(dm_notify_exclude or [])
         # 复用 Bot 启动时从 assistant_group 加载的助教名单（运行期不刷新）
         self.assistant_list = assistant_list or set()
-        # 配置了 dm_notify_group 时，私聊通知失败在该群做纯文本提醒；未配置则不做失败提醒
-        self.dm_notify_group = dm_notify_group or 0
         # 私聊临时会话的来源群，缺省与 webhook 群通知同群
         self.dm_notify_source_group = dm_notify_source_group or response_group
         self.debug = debug
@@ -325,7 +322,7 @@ class NotificationService:
 
         Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 dm_notify_source_group
         为临时会话来源群发送；评论者本人不发；assistant_list 助教名单与
-        dm_notify_exclude 名单不发；失败名单在 dm_notify_group 纯文本提醒（未配置则不提醒）。
+        dm_notify_exclude 名单不发；失败无条件记 warning 日志。
         """
         if data.action != "created":
             return
@@ -363,25 +360,11 @@ class NotificationService:
             except Exception as e:
                 Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
                 failed.append(login)
-        if not failed:
-            return
-        Log.warning(
-            f"私聊通知存在失败：{data.repository.full_name} issue #{data.issue.number}，"
-            f"未通知：{'、'.join(failed)}"
-        )
-        if self.dm_notify_group:
-            await self._send_dm_failure_notice(data, failed)
-
-    async def _send_dm_failure_notice(
-        self, data: GiteaIssueCommentEvent, failed: list[str]
-    ) -> None:
-        """在 dm_notify_group 纯文本列出未能私聊通知到的学号；不 @，未配置该群则不提醒。"""
-        message = (
-            f"[Gitea] issue #{data.issue.number}「{data.issue.title}」有新评论，"
-            f"以下用户未能私聊通知：{'、'.join(failed)}\n"
-            f"{data.comment.html_url}"
-        )
-        await api.asyncGroupService.send_group_msg(group_id=self.dm_notify_group, message=message)
+        if failed:
+            Log.warning(
+                f"私聊通知存在失败：{data.repository.full_name} issue #{data.issue.number}，"
+                f"未通知：{'、'.join(failed)}"
+            )
 
     async def _lookup_qq(self, login: str) -> str | None:
         """Gitea 用户名（学号）→ QQ 号；非数字学号、无数据库或无映射时返回 None。"""

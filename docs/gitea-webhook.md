@@ -88,7 +88,6 @@ dm_notify_exclude = []
 | `dm_notify` | 是否开启 issue 新评论私聊提醒（临时会话），默认 `false` | 否 |
 | `dm_notify_source_group` | 私聊临时会话的来源群（需与被通知人同群），缺省与 `webhook_response_group` 同群 | 否 |
 | `dm_notify_exclude` | 补充的不私聊提醒名单（Gitea 用户名/学号）；助教群（`[Init] assistant_group`）名单启动时自动排除，无需在此重复 | 否 |
-| `dm_notify_group` | 私聊通知失败的提醒群：查不到映射/发送失败的学号在该群纯文本列出（不 @）；不配置则不做失败提醒 | 否 |
 
 `api_url` 同时用于调用 Gitea API，以及还原 Webhook Markdown 中 `/attachments/<uuid>` 这类根相对资源链接。因此它必须与用户浏览器访问 Gitea 时使用的外部基础地址一致：
 
@@ -122,7 +121,7 @@ api_url = "http://gitea.example.com/QA"
 
 - **用户映射：** Gitea 用户名即学号，经数据库 `stu_qq_id_map` 表（由 `GetStuId` 插件从群卡片导入）换算 QQ 号。
 - **助教排除：** 复用 Bot 启动时从 `assistant_group`（`[Init]` 节）加载的助教名单（与 TheresaCard 等插件同一份 `assistant_list`），命中者自动不私聊、不视为失败；名单变动需重启 bot 生效。`dm_notify_exclude` 可作为补充名单。
-- **失败提醒：** 查不到 QQ 映射、未启用数据库或私聊发送失败时，在 `dm_notify_group` 纯文本列出未通知到的学号；不配置该群则不做失败提醒。
+- **失败记录：** 查不到 QQ 映射、未启用数据库或私聊发送失败时记 WARNING 日志（关键字 `私聊通知存在失败`），不发群内提醒。
 - **触发条件：** 仅 `action=created`；编辑/删除评论不提醒。该功能独立于群通知模式（`forward` 开或关均可）。
 - **前置：** `database_enable = true` 且已导入学号映射；LLBot 需允许向非好友发送群临时会话消息。
 
