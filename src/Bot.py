@@ -87,6 +87,15 @@ class Bot:
         self.webhook_response_group: int = required_configs["webhook_response_group"]
         self.gitea_api_url: str = required_configs["gitea_api_url"]
         self.gitea_api_token: str = required_configs["gitea_api_token"]
+        # 可选配置：issue 新评论私聊提醒（临时会话），缺省关闭、无排除名单
+        self.gitea_dm_notify: bool = bool(self.bot_config.get("Gitea", {}).get("dm_notify", False))
+        self.gitea_dm_notify_exclude: list[str] = list(
+            self.bot_config.get("Gitea", {}).get("dm_notify_exclude") or []
+        )
+        # 私聊临时会话的来源群，缺省与 webhook 群通知同群
+        self.gitea_dm_notify_source_group: int = int(
+            self.bot_config.get("Gitea", {}).get("dm_notify_source_group") or 0
+        )
         Log.info("成功加载配置文件")
         Log.info("加载的bot初始化配置信息如下：")
         for item in required_configs.items():
@@ -285,6 +294,12 @@ class Bot:
                 self.webhook_response_group,
                 self.gitea_api_url,
                 self.gitea_api_token,
+                database=self.database,
+                dm_notify=self.gitea_dm_notify,
+                dm_notify_exclude=self.gitea_dm_notify_exclude,
+                assistant_list=self.assistant_list,
+                dm_notify_source_group=self.gitea_dm_notify_source_group,
+                debug=self.debug,
             )
             webhook_ip, webhook_port = self.webhook_handler_address.split(":")
             Log.info(f"启动 Webhook Handler 服务 {self.webhook_handler_address}")
