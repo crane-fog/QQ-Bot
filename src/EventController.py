@@ -3,6 +3,7 @@ import traceback
 
 import uvicorn
 from fastapi import FastAPI, Request
+from prometheus_fastapi_instrumentator import Instrumentator
 
 from plugins import Plugins
 
@@ -16,6 +17,7 @@ from .PrintLog import Log
 
 def create_event_app(event_controller: "Event") -> FastAPI:
     app = FastAPI(title="Event Controller")
+    Instrumentator().instrument(app).expose(app)
 
     @app.api_route("/onebot", methods=["POST", "GET"], status_code=200)
     async def post_data(request: Request):
