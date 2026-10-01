@@ -22,8 +22,17 @@ class Api:
         self.asyncGroupService: Api.AsyncGroupService = self.AsyncGroupService(self)
         self.asyncMessageService: Api.AsyncMessageService = self.AsyncMessageService(self)
 
-        # async 相关
-        self.client = AsyncClient(timeout=Timeout(180))
+        self._client = None
+
+    @property
+    def client(self) -> AsyncClient:
+        if self._client is None or self._client.is_closed:
+            self._client = AsyncClient(timeout=Timeout(180))
+        return self._client
+
+    async def aclose(self) -> None:
+        if self._client is not None and not self._client.is_closed:
+            await self._client.aclose()
 
     def set_server_address(self, server_address: str):
         self.bot_api_address = f"http://{server_address}/"
