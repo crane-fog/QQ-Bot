@@ -5,6 +5,8 @@ from typing import TYPE_CHECKING
 
 import tomlkit
 
+from src.metrics import PLUGIN_CALL_COUNT, PLUGIN_DURATION
+
 if TYPE_CHECKING:
     from src.Bot import Bot
 
@@ -43,7 +45,10 @@ def plugin_main(check_call_word=True, call_word: list = None, check_group=True, 
             if self.status != "error":
                 self.set_status("running")
 
-            return await func(self, event, debug)
+            PLUGIN_CALL_COUNT.labels(plugin=self.name).inc()
+
+            with PLUGIN_DURATION.labels(plugin=self.name).time():
+                return await func(self, event, debug)
 
         return wrapper
 

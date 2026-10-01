@@ -20,3 +20,12 @@ LLM_TOOL_USAGE_COUNT = Counter(
 LLM_SUCCESS_COUNT = Counter(
     "llm_success_count", "LLM 调用成功情况计数", labelnames=["type", "provider", "model"]
 )
+
+PLUGIN_CALL_COUNT = Counter("plugin_call_count", "插件调用次数", ["plugin"])
+
+PLUGIN_DURATION = Histogram(
+    "plugin_duration_seconds",
+    "插件调用耗时",
+    labelnames=["plugin"],
+    buckets=[0.005, 0.01, 0.025, 0.05, 0.1, 0.2, 0.5, 1.0, 2.0, 5.0, 10.0, 30.0, 60.0],
+)
