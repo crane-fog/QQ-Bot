@@ -157,7 +157,7 @@ async def test_push_formatter_falls_back_to_last_commit_without_warning():
 
     with (
         patch("src.webhook_handler.WebhookHandler.Log.warning") as warning,
-        patch("src.Api.api.asyncService", new=AsyncMock()) as async_service,
+        patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service,
     ):
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "push", EVENT_CONFIG["push"]
@@ -184,7 +184,7 @@ async def test_push_payload_missing_commit_details_logs_warning():
 
     with (
         patch("src.webhook_handler.WebhookHandler.Log.warning") as warning,
-        patch("src.Api.api.asyncService", new=AsyncMock()) as async_service,
+        patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service,
     ):
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "push", EVENT_CONFIG["push"]
@@ -206,7 +206,7 @@ async def test_send_plain_text_failure_logs_error():
 
     with (
         patch("src.webhook_handler.NotificationService.Log.error") as error,
-        patch("src.Api.api.asyncService", new=async_service),
+        patch("src.Api.api.asyncGroupService", new=async_service),
     ):
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "issue_comment", EVENT_CONFIG["issue_comment"]
@@ -224,7 +224,7 @@ async def test_issues_event_sends_mixed_message_and_three_node_forward_message()
     payload["issue"]["assets"] = []
     event = GiteaIssuesEvent.model_validate(payload)
 
-    with patch("src.Api.api.asyncService", new=AsyncMock()) as async_service:
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service:
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "issues", EVENT_CONFIG["issues"]
         )
@@ -280,7 +280,7 @@ async def test_issues_summary_failure_skips_forward_and_logs_error():
 
     with (
         patch("src.webhook_handler.NotificationService.Log.error") as error,
-        patch("src.Api.api.asyncService", new=async_service),
+        patch("src.Api.api.asyncGroupService", new=async_service),
     ):
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "issues", EVENT_CONFIG["issues"]
@@ -300,7 +300,7 @@ async def test_issue_assign_sends_plain_text_without_forward_message():
     payload["action"] = "assigned"
     event = GiteaIssuesEvent.model_validate(payload)
 
-    with patch("src.Api.api.asyncService", new=AsyncMock()) as async_service:
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service:
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "issue_assign", EVENT_CONFIG["issue_assign"]
         )
@@ -337,7 +337,7 @@ async def test_issue_label_sends_summary_author_and_label_only():
     }
     event = GiteaIssuesEvent.model_validate(payload)
 
-    with patch("src.Api.api.asyncService", new=AsyncMock()) as async_service:
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service:
         await WebhookHandler(123, GITEA_API_URL, GITEA_API_TOKEN).resolve(
             event, "issue_label", EVENT_CONFIG["issue_label"]
         )

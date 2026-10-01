@@ -40,7 +40,7 @@ insert_persona = true
 [profile.chat]
 provider = "deepseek"
 model = "deepseek-flash"
-tools = ["send_private_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "delete_msg", "get_group_info", "set_msg_emoji_like", "send_group_poke", "get_msg", "shell", "read_img_file"]
+tools = ["send_private_msg", "send_group_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "delete_msg", "get_group_info", "set_msg_emoji_like", "send_group_poke", "get_msg", "shell", "read_img_file"]
 max_turns = 10
 insert_persona = true
 
@@ -76,6 +76,18 @@ parameters.properties.group_id.description = "The group ID to retrieve members f
 parameters.properties.no_cache.type = "boolean"
 parameters.properties.no_cache.description = "Whether to bypass the cache and fetch fresh data. Defaults to true."
 parameters.required = ["group_id"]
+parameters.additionalProperties = false
+
+[tool.send_group_msg]
+name = "send_group_msg"
+strict = false
+description = "Send a message to a group. Be aware that your output will always be sent to the current group by default, so you should only use this tool when you have to send multiple messages to the current group. You shouldn't send messages to other groups."
+parameters.type = "object"
+parameters.properties.group_id.type = "integer"
+parameters.properties.group_id.description = "The group ID to send the message to."
+parameters.properties.message.type = "string"
+parameters.properties.message.description = "The message to send."
+parameters.required = ["group_id", "message"]
 parameters.additionalProperties = false
 
 [tool.get_group_member_info]

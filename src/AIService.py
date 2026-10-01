@@ -13,6 +13,7 @@ from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnio
 from PIL import Image
 
 from src.Api import api
+from src.metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
 
 
@@ -53,6 +54,7 @@ class AIService:
             self._config = tomlkit.load(f)
         with open(persona_path, encoding="utf-8") as f:
             self.persona = f.read()
+        self._client = AsyncOpenAI(api_key="placeholder")
         self.funcs = {
             "send_private_msg": api.privateService.send_private_msg,
             "get_group_member_list": api.groupService.get_group_member_list,
@@ -67,6 +69,7 @@ class AIService:
             "shell": self.restricted_shell,
         }
         self.async_funcs = {
+            "send_group_msg": api.asyncGroupService.send_group_msg,
             "travily_search": self.travily_search,
             "travily_extract": self.travily_extract,
         }
@@ -88,25 +91,60 @@ class AIService:
         if profile.insert_persona:
             messages.insert(0, {"role": "system", "content": self.persona})
 
-        client = AsyncOpenAI(
+        client = self._client.with_options(
             api_key=profile.provider.api_key,
             base_url=profile.provider.base_url,
             timeout=profile.provider.timeout_seconds,
         )
         try:
             for turn in range(profile.max_turns):
-                response = await client.chat.completions.create(
+                with LLM_DURATION.labels(
+                    profile_name=profile.name,
+                    provider=profile.provider.name,
                     model=profile.model,
-                    messages=messages,
-                    response_format=profile.response_format,
-                    reasoning_effort=profile.reasoning_effort,
-                    tools=profile.tools,
-                    extra_body=profile.extra_body,
-                )
+                ).time():
+                    response = await client.chat.completions.create(
+                        model=profile.model,
+                        messages=messages,
+                        response_format=profile.response_format,
+                        reasoning_effort=profile.reasoning_effort,
+                        tools=profile.tools,
+                        extra_body=profile.extra_body,
+                    )
                 messages.append(response.choices[0].message)
                 Log.info(f"轮{turn + 1}：{response}")
+                LLM_TOKEN_COUNT.labels(
+                    profile_name=profile.name,
+                    token_type="prompt",
+                    provider=profile.provider.name,
+                    model=profile.model,
+                ).inc(response.usage.prompt_tokens)
+                LLM_TOKEN_COUNT.labels(
+                    profile_name=profile.name,
+                    token_type="cached_prompt",
+                    provider=profile.provider.name,
+                    model=profile.model,
+                ).inc(response.usage.prompt_tokens_details.cached_tokens)
+                LLM_TOKEN_COUNT.labels(
+                    profile_name=profile.name,
+                    token_type="completion",
+                    provider=profile.provider.name,
+                    model=profile.model,
+                ).inc(response.usage.completion_tokens)
+                LLM_TOKEN_COUNT.labels(
+                    profile_name=profile.name,
+                    token_type="reasoning_completion",
+                    provider=profile.provider.name,
+                    model=profile.model,
+                ).inc(response.usage.completion_tokens_details.reasoning_tokens)
+
                 tool_calls = response.choices[0].message.tool_calls
                 if not tool_calls:
+                    LLM_SUCCESS_COUNT.labels(
+                        type="success",
+                        provider=profile.provider.name,
+                        model=profile.model,
+                    ).inc()
                     return response.choices[0].message.content or "[NO REPLY]"
 
                 if group_id is None:
@@ -122,6 +160,11 @@ class AIService:
                         or tool_call.function.name in self.async_funcs
                         or tool_call.function.name in self.not_text_funcs
                     ):
+                        LLM_TOOL_USAGE_COUNT.labels(
+                            tool_name=tool_call.function.name,
+                            provider=profile.provider.name,
+                            model=profile.model,
+                        ).inc()
                         Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
                         args = json.loads(tool_call.function.arguments)
                         if tool_call.function.name == "shell":
@@ -134,6 +177,11 @@ class AIService:
                             result = self.not_text_funcs[tool_call.function.name](**args)
                         Log.info(f"轮{turn + 1}工具调用结果：{result}")
                     else:
+                        LLM_TOOL_USAGE_COUNT.labels(
+                            tool_name="Error",
+                            provider=profile.provider.name,
+                            model=profile.model,
+                        ).inc()
                         Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_call.function.name} 不存在")
                         result = f"工具 {tool_call.function.name} 不存在"
                     messages.append(
@@ -143,12 +191,22 @@ class AIService:
                             "content": result,
                         }
                     )
+            LLM_SUCCESS_COUNT.labels(
+                type="turns_exceeded",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc()
             Log.warning(
                 f"AI profile '{profile_name}' exceeded max_turns={profile.max_turns} without a final answer"
             )
             return "[NO REPLY]"
 
         except Exception as exc:
+            LLM_SUCCESS_COUNT.labels(
+                type="fail",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc()
             raise AIProviderError(f"AI profile '{profile_name}' request failed: {exc}") from exc
 
     def _get_profile(self, profile_name: str) -> AIProfile:

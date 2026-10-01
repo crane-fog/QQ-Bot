@@ -304,6 +304,7 @@ class Bot:
             await event_server
         finally:
             await event.stop()
+            await api.aclose()
             if webhook_handler is not None:
                 await webhook_handler.stop()
             if scheduler_started:

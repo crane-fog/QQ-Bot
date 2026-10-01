@@ -310,7 +310,7 @@ class A_Pixiv(Plugins):
                             message=reply_message + "\n由于请求为R-18作品，小孩子还是不要看啦...",
                         )
                         if self.send_R_18:
-                            await api.asyncService.send_group_forward_msg(
+                            await api.asyncGroupService.send_group_forward_msg(
                                 group_id=event.group_id, forward_message=forward_message
                             )
                             if self.send_R_18_img_private:
@@ -318,7 +318,7 @@ class A_Pixiv(Plugins):
                                 api.privateService.send_private_msg(
                                     user_id=event.user_id, message=reply_message
                                 )
-                                await api.asyncService.send_private_forward_msg(
+                                await api.asyncPrivateService.send_private_forward_msg(
                                     user_id=event.user_id, forward_message=forward_message
                                 )
                         else:
@@ -332,7 +332,7 @@ class A_Pixiv(Plugins):
                             message=reply_message,
                             image_path=pixic.preview_path,
                         )
-                        await api.asyncService.send_group_forward_msg(
+                        await api.asyncGroupService.send_group_forward_msg(
                             group_id=event.group_id, forward_message=forward_message
                         )
                 else:

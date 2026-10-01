@@ -25,6 +25,7 @@ dependencies = [
     "xlrd>=2.0.2",
     "tomlkit>=0.15.1",
     "apscheduler>=3.11.3",
+    "prometheus-fastapi-instrumentator>=8.1.0",
 ]
 optional-dependencies = { Schedule = ["playwright>=1.60.0"] }
 

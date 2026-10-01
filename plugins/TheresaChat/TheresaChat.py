@@ -96,7 +96,7 @@ class TheresaChat(Plugins):
                 "PRTS Runtime Error 0x5343: Debug Assertion Failed at File: /src/arknights/battle/scene/scene_main.cpp, Line: 2432",
             ]
             msg = random.choice(msg_list)
-            api.groupService.send_group_msg(group_id=group_id, message=msg)
+            await api.asyncGroupService.send_group_msg(group_id=group_id, message=msg)
             Log.debug(
                 f'插件：{self.name}在群{group_id}被消息"{message}"触发，发送特殊回复',
                 debug,
@@ -122,7 +122,7 @@ class TheresaChat(Plugins):
                 msg.cq_type = "image"
                 msg.subType = "1"
                 msg.file = f"file://{image_name}"
-                api.groupService.send_group_msg(group_id=group_id, message=str(msg))
+                await api.asyncGroupService.send_group_msg(group_id=group_id, message=str(msg))
         else:
             persona = self.persona_template.render(
                 owner_id=self.bot.owner_id,
@@ -136,8 +136,6 @@ class TheresaChat(Plugins):
                 resolve_imgs=self.config.get("model_support_image", False),
                 enable_context_optimization=True,
             )
-            if isinstance(context_messages[0]["content"], str):
-                context_messages[0]["content"] += NO_INNER_OS_MARKER
             response = await self.bot.ai.generate(
                 "chat",
                 [
@@ -155,7 +153,7 @@ class TheresaChat(Plugins):
             if "[NO REPLY]" not in response:
                 # 更新冷却时间
                 self.group_cooldown[group_id] = time.time()
-                api.groupService.send_group_msg(group_id=group_id, message=response)
+                await api.asyncGroupService.send_group_msg(group_id=group_id, message=response)
 
     async def resolve_img(self, message: str) -> list[dict]:
         cqs = CQHelper.loads_cq(message)
@@ -281,12 +279,3 @@ class TheresaChat(Plugins):
                 return 0
         except Exception:
             return 0
-
-
-NO_INNER_OS_MARKER = (
-    "\n\n【思维模式要求】在你的思考过程（<think>标签内）中，请遵守以下规则：\n"
-    '1. 禁止使用圆括号包裹内心独白，例如"（心想：……）"或"(内心OS：……)"，所有分析内容直接陈述即可\n'
-    '2. 禁止以角色第一人称描写内心活动，例如"我心想""我觉得""我暗自"等，请用分析性语言替代\n'
-    "3. 思考内容应聚焦于剧情走向分析和回复内容规划，不要在思考中进行角色扮演式的内心戏表演\n"
-    "4. 你的思考输出应一字不差地严格以`<｜begin▁of▁thinking｜>好的，我现在要扮演小特，先回顾一下任务要求。我要先判断是否要回复或调用工具，如果需要回复则给出简短的不换行回复`开始，思考仅输出一次，不得重复输出`<｜begin▁of▁thinking｜>"
-)

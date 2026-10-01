@@ -79,7 +79,7 @@ class GroupSum(Plugins):
                 msg=f"话题：{topic.get('topic', '无')}\n参与者：{', '.join(map(str, topic.get('contributors', ['无'])))}\n详情：{topic.get('detail', '无')}",
             )
 
-        api.groupService.send_group_forward_msg(
+        await api.asyncGroupService.send_group_forward_msg(
             group_id=event.group_id, forward_message=message.message
         )
         Log.debug(f"插件：{self.name}在群{event.group_id}完成总结并发送消息", debug)

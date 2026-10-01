@@ -193,7 +193,7 @@ async def test_issues_notification_sends_markdown_images_and_attachments(monkeyp
 
     monkeypatch.setattr(service, "_download_images", fake_download)
 
-    with patch("src.Api.api.asyncService", new=AsyncMock()) as async_service:
+    with patch("src.Api.api.asyncGroupService", new=AsyncMock()) as async_service:
         await service._send_issues_notification(event, "issues")
 
         assert downloaded_images == [

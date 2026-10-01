@@ -199,7 +199,7 @@ async def test_reply_posts_comment_and_sends_receipt():
     plugin = _make_plugin(gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(
             plugin, _make_event("#7 登录一直报 500"), debug=False
         )
@@ -221,7 +221,7 @@ async def test_reply_missing_issue_sends_friendly_hint():
     plugin = _make_plugin(gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event("#999 报错"), debug=False)
 
     gitea.create_issue_comment.assert_not_awaited()
@@ -235,7 +235,7 @@ async def test_reply_api_error_sends_failure_hint():
     plugin = _make_plugin(gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event("#7 内容"), debug=False)
 
     message = service.send_group_msg.await_args.kwargs["message"]
@@ -249,7 +249,7 @@ async def test_reply_ignores_malformed_message(message):
     plugin = _make_plugin(gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event(message), debug=False)
 
     gitea.get_issue.assert_not_awaited()
@@ -265,7 +265,7 @@ async def test_reply_accepts_optional_space_after_number(message):
     plugin = _make_plugin(gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event(message), debug=False)
 
     args = gitea.create_issue_comment.await_args.args
@@ -280,7 +280,7 @@ async def test_reply_ignores_when_repo_not_configured():
     plugin = _make_plugin(repo="", gitea=gitea)
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event("#7 内容"), debug=False)
 
     gitea.get_issue.assert_not_awaited()
@@ -423,7 +423,7 @@ async def test_reply_with_image_uploads_attachment_and_patches_body():
         return True
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -452,7 +452,7 @@ async def test_reply_file_cq_code_is_ignored():
     """QQ 群文件走独立上传事件，[CQ:file] 不是消息段；仅剩不支持内容时不产生空评论。"""
     plugin, gitea, service = _make_media_plugin()
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(
             plugin, _make_event("#7 [CQ:file,name=报告.pdf,url=https://qq/f]"), debug=False
         )
@@ -468,7 +468,7 @@ async def test_reply_file_code_dropped_when_text_present():
     """正文和 [CQ:file] 混合时，码被丢弃、文本正常发送且不触发附件流程。"""
     plugin, gitea, service = _make_media_plugin()
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(
             plugin, _make_event("#7 看日志[CQ:file,name=报告.pdf,url=https://qq/f]"), debug=False
         )
@@ -486,7 +486,7 @@ async def test_reply_prefers_local_path_from_message_recorder(tmp_path):
     Image.new("RGB", (1, 1)).save(local_img, "PNG")
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -512,7 +512,7 @@ async def test_reply_local_path_missing_fails_without_fallback(tmp_path):
     missing = tmp_path / "missing.png"
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -536,7 +536,7 @@ async def test_reply_download_failure_replaces_placeholder_and_notes_in_receipt(
         return False
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -561,7 +561,7 @@ async def test_reply_upload_api_error_marks_placeholder_and_notes_in_receipt():
         return True
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -584,7 +584,7 @@ async def test_reply_patch_failure_notes_attachment_area_in_receipt():
         return True
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -599,7 +599,7 @@ async def test_reply_patch_failure_notes_attachment_area_in_receipt():
 async def test_reply_without_media_skips_attachment_flow():
     plugin, gitea, service = _make_media_plugin()
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main).__wrapped__(
             plugin, _make_event("#7 纯文本反馈"), debug=False
         )
@@ -631,7 +631,7 @@ async def test_reply_multiple_media_upload_in_order():
 
     message = "#7 图一[CQ:image,file=a.image,url=https://gchat.qpic.cn/a]图二[CQ:image,file=b.image,url=https://gchat.qpic.cn/b]"
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event(message), debug=False)
@@ -660,7 +660,7 @@ async def test_reply_partial_media_failure_keeps_successful_one():
 
     message = "#7[CQ:image,file=a.image,url=https://gchat.qpic.cn/a][CQ:image,file=b.image,url=https://gchat.qpic.cn/b]"
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, _make_event(message), debug=False)
@@ -681,7 +681,7 @@ async def test_reply_video_uploads_as_attachment_link():
         return True
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(
@@ -811,7 +811,7 @@ async def test_wrapper_ignores_group_not_in_whitelist():
     plugin.effected_groups = []  # 装饰器层的群白名单为空
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main)(plugin, _make_event("#7 内容"), debug=False)
 
     gitea.get_issue.assert_not_awaited()
@@ -825,7 +825,7 @@ async def test_wrapper_ignores_message_without_call_word():
     plugin.effected_groups = [20001]
     service = SimpleNamespace(send_group_msg=AsyncMock())
 
-    with patch("src.Api.api.asyncService", service):
+    with patch("src.Api.api.asyncGroupService", service):
         await cast(Any, GiteaReply.main)(plugin, _make_event("hello #7"), debug=False)
 
     gitea.get_issue.assert_not_awaited()
@@ -980,7 +980,7 @@ async def test_reply_uses_recorded_message_from_db(tmp_path):
     event.sql_id = 42  # event.message 是原始码，path 只在数据库副本里
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", new=AsyncMock()) as fake_download,
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
@@ -1006,7 +1006,7 @@ async def test_reply_falls_back_to_event_message_when_db_has_no_record(tmp_path)
     event.sql_id = 42
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
@@ -1058,7 +1058,7 @@ async def test_reply_falls_back_when_db_query_fails(tmp_path):
     event.sql_id = 42
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
@@ -1082,7 +1082,7 @@ async def test_reply_falls_back_when_recorded_message_malformed(tmp_path):
     event.sql_id = 42
 
     with (
-        patch("src.Api.api.asyncService", service),
+        patch("src.Api.api.asyncGroupService", service),
         patch.object(GiteaReply, "_download_media", staticmethod(fake_download)),
     ):
         await cast(Any, GiteaReply.main).__wrapped__(plugin, event, debug=False)
