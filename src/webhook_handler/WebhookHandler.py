@@ -52,10 +52,29 @@ def parse_gitea_event(event_type: str, payload: dict) -> GiteaWebhookEvent:
 
 
 class WebhookHandler:
-    def __init__(self, response_group: int, gitea_api_url: str, gitea_api_token: str):
+    def __init__(
+        self,
+        response_group: int,
+        gitea_api_url: str,
+        gitea_api_token: str,
+        database=None,
+        dm_notify: bool = False,
+        dm_notify_exclude: list[str] | None = None,
+        assistant_list: set[int] | None = None,
+        dm_notify_source_group: int | None = None,
+        debug: bool = False,
+    ):
         self.response_group: int = response_group
         self.notification_service = NotificationService(
-            response_group, gitea_api_url, gitea_api_token
+            response_group,
+            gitea_api_url,
+            gitea_api_token,
+            database=database,
+            dm_notify=dm_notify,
+            dm_notify_exclude=dm_notify_exclude,
+            assistant_list=assistant_list,
+            dm_notify_source_group=dm_notify_source_group,
+            debug=debug,
         )
         self.server = None
         app.state.handler = self

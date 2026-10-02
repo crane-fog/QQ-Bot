@@ -18,3 +18,6 @@ webhook_handler_address = "127.0.0.1:8000"
 webhook_response_group = 123456789
 api_url = "https://gitea.example.com"
 api_token = "<your-token>"
+dm_notify = false
+dm_notify_source_group = 123456789
+dm_notify_exclude = []

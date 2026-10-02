@@ -7,6 +7,9 @@ from typing import Any
 from urllib.parse import urlsplit
 
 from httpx import AsyncClient, Timeout
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession
+from sqlalchemy.orm import sessionmaker
 
 from src.Api import api
 from src.gitea.GiteaApi import GiteaApi
@@ -23,6 +26,7 @@ from src.gitea.GiteaEventFormatter import (
     prepend_author_block,
 )
 from src.gitea.Models import GiteaIssueCommentEvent, GiteaIssuesEvent, GiteaWebhookEvent
+from src.Models import StuId
 from src.PrintLog import Log
 from src.webhook_handler.EventConfig import EventConfig
 from utils.CQType import Forward
@@ -36,13 +40,37 @@ class NotificationService:
     gitea: GiteaApi
     formatter: GiteaEventFormatter
 
-    def __init__(self, response_group: int, gitea_api_url: str, gitea_api_token: str):
+    def __init__(
+        self,
+        response_group: int,
+        gitea_api_url: str,
+        gitea_api_token: str,
+        database: AsyncEngine | None = None,
+        dm_notify: bool = False,
+        dm_notify_exclude: list[str] | None = None,
+        assistant_list: set[int] | None = None,
+        dm_notify_source_group: int | None = None,
+        debug: bool = False,
+    ):
         self.gitea = GiteaApi(gitea_api_url, gitea_api_token)
         self.response_group = response_group
         # GiteaApi 已校验非空并去除尾部 /
         self.gitea_api_url = self.gitea.api_url
         self.gitea_api_token = gitea_api_token
         self.formatter = GiteaEventFormatter(self.gitea_api_url)
+        self.dm_notify = dm_notify
+        self.dm_notify_exclude = list(dm_notify_exclude or [])
+        # 复用 Bot 启动时从 assistant_group 加载的助教名单（运行期不刷新）
+        self.assistant_list = assistant_list or set()
+        # 私聊临时会话的来源群，缺省与 webhook 群通知同群
+        self.dm_notify_source_group = dm_notify_source_group or response_group
+        self.debug = debug
+        # 学号→QQ 映射查询依赖数据库；未启用数据库时私聊通知整体降级为群内提示
+        self.session_factory = (
+            sessionmaker(bind=database, class_=AsyncSession, expire_on_commit=False)
+            if database is not None
+            else None
+        )
 
     async def send(self, data: GiteaWebhookEvent, event_type: str, config: EventConfig) -> None:
         try:
@@ -55,6 +83,9 @@ class NotificationService:
                     raise TypeError(f"forward=True 不支持 {type(data).__name__} 类型")
             else:
                 await self._send_plain_text(data, event_type)
+            # 评论私聊提醒独立于群通知模式，仅对 issue_comment 的新评论触发
+            if self.dm_notify and isinstance(data, GiteaIssueCommentEvent):
+                await self._send_comment_dm_notifications(data)
         except Exception as e:
             Log.error(f"发送 Gitea webhook 通知失败：event_type={event_type}, error={e}")
 
@@ -285,3 +316,57 @@ class NotificationService:
             group_id=self.response_group,
             message=message,
         )
+
+    async def _send_comment_dm_notifications(self, data: GiteaIssueCommentEvent) -> None:
+        """issue 新评论的临时会话提醒：私聊 issue 作者与被指派人。
+
+        Gitea 用户名即学号，经 stu_qq_id_map 换算 QQ 号后以 dm_notify_source_group
+        为临时会话来源群发送；评论者本人不发；assistant_list 助教名单与
+        dm_notify_exclude 名单不发；失败无条件记 warning 日志。
+        """
+        if data.action != "created":
+            return
+        commenter = data.comment.original_author or data.comment.user.login
+        targets: list[str] = []
+        for user in (data.issue.user, *data.issue.assignees):
+            login = user.login
+            if not login or login == commenter or login in self.dm_notify_exclude:
+                continue
+            if login not in targets:
+                targets.append(login)
+        if not targets:
+            return
+        Log.debug(f"issue #{data.issue.number} 私聊通知目标：{'、'.join(targets)}", self.debug)
+        dm_text = f"高程答疑平台在你的 Issue 下有新评论：\n{data.comment.html_url}"
+
+        failed: list[str] = []
+        for login in targets:
+            qq_id = await self._lookup_qq(login)
+            if qq_id is None:
+                failed.append(login)
+                continue
+            if int(qq_id) in self.assistant_list:
+                # 助教：不私聊，也不视为失败
+                Log.debug(f"助教跳过私聊：login={login}, qq={qq_id}", self.debug)
+                continue
+            try:
+                await api.asyncPrivateService.send_private_msg(
+                    int(qq_id), dm_text, group_id=self.dm_notify_source_group
+                )
+                Log.debug(f"私聊通知已发送：login={login}, qq={qq_id}", self.debug)
+            except Exception as e:
+                Log.warning(f"私聊通知发送失败：login={login}, qq={qq_id}, error={e}")
+                failed.append(login)
+        if failed:
+            Log.warning(
+                f"私聊通知存在失败：{data.repository.full_name} issue #{data.issue.number}，"
+                f"未通知：{'、'.join(failed)}"
+            )
+
+    async def _lookup_qq(self, login: str) -> str | None:
+        """Gitea 用户名（学号）→ QQ 号；非数字学号、无数据库或无映射时返回 None。"""
+        if self.session_factory is None or not login.isdigit():
+            return None
+        async with self.session_factory() as session:
+            result = await session.execute(select(StuId.qq_id).where(StuId.stu_id == int(login)))
+            return result.scalar_one_or_none()
