@@ -13,7 +13,7 @@ from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnio
 from PIL import Image
 
 from src.Api import api
-from src.metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
+from src.Metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
 
 
