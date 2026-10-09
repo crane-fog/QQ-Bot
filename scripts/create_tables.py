@@ -4,7 +4,7 @@
 import os
 import sys
 
-from sqlalchemy import create_engine, inspect
+from sqlalchemy import create_engine, inspect, text
 
 sys.path.insert(0, os.path.join(os.path.dirname(os.path.abspath(__file__)), ".."))
 
@@ -16,6 +16,7 @@ def create_tables() -> None:
     engine = create_engine(load_database_url())
     try:
         with engine.begin() as conn:
+            conn.execute(text("CREATE EXTENSION IF NOT EXISTS pg_trgm"))
             existing = set(inspect(conn).get_table_names())
             Base.metadata.create_all(conn)
     except Exception as e:

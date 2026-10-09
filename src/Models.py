@@ -1,6 +1,6 @@
 from datetime import timedelta, timezone
 
-from sqlalchemy import BigInteger, Boolean, Column, DateTime, Integer, String, Text, func
+from sqlalchemy import BigInteger, Boolean, Column, DateTime, Index, Integer, String, Text, func
 from sqlalchemy.dialects.postgresql import JSONB
 from sqlalchemy.orm import declarative_base
 
@@ -85,3 +85,42 @@ class PersonalSchedule(Base):
     is_new_code = Column(Boolean, nullable=False)
     new_course_codes = Column(JSONB, nullable=False)
     course_codes = Column(JSONB, nullable=False)
+
+
+class Memory(Base):
+    __tablename__ = "memories"
+
+    id = Column(BigInteger, primary_key=True, autoincrement=True)
+    user_id = Column(BigInteger, nullable=True)
+    group_id = Column(BigInteger, nullable=True)
+    content = Column(Text, nullable=False)
+    memory_type = Column(Integer, nullable=False)  # 0=人记忆 1=群记忆
+    source = Column(Integer, nullable=False)  # 0=主动 1=定时 2=滚动
+    stale = Column(Integer, nullable=False)  # 0=强 1=弱 2=失效
+    message_start_id = Column(BigInteger, nullable=True)
+    message_end_id = Column(BigInteger, nullable=True)
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+
+    @property
+    def formatted_time(self) -> str:
+        return self.updated_at.astimezone(timezone(timedelta(hours=8))).strftime("%m/%d %H:%M")
+
+
+class GroupStatus(Base):
+    __tablename__ = "group_status"
+
+    group_id = Column(BigInteger, primary_key=True)
+    updated_at = Column(
+        DateTime(timezone=True), nullable=False, server_default=func.now(), onupdate=func.now()
+    )
+    description = Column(Text, nullable=False)
+
+
+Index(
+    "idx_memories_content_trgm",
+    Memory.content,
+    postgresql_using="gin",
+    postgresql_ops={"content": "gin_trgm_ops"},
+)
