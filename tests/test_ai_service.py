@@ -4,7 +4,7 @@ from unittest.mock import patch
 import pytest
 from openai.types.chat import ChatCompletionMessageParam
 
-from src.AIService import AIConfigurationError, AIService
+from src.agent.AIService import AIConfigurationError, AIService
 from src.Bot import check_config_files
 
 

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from plugins.AI.AI import AI
-from src.AIService import AIConfigurationError, AIProviderError
+from src.agent.AIService import AIConfigurationError, AIProviderError
 from src.Bot import Bot
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 

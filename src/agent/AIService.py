@@ -2,7 +2,6 @@ import base64
 import io
 import json
 import os
-import subprocess
 from dataclasses import dataclass
 
 import httpx
@@ -12,6 +11,7 @@ from openai._types import NotGiven, Omit, not_given, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
 from PIL import Image
 
+import src.agent.tools as Tool
 from src.Api import api
 from src.Metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
@@ -49,11 +49,13 @@ class AIProfile:
 class AIService:
     """Loads OpenAI-compatible AI profiles and sends chat completion requests."""
 
-    def __init__(self, config_path: str, persona_path: str):
+    def __init__(self, config_path: str, persona_path: str, tools_decl_path: str):
         with open(config_path, encoding="utf-8") as f:
             self._config = tomlkit.load(f)
         with open(persona_path, encoding="utf-8") as f:
             self.persona = f.read()
+        with open(tools_decl_path, encoding="utf-8") as f:
+            self._tools = tomlkit.load(f)
         self._client = AsyncOpenAI(api_key="placeholder")
         self.funcs = {
             "send_private_msg": api.privateService.send_private_msg,
@@ -66,7 +68,8 @@ class AIService:
             "set_msg_emoji_like": api.groupService.set_msg_emoji_like,
             "send_group_poke": api.groupService.send_group_poke,
             "get_msg": api.messageService.get_msg,
-            "shell": self.restricted_shell,
+            "shell": Tool.restricted_shell,
+            "set_notification": Tool.set_notification,
         }
         self.async_funcs = {
             "send_group_msg": api.asyncGroupService.send_group_msg,
@@ -167,8 +170,10 @@ class AIService:
                         ).inc()
                         Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
                         args = json.loads(tool_call.function.arguments)
+
                         if tool_call.function.name == "shell":
                             args["caller_is_owner"] = caller_is_owner
+
                         if tool_call.function.name in self.funcs:
                             result = str(self.funcs[tool_call.function.name](**args))
                         elif tool_call.function.name in self.async_funcs:
@@ -248,21 +253,10 @@ class AIService:
 
         tools: list[ChatCompletionToolUnionParam] = []
         for tool_name in tool_names:
-            if "tool" not in self._config or tool_name not in self._config["tool"]:
+            if tool_name not in self._tools["tool"]:
                 raise AIConfigurationError(f"AI tool '{tool_name}' not found")
-            tools.append({"type": "function", "function": self._config["tool"][tool_name]})
+            tools.append({"type": "function", "function": self._tools["tool"][tool_name]})
         return tools
-
-    def restricted_shell(self, cmd: str, caller_is_owner: bool) -> str:
-        if not caller_is_owner:
-            return "The caller is not authorized to execute this command."
-        result = subprocess.run(cmd, shell=True, capture_output=True, text=True)
-        output = (
-            f"return code: {result.returncode}\n"
-            + (f"stdout:\n{result.stdout}\n" if result.stdout else "stdout: (None)\n")
-            + (f"stderr:\n{result.stderr}\n" if result.stderr else "stderr: (None)\n")
-        )
-        return output
 
     def read_img_file(self, path: str | None = None, url: str | None = None) -> list[dict]:
         if url is not None:
