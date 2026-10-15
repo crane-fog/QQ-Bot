@@ -17,8 +17,7 @@ from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
 from src.PrintLog import Log
-from utils.AIUtils import encode_image
-from utils.CQHelper import CQHelper
+from utils.AIUtils import resolve_img, resolve_reply
 from utils.CQType import CQMessage
 
 
@@ -40,9 +39,9 @@ class TheresaChat(Plugins):
                             """
         self.init_status()
 
-        # 冷却时间，防止刷屏
+        # 冷却时间
         self.group_cooldown = {}
-        self.cooldown_time = 5
+        self.cooldown_time = 0
 
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
@@ -63,6 +62,7 @@ class TheresaChat(Plugins):
 
     @plugin_main(check_call_word=False, require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
+        self.cooldown_time = self.config.get("cooldown_time", 0)
         # 从数据库读取的上下文消息条数
         self.context_length = self.config.get("context_length", 100)
         self.extra_context = self.config.get("extra_context", 100)
@@ -105,7 +105,7 @@ class TheresaChat(Plugins):
             )
             return
 
-        if ("小特" not in clean_message) or clean_message.startswith("Theresa"):
+        if "小特" not in clean_message:
             if r < 0.005:
                 face_flag = True
             else:
@@ -157,39 +157,6 @@ class TheresaChat(Plugins):
                 self.group_cooldown[group_id] = time.time()
                 await api.asyncGroupService.send_group_msg(group_id=group_id, message=response)
 
-    async def resolve_img(self, message: str) -> list[dict]:
-        cqs = CQHelper.loads_cq(message)
-        msgs = []
-        for cq in cqs:
-            if cq.cq_type == "image":
-                msgs.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": encode_image(cq.path, 1024)},
-                    }
-                )
-                message = message.replace(str(cq), "")
-        if message.strip():
-            msgs.insert(0, {"type": "text", "text": message.strip()})
-        return msgs
-
-    async def resolve_reply(self, session: AsyncSession, message: str) -> str:
-        cqs = CQHelper.loads_cq(message)
-        for cq in cqs:
-            if cq.cq_type == "reply":
-                reply_id = int(cq.id)
-                result = await session.execute(
-                    select(Message).where(Message.msg_id == reply_id).order_by(desc(Message.id))
-                )
-                row = result.scalars().first()
-                if row is not None:
-                    msg = str(cq)
-                    cq.content = row.msg
-                    cq.from_nickname = row.user_nickname
-                    cq.from_card = row.user_card
-                    message = message.replace(msg, str(cq))
-        return message
-
     async def load_context_from_db(
         self,
         group_id: int,
@@ -225,39 +192,32 @@ class TheresaChat(Plugins):
                 rows = result.scalars().all()
 
             for row in reversed(rows):
-                if row.user_id == self.bot.bot_id:
+                role = "assistant" if row.user_id == self.bot.bot_id else "user"
+                msg = await resolve_reply(session, row.msg)
+                if resolve_imgs and role == "user":
+                    img_msgs = resolve_img(msg)
+                    img_msgs.insert(
+                        0,
+                        {
+                            "type": "text",
+                            "text": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
+                        },
+                    )
                     context.append(
                         {
-                            "role": "assistant",
-                            "content": row.msg,
+                            "role": role,
+                            "content": img_msgs,
+                            "name": str(row.user_id),
                         }
                     )
                 else:
-                    msg = await self.resolve_reply(session, row.msg)
-                    if resolve_imgs:
-                        img_msgs = await self.resolve_img(msg)
-                        img_msgs.insert(
-                            0,
-                            {
-                                "type": "text",
-                                "text": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：",
-                            },
-                        )
-                        context.append(
-                            {
-                                "role": "user",
-                                "content": img_msgs,
-                                "name": str(row.user_id),
-                            }
-                        )
-                    else:
-                        context.append(
-                            {
-                                "role": "user",
-                                "content": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
-                                "name": str(row.user_id),
-                            }
-                        )
+                    context.append(
+                        {
+                            "role": role,
+                            "content": f"{row.formatted_time} id: {row.msg_id}\n{row.user_nickname}(群名片：{row.user_card}，id：{row.user_id})说：\n{msg}",
+                            "name": str(row.user_id),
+                        }
+                    )
         return context
 
     async def get_dpsk_response_for_face(self, context_messages) -> int:

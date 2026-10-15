@@ -1,8 +1,15 @@
 import base64
 import io
 import os
+import re
 
 from PIL import Image
+from sqlalchemy import desc, select
+from sqlalchemy.ext.asyncio import AsyncSession
+
+from src.Models import Message
+from utils.CQHelper import CQHelper
+from utils.CQType import CQMessage
 
 
 def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int = 4096) -> str:
@@ -88,3 +95,43 @@ def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int 
     except Exception:
         # 兜底空白图
         return "data:image/gif;base64,R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="
+
+
+def resolve_img(message: str) -> list[dict]:
+    # 先把message切成多片，每一片是文本或者 [CQ:image]，然后把每一片转换成dict
+    slices: list[str] = re.split(r"(\[CQ:image,.*?\])", message)
+    msgs = []
+    for s in slices:
+        if s.startswith("[CQ:image,"):
+            cq = CQHelper.load_cq(s)
+            msgs.append(
+                {
+                    "type": "image_url",
+                    "image_url": {"url": encode_image(cq.path, 1024)},
+                }
+            )
+        elif s.strip():
+            msgs.append({"type": "text", "text": s.strip()})
+    return msgs
+
+
+async def resolve_reply(session: AsyncSession, message: str) -> str:
+    # [CQ:reply] 是保证出现在消息头部的
+    # 需要先 resolve reply 再 image，以保证被引用的图片的解析
+    if not message.startswith("[CQ:reply,"):
+        return message
+
+    replace_1, replace_2 = message.partition("]")[:2]
+    reply_id = int(replace_1.partition("[CQ:reply,id=")[2])
+    result = await session.execute(
+        select(Message).where(Message.msg_id == reply_id).order_by(desc(Message.id))
+    )
+    row = result.scalars().first()
+    if row is not None:
+        cq = CQMessage()
+        cq.cq_type = "reply"
+        cq.content = row.msg
+        cq.from_nickname = row.user_nickname
+        cq.from_card = row.user_card
+        message = message.replace(replace_1 + replace_2, str(cq))
+    return message
