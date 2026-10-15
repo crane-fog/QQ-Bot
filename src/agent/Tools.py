@@ -1,7 +1,9 @@
 import asyncio
+import os
 import subprocess
 
 from src.Api import api
+from utils.AIUtils import encode_image
 
 _background_tasks = set()
 
@@ -28,3 +30,18 @@ def set_notification(wait_time: int, msg: str, group_id: int) -> str:
     _background_tasks.add(task)
     task.add_done_callback(_background_tasks.discard)
     return f'Success. Notification msg "{msg}" set for {wait_time} seconds from now.'
+
+
+def read_img_file(path: str | None = None, url: str | None = None) -> list[dict]:
+    if url is not None:
+        return [{"type": "image_url", "image_url": {"url": url}}]
+    if path is None:
+        return [{"type": "text", "text": "Either path or url must be provided."}]
+    parts = os.path.normpath(path).split(os.sep)
+    if parts[-4:-1] != ["llbot", "data", "temp"]:
+        return [{"type": "text", "text": f"File path not allowed: {path}"}]
+    if not os.path.isfile(path):
+        return [{"type": "text", "text": f"File not found: {path}"}]
+    if not path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
+        return [{"type": "text", "text": f"Unsupported file type: {path}"}]
+    return [{"type": "image_url", "image_url": {"url": encode_image(path, 1024)}}]

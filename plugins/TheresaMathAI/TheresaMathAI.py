@@ -3,6 +3,7 @@ import re
 import time
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
@@ -66,7 +67,7 @@ class TheresaMathAI(Plugins):
             question = re.sub(r"\[.*?\]", "", message[len("math ask") :]).strip()
 
             # 获取大模型回复
-            response = await self.bot.ai.generate(
+            response = await ai.generate(
                 "default",
                 [
                     {"role": "system", "content": "You are a professional math prover."},

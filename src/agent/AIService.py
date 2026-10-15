@@ -1,7 +1,4 @@
-import base64
-import io
 import json
-import os
 from dataclasses import dataclass
 
 import httpx
@@ -9,9 +6,8 @@ import tomlkit
 from openai import AsyncOpenAI
 from openai._types import NotGiven, Omit, not_given, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
-from PIL import Image
 
-import src.agent.tools as Tool
+import src.agent.Tools as Tool
 from src.Api import api
 from src.Metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
@@ -49,13 +45,7 @@ class AIProfile:
 class AIService:
     """Loads OpenAI-compatible AI profiles and sends chat completion requests."""
 
-    def __init__(self, config_path: str, persona_path: str, tools_decl_path: str):
-        with open(config_path, encoding="utf-8") as f:
-            self._config = tomlkit.load(f)
-        with open(persona_path, encoding="utf-8") as f:
-            self.persona = f.read()
-        with open(tools_decl_path, encoding="utf-8") as f:
-            self._tools = tomlkit.load(f)
+    def __init__(self):
         self._client = AsyncOpenAI(api_key="placeholder")
         self.funcs = {
             "send_private_msg": api.privateService.send_private_msg,
@@ -77,8 +67,16 @@ class AIService:
             "travily_extract": self.travily_extract,
         }
         self.not_text_funcs = {
-            "read_img_file": self.read_img_file,
+            "read_img_file": Tool.read_img_file,
         }
+
+    def set_configs(self, config_path: str, persona_path: str, tools_decl_path: str):
+        with open(config_path, encoding="utf-8") as f:
+            self._config = tomlkit.load(f)
+        with open(persona_path, encoding="utf-8") as f:
+            self.persona = f.read()
+        with open(tools_decl_path, encoding="utf-8") as f:
+            self._tools = tomlkit.load(f)
 
     async def generate(
         self,
@@ -258,19 +256,11 @@ class AIService:
             tools.append({"type": "function", "function": self._tools["tool"][tool_name]})
         return tools
 
-    def read_img_file(self, path: str | None = None, url: str | None = None) -> list[dict]:
-        if url is not None:
-            return [{"type": "image_url", "image_url": {"url": url}}]
-        if path is None:
-            return [{"type": "text", "text": "Either path or url must be provided."}]
-        parts = os.path.normpath(path).split(os.sep)
-        if parts[-4:-1] != ["llbot", "data", "temp"]:
-            return [{"type": "text", "text": f"File path not allowed: {path}"}]
-        if not os.path.isfile(path):
-            return [{"type": "text", "text": f"File not found: {path}"}]
-        if not path.lower().endswith((".jpg", ".jpeg", ".png", ".webp", ".gif")):
-            return [{"type": "text", "text": f"Unsupported file type: {path}"}]
-        return [{"type": "image_url", "image_url": {"url": self.encode_image(path, 1024)}}]
+    def _required_option(self, data: dict, option: str, section_name: str) -> str:
+        value = data.get(option, "").strip()
+        if not value:
+            raise AIConfigurationError(f"AI configuration '{section_name}' requires '{option}'")
+        return value
 
     async def travily_search(
         self,
@@ -291,7 +281,7 @@ class AIService:
             "topic": topic,
             "exact_match": exact_match,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(url, headers=headers, json=payload)
             if response.status_code == 200:
                 return response.text
@@ -310,99 +300,12 @@ class AIService:
             "extract_depth": "advanced",
             "chunks_per_source": chunks_per_source,
         }
-        async with httpx.AsyncClient() as client:
+        async with httpx.AsyncClient(timeout=30) as client:
             response = await client.post(url, headers=headers, json=payload)
             if response.status_code == 200:
                 return response.text
             else:
                 return f"Travily API Error: {response.status_code} - {response.text}"
 
-    @staticmethod
-    def _required_option(data: dict, option: str, section_name: str) -> str:
-        value = data.get(option, "").strip()
-        if not value:
-            raise AIConfigurationError(f"AI configuration '{section_name}' requires '{option}'")
-        return value
 
-    @staticmethod
-    def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int = 4096) -> str:
-        try:
-            need_reformat = False
-            extension = os.path.splitext(image_path)[1].lower().replace(".", "")
-            if extension == "jpg":
-                extension = "jpeg"
-            if extension in ["png", "webp", "gif", "jpeg"]:
-                mime_type = f"image/{extension}"
-            else:
-                need_reformat = True
-            image_size = os.path.getsize(image_path)
-            target_bytes = int(max_kb * 1024) if (max_kb and max_kb > 0) else None
-            with Image.open(image_path) as img:
-                width, height = img.size
-                need_resize = width > max_dimension or height > max_dimension
-
-                if (
-                    not need_resize
-                    and (target_bytes is None or image_size <= target_bytes)
-                    and not need_reformat
-                ):
-                    with open(image_path, "rb") as f:
-                        image_data = f.read()
-                    return f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
-
-                if img.mode != "RGB":
-                    if img.mode in ("RGBA", "LA", "P", "PA"):
-                        img = img.convert("RGBA")
-                        bg = Image.new("RGB", img.size, (255, 255, 255))
-                        bg.paste(img, mask=img.split()[3])
-                        img = bg
-                    else:
-                        img = img.convert("RGB")
-
-                # 超过尺寸限制
-                if need_resize:
-                    # 缩放逻辑
-                    scale = min(max_dimension / width, max_dimension / height)
-                    new_width = max(1, int(width * scale))
-                    new_height = max(1, int(height * scale))
-                    img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-
-                if need_resize or need_reformat:
-                    # 检查是否这时超过大小限制
-                    buf = io.BytesIO()
-                    img.save(buf, format="JPEG", quality=90, optimize=True)
-                    if target_bytes is None or len(buf.getvalue()) <= target_bytes:
-                        return f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
-
-                # 超过大小限制
-                quality = 80
-                scale = 1.0
-                while True:
-                    buffer = io.BytesIO()
-                    if scale < 1.0:
-                        new_width = max(1, int(img.width * scale))
-                        new_height = max(1, int(img.height * scale))
-                        curr_img = img.resize((new_width, new_height), Image.Resampling.LANCZOS)
-                    else:
-                        curr_img = img
-
-                    curr_img.save(buffer, format="JPEG", quality=quality, optimize=True)
-                    compressed_data = buffer.getvalue()
-                    if len(compressed_data) <= target_bytes:
-                        image_data = compressed_data
-                        break
-
-                    if quality > 30:
-                        quality -= 10
-                    else:
-                        scale *= 0.8
-                        quality = 80
-
-                    if scale < 0.05:
-                        image_data = compressed_data
-                        break
-
-                return f"data:image/jpeg;base64,{base64.b64encode(image_data).decode('utf-8')}"
-        except Exception:
-            # 兜底空白图
-            return "data:image/gif;base64,R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="
+ai: AIService = AIService()

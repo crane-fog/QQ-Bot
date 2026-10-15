@@ -3,6 +3,7 @@ import re
 import time
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
@@ -63,7 +64,7 @@ class TheresaGoodMorning(Plugins):
             question_full = f"{event.nickname}(群名片：{event.card})说：\n{question}"
 
             # 获取大模型回复
-            response = await self.bot.ai.generate(
+            response = await ai.generate(
                 "Theresa_simple",
                 [
                     {"role": "system", "content": persona},

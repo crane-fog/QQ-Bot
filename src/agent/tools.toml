@@ -13,7 +13,7 @@ parameters.additionalProperties = false
 [tool.send_group_msg]
 name = "send_group_msg"
 strict = false
-description = "Send a message to a group. Be aware that your output will always be sent to the current group by default, so you should only use this tool when you have to send multiple messages to the current group. You shouldn't send messages to other groups."
+description = "Send a message to a group. Be aware that your output will always be sent to the current group by default, so you should only use this tool when you have to send multiple messages to the current group. You shouldn't send messages to other groups unless necessary."
 parameters.type = "object"
 parameters.properties.group_id.type = "integer"
 parameters.properties.group_id.description = "The group ID to send the message to."
@@ -185,7 +185,7 @@ parameters.additionalProperties = false
 [tool.set_notification]
 name = "set_notification"
 strict = false
-description = "Set a notification message to be sent after a specified wait time. Be aware that the message will be sent by yourself, so you should keep your persona."
+description = "Set a notification message to be sent after a specified wait time. You may use [CQ:at,id=123456] to mention specific users in the notification message. Be aware that the message will be later sent by yourself, so you should keep your persona."
 parameters.type = "object"
 parameters.properties.wait_time.type = "integer"
 parameters.properties.wait_time.description = "The time in seconds to wait before sending the notification."

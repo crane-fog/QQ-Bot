@@ -7,10 +7,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
 from src.PrintLog import Log
+from utils.AIUtils import encode_image
 from utils.CQHelper import CQHelper
 from utils.CQType import Forward
 
@@ -58,7 +60,7 @@ class GroupSum(Plugins):
             resolve_imgs=False,
         )
 
-        response = await self.bot.ai.generate(
+        response = await ai.generate(
             "group_sum",
             [
                 {"role": "system", "content": persona},
@@ -93,7 +95,7 @@ class GroupSum(Plugins):
                 msgs.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": self.bot.ai.encode_image(cq.path)},
+                        "image_url": {"url": encode_image(cq.path)},
                     }
                 )
                 message = message.replace(str(cq), "")

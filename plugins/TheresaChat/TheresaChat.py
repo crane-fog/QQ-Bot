@@ -12,10 +12,12 @@ from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
 from src.PrintLog import Log
+from utils.AIUtils import encode_image
 from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
@@ -136,7 +138,7 @@ class TheresaChat(Plugins):
                 resolve_imgs=self.config.get("model_support_image", False),
                 enable_context_optimization=True,
             )
-            response = await self.bot.ai.generate(
+            response = await ai.generate(
                 "chat",
                 [
                     {"role": "system", "content": persona},
@@ -163,7 +165,7 @@ class TheresaChat(Plugins):
                 msgs.append(
                     {
                         "type": "image_url",
-                        "image_url": {"url": self.bot.ai.encode_image(cq.path, 1024)},
+                        "image_url": {"url": encode_image(cq.path, 1024)},
                     }
                 )
                 message = message.replace(str(cq), "")
@@ -269,7 +271,7 @@ class TheresaChat(Plugins):
         messages = [{"role": "system", "content": persona}]
         messages.extend(context_messages)
 
-        response = await self.bot.ai.generate("chat_face", messages)
+        response = await ai.generate("chat_face", messages)
         try:
             image_id = json.loads(response).get("image_id")
             if image_id and image_id != 0 and image_id != 36 and image_id != 42:

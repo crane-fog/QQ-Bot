@@ -3,8 +3,8 @@ base_url = "https://api.deepseek.com"
 api_key = "<your-api-key>"
 timeout_seconds = 60.0 # 可选参数
 
-[provider.mnapi]
-base_url = "https://api.mnapi.com/v1"
+[provider.myapi]
+base_url = "http://127.0.0.1:3000/v1"
 api_key = "<your-api-key>"
 
 [provider.tavily]

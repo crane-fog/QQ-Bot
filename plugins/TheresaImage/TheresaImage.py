@@ -1,9 +1,11 @@
 import re
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
+from utils.AIUtils import encode_image
 from utils.CQHelper import CQHelper
 from utils.CQType import At, Reply
 
@@ -31,7 +33,7 @@ class TheresaImage(Plugins):
                 msg_str = api.messageService.get_msg(message_id=msg_id).get("data").get("message")
                 image_path = self.get_image_filename_from_msg(msg_str)
                 if image_path:
-                    response = await self.bot.ai.generate(
+                    response = await ai.generate(
                         "image_simple",
                         [
                             {
@@ -44,7 +46,7 @@ class TheresaImage(Plugins):
                                     {"type": "text", "text": prompt},
                                     {
                                         "type": "image_url",
-                                        "image_url": {"url": self.bot.ai.encode_image(image_path)},
+                                        "image_url": {"url": encode_image(image_path)},
                                     },
                                 ],
                             },
