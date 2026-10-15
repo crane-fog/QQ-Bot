@@ -279,7 +279,7 @@ class Bot:
         # Log.info("web controller 服务启动成功！")
 
         webhook_handler = None
-        scheduler = Scheduler(self.configs_path)
+        scheduler = Scheduler(self.configs_path, self)
         scheduler_started = scheduler.register_tasks()
         if self.enable_webhook_handler:
             webhook_handler = WebhookHandler(

@@ -1,15 +1,20 @@
 import os
+from typing import TYPE_CHECKING
 
 import tomlkit
 from apscheduler.schedulers.asyncio import AsyncIOScheduler
 
 from src.PrintLog import Log
 
+if TYPE_CHECKING:
+    from src.Bot import Bot
+
 
 class Scheduler:
-    def __init__(self, configs_path: str):
+    def __init__(self, configs_path: str, bot: "Bot"):
         self.configs_path = configs_path
         self._scheduler = AsyncIOScheduler()
+        self.bot = bot
 
     def register_tasks(self) -> bool:
         config = self._load_config()
@@ -24,7 +29,7 @@ class Scheduler:
             module_name = f"scheduled_tasks.{section}"
             try:
                 module = __import__(module_name, fromlist=["main"])
-                module.main(self._scheduler, **kwargs)
+                module.main(self._scheduler, self.bot, **kwargs)
                 Log.info(f"已注册定时任务：[{section}]")
             except Exception as e:
                 Log.error(f"加载定时任务 [{section}] 时出错: {e}")
