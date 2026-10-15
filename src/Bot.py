@@ -96,7 +96,7 @@ class Bot:
         ai.set_configs(
             os.path.join(self.configs_path, "ai.toml"),
             os.path.join(os.path.dirname(__file__), "../utils/persona.j2"),
-            os.path.join(os.path.dirname(__file__), "agent/tools.toml"),
+            os.path.join(os.path.dirname(__file__), "agent/ToolDef.py"),
         )  # ai 辅助工具对象
 
     def initialize(self) -> None:

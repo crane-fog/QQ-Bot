@@ -1,13 +1,13 @@
 import json
 from dataclasses import dataclass
+from typing import Any
 
-import httpx
 import tomlkit
 from openai import AsyncOpenAI
 from openai._types import NotGiven, Omit, not_given, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
 
-import src.agent.Tools as Tool
+from src.agent.ToolDef import tool_defs
 from src.Api import api
 from src.Metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
@@ -47,36 +47,16 @@ class AIService:
 
     def __init__(self):
         self._client = AsyncOpenAI(api_key="placeholder")
-        self.funcs = {
-            "send_private_msg": api.privateService.send_private_msg,
-            "get_group_member_list": api.groupService.get_group_member_list,
-            "get_group_member_info": api.groupService.get_group_member_info,
-            "set_group_ban": api.groupService.set_group_ban,
-            "set_group_kick": api.groupService.set_group_kick,
-            "delete_msg": api.groupService.delete_msg,
-            "get_group_info": api.groupService.get_group_info,
-            "set_msg_emoji_like": api.groupService.set_msg_emoji_like,
-            "send_group_poke": api.groupService.send_group_poke,
-            "get_msg": api.messageService.get_msg,
-            "shell": Tool.restricted_shell,
-            "set_notification": Tool.set_notification,
-        }
-        self.async_funcs = {
-            "send_group_msg": api.asyncGroupService.send_group_msg,
-            "travily_search": self.travily_search,
-            "travily_extract": self.travily_extract,
-        }
-        self.not_text_funcs = {
-            "read_img_file": Tool.read_img_file,
-        }
 
-    def set_configs(self, config_path: str, persona_path: str, tools_decl_path: str):
+    def set_configs(self, config_path: str, persona_path: str, tool_def_path: str):
         with open(config_path, encoding="utf-8") as f:
             self._config = tomlkit.load(f)
         with open(persona_path, encoding="utf-8") as f:
             self.persona = f.read()
-        with open(tools_decl_path, encoding="utf-8") as f:
-            self._tools = tomlkit.load(f)
+        with open(tool_def_path, encoding="utf-8") as f:
+            self.tool_map = {
+                tool_def["declaration"]["function"]["name"]: tool_def for tool_def in tool_defs
+            }
 
     async def generate(
         self,
@@ -156,42 +136,17 @@ class AIService:
                         message=response.choices[0].message.content,
                     )
                 for tool_call in tool_calls:
-                    if (
-                        tool_call.function.name in self.funcs
-                        or tool_call.function.name in self.async_funcs
-                        or tool_call.function.name in self.not_text_funcs
-                    ):
-                        LLM_TOOL_USAGE_COUNT.labels(
-                            tool_name=tool_call.function.name,
-                            provider=profile.provider.name,
-                            model=profile.model,
-                        ).inc()
-                        Log.info(f"轮{turn + 1}调用工具：{tool_call.function.name}")
-                        args = json.loads(tool_call.function.arguments)
-
-                        if tool_call.function.name == "shell":
-                            args["caller_is_owner"] = caller_is_owner
-
-                        if tool_call.function.name in self.funcs:
-                            result = str(self.funcs[tool_call.function.name](**args))
-                        elif tool_call.function.name in self.async_funcs:
-                            result = str(await self.async_funcs[tool_call.function.name](**args))
-                        else:
-                            result = self.not_text_funcs[tool_call.function.name](**args)
-                        Log.info(f"轮{turn + 1}工具调用结果：{result}")
-                    else:
-                        LLM_TOOL_USAGE_COUNT.labels(
-                            tool_name="Error",
-                            provider=profile.provider.name,
-                            model=profile.model,
-                        ).inc()
-                        Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_call.function.name} 不存在")
-                        result = f"工具 {tool_call.function.name} 不存在"
                     messages.append(
                         {
                             "role": "tool",
                             "tool_call_id": tool_call.id,
-                            "content": result,
+                            "content": await self._call_tool(
+                                tool_call.function.name,
+                                profile,
+                                turn,
+                                caller_is_owner,
+                                **json.loads(tool_call.function.arguments),
+                            ),
                         }
                     )
             LLM_SUCCESS_COUNT.labels(
@@ -251,61 +206,56 @@ class AIService:
 
         tools: list[ChatCompletionToolUnionParam] = []
         for tool_name in tool_names:
-            if tool_name not in self._tools["tool"]:
+            if tool_name not in self.tool_map:
                 raise AIConfigurationError(f"AI tool '{tool_name}' not found")
-            tools.append({"type": "function", "function": self._tools["tool"][tool_name]})
+            tools.append(self.tool_map[tool_name]["declaration"])
         return tools
+
+    async def _call_tool(
+        self, tool_name: str, profile: AIProfile, turn: int, caller_is_owner: bool, **kwargs
+    ) -> Any:
+        if tool_name not in self.tool_map:
+            LLM_TOOL_USAGE_COUNT.labels(
+                tool_name="Error",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc()
+            Log.warning(f"轮{turn + 1}尝试调用的工具 {tool_name} 不存在")
+            return f"工具 {tool_name} 不存在"
+
+        LLM_TOOL_USAGE_COUNT.labels(
+            tool_name=tool_name,
+            provider=profile.provider.name,
+            model=profile.model,
+        ).inc()
+        Log.info(f"轮{turn + 1}调用工具：{tool_name}")
+        match self.tool_map[tool_name]["type"]:
+            case "default":
+                result = str(self.tool_map[tool_name]["func"](**kwargs))
+            case "async":
+                result = str(await self.tool_map[tool_name]["func"](**kwargs))
+            case "image":
+                result = self.tool_map[tool_name]["func"](**kwargs)
+            case "travily":
+                result = str(
+                    await self.tool_map[tool_name]["func"](
+                        base_url=self._config["provider"]["tavily"]["base_url"],
+                        api_key=self._config["provider"]["tavily"]["api_key"],
+                        **kwargs,
+                    )
+                )
+            case "restricted":
+                result = str(
+                    self.tool_map[tool_name]["func"](caller_is_owner=caller_is_owner, **kwargs)
+                )
+        Log.info(f"轮{turn + 1}工具调用结果：{result}")
+        return result
 
     def _required_option(self, data: dict, option: str, section_name: str) -> str:
         value = data.get(option, "").strip()
         if not value:
             raise AIConfigurationError(f"AI configuration '{section_name}' requires '{option}'")
         return value
-
-    async def travily_search(
-        self,
-        query: str,
-        chunks_per_source: int = 3,
-        max_results: int = 5,
-        topic: str = "general",
-        exact_match: bool = False,
-    ) -> str:
-        url = self._config["provider"]["tavily"]["search"]["url"]
-        api_key = self._config["provider"]["tavily"]["api_key"]
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-        payload = {
-            "query": query,
-            "search_depth": "advanced",
-            "chunks_per_source": chunks_per_source,
-            "max_results": max_results,
-            "topic": topic,
-            "exact_match": exact_match,
-        }
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                return response.text
-            else:
-                return f"Travily API Error: {response.status_code} - {response.text}"
-
-    async def travily_extract(
-        self, urls: str, query: str | None = None, chunks_per_source: int = 3
-    ) -> str:
-        url = self._config["provider"]["tavily"]["extract"]["url"]
-        api_key = self._config["provider"]["tavily"]["api_key"]
-        headers = {"Content-Type": "application/json", "Authorization": f"Bearer {api_key}"}
-        payload = {
-            "urls": urls,
-            "query": query,
-            "extract_depth": "advanced",
-            "chunks_per_source": chunks_per_source,
-        }
-        async with httpx.AsyncClient(timeout=30) as client:
-            response = await client.post(url, headers=headers, json=payload)
-            if response.status_code == 200:
-                return response.text
-            else:
-                return f"Travily API Error: {response.status_code} - {response.text}"
 
 
 ai: AIService = AIService()

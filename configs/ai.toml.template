@@ -8,9 +8,8 @@ base_url = "http://127.0.0.1:3000/v1"
 api_key = "<your-api-key>"
 
 [provider.tavily]
+base_url = "https://api.tavily.com"
 api_key = "<your-api-key>"
-search.url = "https://api.tavily.com/search"
-extract.url = "https://api.tavily.com/extract"
 
 [profile.example]
 provider = "deepseek"
