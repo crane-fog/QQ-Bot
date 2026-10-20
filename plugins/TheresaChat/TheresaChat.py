@@ -210,6 +210,8 @@ class TheresaChat(Plugins):
                             "name": str(row.user_id),
                         }
                     )
+                elif role == "assistant":
+                    context.append({"role": role, "content": f"{msg}"})
                 else:
                     context.append(
                         {
