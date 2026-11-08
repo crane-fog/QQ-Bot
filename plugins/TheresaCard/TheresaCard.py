@@ -19,7 +19,7 @@ class TheresaCard(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                检查高程群名片格式\nkick: 踢出\ndebug: 不@\nstrict: 检查选课名单\nunenter: 检查未入群成员\n最后参数: 仅检查已入群>x小时
+                                检查高程群名片格式\nkick: 踢出\ndebug: 不@\nstrict: 只检查选课名单\nunenter: 检查未入群成员\n最后参数: 仅检查已入群>x小时
                                 usage: Theresa card (kick/debug) (strict) (unenter) (<小时数>)
                             """
 
@@ -115,6 +115,9 @@ class TheresaCard(Plugins):
 
         if strict_flag or unenter_flag:
             stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
+        if strict_flag:  # 在 strict 模式下，忽略基本检查不通过的成员，只检查选课名单
+            not_allowed_ids = []
+            not_allowed_cards = []
         if strict_flag and strict_candidates:
             if check_class_flag:
                 classes = self.config.get("classes", {}).get(str(event.group_id))
@@ -151,7 +154,7 @@ class TheresaCard(Plugins):
             if kick_flag:
                 suffix = "\n\n已将不符合要求的成员踢出群聊"
             elif strict_flag:
-                suffix = "\n\n以上成员不在选课名单或群名片不符合要求，请参照群公告修改"
+                suffix = "\n\n以上成员不在选课名单"
             else:
                 suffix = "\n\n以上成员群名片不符合要求，请参照群公告修改"
 
