@@ -1,0 +1,73 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Theresa · 部署配置</title>
+  <link rel="stylesheet" href="/assets/deployment.css">
+  <script src="/assets/deployment.js" defer></script>
+  <script src="/assets/configs.js" defer></script>
+</head>
+<body>
+  <header><span class="brand">Theresa</span><span>部署配置</span><button id="logout" hidden>退出登录</button></header>
+  <main>
+    <p id="notice" role="status" aria-live="polite"></p>
+    <section id="login-panel" class="login-card">
+      <h1>登录部署面板</h1>
+      <p>使用初始化时设置的管理员密码，管理项目配置。</p>
+      <form id="login-form">
+        <label for="password">管理员密码</label>
+        <input id="password" type="password" autocomplete="current-password" required maxlength="1024">
+        <button class="primary" type="submit">登录</button>
+      </form>
+    </section>
+    <div id="workspace" hidden>
+      <nav class="tabs" aria-label="管理内容"><button id="compose-page">Compose 部署</button><button id="configs-page">Bot 配置</button></nav>
+      <section id="config-area" hidden>
+        <div class="heading"><h1>Bot 配置</h1><span id="config-state" class="badge">正在读取…</span></div>
+        <p>保存只修改配置文件，点击“重启 Bot”应用新配置。监听端口变化也需在 LLBot 中同步调整。</p>
+        <label for="config-file">配置文件</label><select id="config-file"></select>
+        <div class="toolbar"><button id="config-reload">重新读取</button><button id="config-download">下载草稿</button><button id="config-restart-bot" hidden>重启 Bot</button><button id="config-save" class="primary">校验并保存配置</button></div>
+        <nav class="tabs" aria-label="Bot 配置编辑方式"><button id="config-form-tab">常用配置</button><button id="config-text-tab">完整 TOML</button></nav>
+        <div id="config-form" class="field-grid"></div>
+        <div id="config-text" hidden><label for="config-source">完整 TOML 配置</label><textarea id="config-source" spellcheck="false"></textarea></div>
+        <details id="config-diff-panel"><summary>配置差异</summary><pre id="config-diff">展开时计算当前草稿与磁盘文件的差异。</pre></details>
+        <section class="panel"><div class="heading"><h2>此文件的备份</h2><button id="config-refresh-backups">刷新备份</button></div><div id="config-backups"></div></section>
+      </section>
+      <div id="compose-area">
+      <div class="heading"><div><p class="eyebrow">DOCKER COMPOSE</p><h1>部署配置</h1></div><span id="save-state" class="badge">正在读取…</span></div>
+      <p class="intro">修改配置后校验并保存；容器更新需在宿主机执行 <code>docker compose up -d</code>。面板自身的配置在宿主机修改。</p>
+      <div class="toolbar">
+        <button id="reload">重新读取</button><button id="download">下载草稿</button>
+        <button id="save" class="primary">校验并保存</button>
+      </div>
+      <nav class="tabs" aria-label="配置编辑方式">
+        <button id="form-tab" aria-pressed="true">服务配置</button>
+        <button id="yaml-tab" aria-pressed="false">完整 YAML</button>
+      </nav>
+      <section id="form-view" class="editor-layout">
+        <aside><h2>服务</h2><div id="service-list"></div></aside>
+        <div class="service-editor">
+          <div class="heading"><h2 id="service-title"></h2></div>
+          <p id="service-hint">环境变量、端口、挂载等字段支持 JSON 列表或对象；留空可删除字段。更复杂的配置可在完整 YAML 中编辑。</p>
+          <form id="service-form"><div id="fields"></div><button type="submit" id="update-draft">更新草稿</button></form>
+        </div>
+      </section>
+      <section id="yaml-view" hidden>
+        <label for="source">完整 Compose 文档</label>
+        <p class="muted">可编辑所有服务和顶层配置。Compose 项目名称不可从网页修改。</p>
+        <textarea id="source" spellcheck="false" aria-label="完整 Compose YAML"></textarea>
+      </section>
+      <details id="diff-panel"><summary>配置差异</summary><pre id="diff">展开时计算当前草稿与磁盘文件的差异。</pre></details>
+      <div class="bottom-grid">
+        <section class="panel"><div class="heading"><h2>配置备份</h2><button id="refresh-backups">刷新</button></div><p class="muted">恢复只替换配置文件，不回滚数据库、卷数据或容器状态。容器运行状态请在宿主机执行 docker compose ps 查看。</p><div id="backups">尚未查询。</div></section>
+      </div>
+      </div>
+    </div>
+  </main>
+  <dialog id="confirm-dialog">
+    <h2 id="confirm-title"></h2><p id="confirm-message"></p><pre id="confirm-diff"></pre>
+    <div class="toolbar"><button id="confirm-cancel">取消</button><button id="confirm-action" class="primary">确认</button></div>
+  </dialog>
+</body>
+</html>

@@ -1,12 +1,9 @@
 import asyncio
 
-from src.Bot import Bot
+from src.deployment.runtime import launch
 
-
-async def main():
-    bot = Bot(configs_path="configs", plugins_path="plugins")
-    bot.initialize()
-    await bot.run()
-
-
-asyncio.run(main())
+try:
+    asyncio.run(launch())
+except KeyboardInterrupt:
+    # Windows 的 Ctrl+C 以取消/中断形式到达，进程树已在 launch 的清理中停止。
+    pass

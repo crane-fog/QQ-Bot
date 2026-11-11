@@ -12,6 +12,7 @@ from utils.Database import build_database_url
 
 from .agent.AIService import ai
 from .Api import api
+from .config_schema import BOT_SCHEMA, CONFIG_FILES, atomic_write, load_toml
 from .EventController import Event
 from .PrintLog import Log
 from .Scheduler import Scheduler
@@ -35,34 +36,18 @@ class Bot:
         self.plugins_path: str = plugins_path
 
         check_config_files(self.configs_path)
-        with open(os.path.join(self.configs_path, "bot.toml"), encoding="utf-8") as f:
-            self.bot_config = tomlkit.load(f).unwrap()  # bot 配置
+        self.bot_config = load_toml(
+            os.path.join(self.configs_path, "bot.toml")
+        ).unwrap()  # bot 配置
 
         Log.info(f"开始加载Bot配置文件，文件路径：{os.path.join(self.configs_path, 'bot.toml')}")
         # 需要检查的关键配置项
-        required_configs = {
-            "server_address": self.bot_config.get("Init", {}).get("server_address"),
-            "client_address": self.bot_config.get("Init", {}).get("client_address"),
-            "web_controller_address": self.bot_config.get("Init", {}).get("web_controller_address"),
-            "bot_name": self.bot_config.get("Init", {}).get("bot_name"),
-            "debug": self.bot_config.get("Init", {}).get("debug"),
-            "database_enable": self.bot_config.get("Init", {}).get("database_enable"),
-            "database_username": self.bot_config.get("Init", {}).get("database_username"),
-            "database_address": self.bot_config.get("Init", {}).get("database_address"),
-            "database_passwd": self.bot_config.get("Init", {}).get("database_passwd"),
-            "database_name": self.bot_config.get("Init", {}).get("database_name"),
-            "owner_id": self.bot_config.get("Init", {}).get("owner_id"),
-            "assistant_group": self.bot_config.get("Init", {}).get("assistant_group"),
-            "enable_webhook_handler": self.bot_config.get("Init", {}).get("enable_webhook_handler"),
-            "webhook_handler_address": self.bot_config.get("Gitea", {}).get(
-                "webhook_handler_address"
-            ),
-            "webhook_response_group": self.bot_config.get("Gitea", {}).get(
-                "webhook_response_group"
-            ),
-            "gitea_api_url": self.bot_config.get("Gitea", {}).get("api_url"),
-            "gitea_api_token": self.bot_config.get("Gitea", {}).get("api_token"),
-        }
+        required_configs = {}
+        for section, fields in BOT_SCHEMA.items():
+            table = self.bot_config.get(section, {})
+            for key, (_, required) in fields.items():
+                if required:
+                    required_configs[key] = table.get(key)
 
         # 检查哪些关键配置项是空的
         missing_configs = [key for key, value in required_configs.items() if value is None]
@@ -72,7 +57,6 @@ class Bot:
         # 将配置值分配给实例变量
         self.server_address: str = required_configs["server_address"]
         self.client_address: str = required_configs["client_address"]
-        self.web_controller_address: str = required_configs["web_controller_address"]
         self.bot_name: str = required_configs["bot_name"]
         self.debug: bool = required_configs["debug"]
         self.database_enable: bool = required_configs["database_enable"]
@@ -85,8 +69,8 @@ class Bot:
         self.enable_webhook_handler: bool = required_configs["enable_webhook_handler"]
         self.webhook_handler_address: str = required_configs["webhook_handler_address"]
         self.webhook_response_group: int = required_configs["webhook_response_group"]
-        self.gitea_api_url: str = required_configs["gitea_api_url"]
-        self.gitea_api_token: str = required_configs["gitea_api_token"]
+        self.gitea_api_url: str = required_configs["api_url"]
+        self.gitea_api_token: str = required_configs["api_token"]
         Log.info("成功加载配置文件")
         Log.info("加载的bot初始化配置信息如下：")
         for item in required_configs.items():
@@ -149,8 +133,7 @@ class Bot:
         Log.info("开始加载插件")
 
         # 读取统一的插件配置文件
-        with open(os.path.join(self.configs_path, "plugins.toml"), encoding="utf-8") as f:
-            plugins_config = tomlkit.load(f).unwrap()
+        plugins_config = load_toml(os.path.join(self.configs_path, "plugins.toml")).unwrap()
 
         for _, name, ispkg in iter_modules([self.plugins_path]):
             if not ispkg:
@@ -197,8 +180,7 @@ class Bot:
             Log.error(f"没有找到插件{plugin_name}")
             return False
 
-        with open(os.path.join(self.configs_path, "groups.toml"), encoding="utf-8") as f:
-            groups_config = tomlkit.load(f)
+        groups_config = load_toml(os.path.join(self.configs_path, "groups.toml"))
 
         for gid in group_ids:
             if not gid.isdigit():
@@ -208,8 +190,7 @@ class Bot:
             if gid not in groups_config:
                 groups_config[gid] = tomlkit.table()
             groups_config[gid][plugin_name] = True if enable else False
-        with open(os.path.join(self.configs_path, "groups.toml"), "w", encoding="utf-8") as f:
-            tomlkit.dump(groups_config, f)
+        atomic_write(os.path.join(self.configs_path, "groups.toml"), tomlkit.dumps(groups_config))
 
         return self.reload_plugin(plugin_name)
 
@@ -219,8 +200,7 @@ class Bot:
         """
         Log.info(f"开始插件{name}的热重载")
 
-        with open(os.path.join(self.configs_path, "plugins.toml"), encoding="utf-8") as f:
-            plugins_config = tomlkit.load(f).unwrap()
+        plugins_config = load_toml(os.path.join(self.configs_path, "plugins.toml")).unwrap()
         if name not in plugins_config:
             Log.error(f"插件{name}的配置不存在，无法热重载")
             return False
@@ -271,12 +251,6 @@ class Bot:
         event_ip, event_port = self.client_address.split(":")
         Log.info(f"启动监听服务 {self.client_address}")
         event_server = asyncio.create_task(event.run(event_ip, int(event_port)))
-        ## web controller 暂时弃用
-        # web_controller = WebController(self)
-        # web_ip, web_port = self.web_controller_address.split(":")
-        # Log.info(f"启动 web controller 服务 {web_ip}:{web_port}")
-        # web_server = asyncio.create_task(web_controller.run(web_ip, int(web_port)))
-        # Log.info("web controller 服务启动成功！")
 
         webhook_handler = None
         scheduler = Scheduler(self.configs_path)
@@ -319,13 +293,9 @@ def check_config_files(configs_path: str) -> None:
     if not os.path.isdir(configs_path):
         raise NotADirectoryError(f"配置文件目录无效：{configs_path}")
 
-    missing_files = []
-    files_to_check = ["ai", "bot", "plugins", "groups", "scheduler"]
-    suffix = ".toml"
-
-    for file in files_to_check:
-        if not os.path.isfile(os.path.join(configs_path, f"{file}{suffix}")):
-            missing_files.append(f"{file}{suffix}")
+    missing_files = [
+        file for file in CONFIG_FILES if not os.path.isfile(os.path.join(configs_path, file))
+    ]
 
     if missing_files:
         raise FileNotFoundError(f"以下配置文件缺失：\n{'\n'.join(missing_files)}")

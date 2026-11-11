@@ -23,16 +23,7 @@ async def test_ai_plugin_returns_friendly_message_for_ai_service_errors(error, e
     plugin = object.__new__(AI)
     plugin.name = "AI"
     # The handler only needs these attributes; avoid constructing real Bot/Api objects in this unit test.
-    plugin.bot = cast(
-        Bot,
-        cast(
-            object,
-            SimpleNamespace(
-                bot_name="monika",
-                ai=SimpleNamespace(generate=AsyncMock(side_effect=error)),
-            ),
-        ),
-    )
+    plugin.bot = cast(Bot, cast(object, SimpleNamespace(bot_name="monika")))
     plugin.config = {"ai_profile": "default"}
     plugin.user_cooldown = {}
     plugin.cooldown_time = 1
@@ -50,7 +41,9 @@ async def test_ai_plugin_returns_friendly_message_for_ai_service_errors(error, e
         ),
     )
 
-    with patch("src.Api.api.groupService", group_service):
+    # The plugin calls the module-level AIService singleton; inject the error there.
+    with patch("src.Api.api.groupService", group_service), patch("plugins.AI.AI.ai") as fake_ai:
+        fake_ai.generate = AsyncMock(side_effect=error)
         await cast(Any, AI.main).__wrapped__(plugin, event, debug=False)
 
     assert group_service.send_group_msg.call_count == 2

@@ -16,7 +16,7 @@
 
 ## 开发约定
 
-- 数据库模型统一定义在 [`src/models.py`](../src/models.py)，插件禁止自行调用 `declarative_base` 或定义 `__tablename__`。新增表或字段时，请修改 `src/models.py` 并同步修改数据库（项目暂无迁移工具）。`tests/test_models.py` 会通过 AST 扫描插件源码，检查是否违反该约定。
+- 数据库模型统一定义在 [`src/Models.py`](../src/Models.py)，插件禁止自行调用 `declarative_base` 或定义 `__tablename__`。新增表或字段时，请修改 `src/Models.py` 并同步修改数据库（项目暂无迁移工具）。`tests/test_models.py` 会通过 AST 扫描插件源码，检查是否违反该约定。
 - 需要直接访问 `bot.database` 的插件，应通过 `sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)` 创建异步会话工厂；入口依赖数据库可用性时，应使用 `@plugin_main(require_db=True)` 声明该依赖。两项要求相互独立，不直接访问数据库的插件无需创建会话工厂。
 
 

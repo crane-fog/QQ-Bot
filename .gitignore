@@ -15,3 +15,6 @@
 !/plugins/**/data/**/.gitkeep
 /.venv/
 /log.out*
+/.webcontroller/
+/.env
+/.compose-check-*.yaml

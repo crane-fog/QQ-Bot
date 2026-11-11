@@ -66,7 +66,7 @@ jobs:
             - name: Package Files
               run: |
                   mkdir -p dist
-                  tar -czvf dist/Theresa-${{ inputs.version }}-Docker.tar.gz README.md compose.yaml configs/*.template scripts/docker_compose_init.sh
+                  tar -czvf dist/Theresa-${{ inputs.version }}-Docker.tar.gz README.md compose.yaml configs/*.template scripts/docker_compose_init.sh scripts/setup_webcontroller.sh docs/webcontroller.md
 
             - name: Create GitHub Release
               uses: softprops/action-gh-release@v3
