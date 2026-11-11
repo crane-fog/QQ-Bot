@@ -79,7 +79,7 @@ uv run main.py
 
 `main.py` 会拉起部署面板子进程；面板从 `configs/*.toml.template` 自动生成缺失的配置文件，随后拉起并守护 Bot。初始管理员密码生成于 `.webcontroller/initial-password`，首次成功登录后自动删除。
 
-浏览器打开 `http://127.0.0.1:7001`，在“Bot 配置”中按 [配置文件解释](#配置文件解释) 修改必要配置项并保存。对于远程开发环境，建议在本地使用 ssh 端口转发。
+浏览器打开 `http://127.0.0.1:7001`，在“Bot 配置”中按 [配置文件解释](#配置文件解释) 修改必要配置项并保存。对于远程开发环境，建议在本地使用 ssh 端口转发；需要局域网内其他设备访问面板时，可改用 `uv run -m src.deployment --host <本机局域网IP>` 启动面板和 Bot。
 
 修改配置并保存后，点击面板上的“重启 Bot”即应用新配置；`--bg` 可后台运行。只想直接运行 Bot 本身（不使用面板）可执行 `uv run bot.py`。更多说明见 [WebController 文档](docs/webcontroller.md)。
 

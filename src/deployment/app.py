@@ -44,9 +44,20 @@ class ConfigPatch(BaseModel):
 
 
 def create_app(
-    document: ComposeDocument | None, runner, credentials, *, configs=None, bot_control=None
+    document: ComposeDocument | None,
+    runner,
+    credentials,
+    *,
+    configs=None,
+    bot_control=None,
+    host=None,
 ):
     authentication = Authentication(credentials)
+    # 默认只接受回环 Host；显式指定绑定地址即表示接受对应的访问面：
+    # 具体 IP 一并放行其 Host，通配地址（0.0.0.0/::）不再限制 Host 头。
+    allowed_hosts = {"localhost", "127.0.0.1", "::1"}
+    if host is not None:
+        allowed_hosts = None if host in {"0.0.0.0", "::"} else allowed_hosts | {host}
     login_lock = asyncio.Lock()
     if configs is None:
         if document is None:
@@ -82,8 +93,8 @@ def create_app(
     @app.middleware("http")
     async def secure(request: Request, call_next):
         try:
-            if request.url.hostname not in {"localhost", "127.0.0.1", "::1"}:
-                raise DeploymentError("面板仅支持 localhost 或回环地址访问", 400)
+            if allowed_hosts is not None and request.url.hostname not in allowed_hosts:
+                raise DeploymentError("面板仅接受 localhost、回环地址或绑定 IP 的访问", 400)
             length = request.headers.get("content-length")
             if length and (not length.isdigit() or int(length) > 2 * MAX_SOURCE):
                 raise DeploymentError("请求过大", 413)

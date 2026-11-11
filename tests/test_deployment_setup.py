@@ -350,6 +350,8 @@ def test_cli_flag_validation(monkeypatch):
         run("--init", "--bg")
     with pytest.raises(SystemExit):
         run("--init", "--reset-password")
+    with pytest.raises(SystemExit):
+        run("--host", "example.com")
 
 
 @pytest.mark.asyncio

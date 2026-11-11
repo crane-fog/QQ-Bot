@@ -183,6 +183,23 @@ def test_unknown_host_and_large_chunked_body_are_rejected(panel):
     )
 
 
+@pytest.mark.parametrize(
+    ("bind_host", "requested", "status"),
+    [
+        (None, "192.168.1.5", 400),
+        ("192.168.1.5", "192.168.1.5", 200),
+        ("192.168.1.5", "unexpected.example", 400),
+        ("0.0.0.0", "unexpected.example", 200),
+    ],
+)
+def test_bind_host_extends_host_allowlist(tmp_path, bind_host, requested, status):
+    (tmp_path / "compose.yaml").write_text(SOURCE, encoding="utf-8")
+    document = ComposeDocument(tmp_path, tmp_path / ".webcontroller")
+    app = create_app(document, FakeRunner(), create_credentials("test-password"), host=bind_host)
+    with TestClient(app, base_url="http://localhost") as client:
+        assert client.get("/", headers={"Host": requested}).status_code == status
+
+
 @pytest.mark.asyncio
 async def test_resolved_env_file_values_are_filtered_from_logs(tmp_path):
     runner = ComposeRunner(tmp_path, "test-project")

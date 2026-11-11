@@ -45,7 +45,7 @@ def detect_runtime(root=None):
     return Path(root or default_source_root()).resolve(), "source"
 
 
-def build_app(root, mode=None, bot_control=None):
+def build_app(root, mode=None, bot_control=None, *, host=None):
     root = Path(root).resolve()
     if mode is None:
         _, mode = detect_runtime(root)
@@ -58,14 +58,19 @@ def build_app(root, mode=None, bot_control=None):
     credentials = json.loads((state / "credentials.json").read_text(encoding="utf-8"))
     if mode == "source":
         return create_app(
-            None, None, credentials, configs=ConfigStore(root, state), bot_control=bot_control
+            None,
+            None,
+            credentials,
+            configs=ConfigStore(root, state),
+            bot_control=bot_control,
+            host=host,
         )
     document = ComposeDocument(root, state)
     runner = ComposeRunner(root, settings["project"])
-    return create_app(document, runner, credentials, bot_control=bot_control)
+    return create_app(document, runner, credentials, bot_control=bot_control, host=host)
 
 
-def prepare(root, mode, control=None):
+def prepare(root, mode, control=None, host=None):
     """Auto-initialize on first run, then build the app."""
     root = Path(root).resolve()
     if not (root / ".webcontroller" / "settings.json").is_file():
@@ -74,20 +79,25 @@ def prepare(root, mode, control=None):
         else:
             initialize(root, discover_project(root), None)
         print_initial_password(root)
-    return build_app(root)
+    return build_app(root, host=host)
 
 
 def _notify(message):
     print(message, flush=True)
 
 
-async def serve_panel(root, mode, port, stop, control):
-    """Serve the HTTP panel; `stop` is set only on a clean uvicorn exit (shutdown)."""
+async def serve_panel(root, mode, port, stop, control, host=None):
+    """Serve the HTTP panel; `stop` is set only on a clean uvicorn exit (shutdown).
+
+    ``host`` is the user-specified bind address; unset it falls back to the
+    deployment default (loopback for source, all interfaces in the container).
+    """
     try:
-        app = prepare(root, mode, control)
+        app = prepare(root, mode, control, host)
+        bind = host or ("127.0.0.1" if mode == "source" else "0.0.0.0")
         config = uvicorn.Config(
             app,
-            host="127.0.0.1" if mode == "source" else "0.0.0.0",
+            host=bind,
             port=port,
             access_log=False,
             proxy_headers=False,
@@ -168,7 +178,7 @@ async def supervise_bot(
         backoff = min(backoff * 2, backoff_cap)
 
 
-async def serve(port=7001, root=None, mode=None):
+async def serve(port=7001, root=None, mode=None, host=None):
     """Serve entry for the CLI and the container command.
 
     面板始终拉起并守护 Bot：容器里经 entrypoint 链（数据库初始化、QQ 登录等待）
@@ -194,7 +204,7 @@ async def serve(port=7001, root=None, mode=None):
         command = [sys.executable, "bot.py"]
         cwd = root
     control = BotControl()
-    panel = asyncio.create_task(serve_panel(root, mode, port, stop, control))
+    panel = asyncio.create_task(serve_panel(root, mode, port, stop, control, host))
     bot = asyncio.create_task(supervise_bot(control, command, cwd))
     try:
         await panel

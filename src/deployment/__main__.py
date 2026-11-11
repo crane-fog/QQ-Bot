@@ -1,6 +1,7 @@
 import argparse
 import asyncio
 import getpass
+import ipaddress
 import json
 import os
 import signal
@@ -42,7 +43,7 @@ def pid_record(root):
     return root / ".webcontroller" / "panel.pid"
 
 
-def start_background(root, port):
+def start_background(root, port, host=None):
     state = root / ".webcontroller"
     if not state.is_dir():
         raise SystemExit("状态目录不存在，请先执行 --init 初始化")
@@ -64,6 +65,8 @@ def start_background(root, port):
         "--port",
         str(port),
     ]
+    if host is not None:
+        command += ["--host", str(host)]
     flags = (
         {"creationflags": subprocess.DETACHED_PROCESS | subprocess.CREATE_NEW_PROCESS_GROUP}
         if os.name == "nt"
@@ -182,6 +185,7 @@ def main():
     parser = argparse.ArgumentParser(description="Theresa 部署面板：面板拉起并守护 Bot")
     parser.add_argument("--root", type=Path, help="源码模式的检出目录，默认取包所在仓库")
     parser.add_argument("--port", type=int, default=7001)
+    parser.add_argument("--host", help="面板监听的 IP，默认源码 127.0.0.1、容器 0.0.0.0")
     parser.add_argument("--bg", action="store_true", help="以后台进程运行，日志写入状态目录")
     parser.add_argument("--stop", action="store_true", help="停止后台运行的面板")
     parser.add_argument("--init", action="store_true", help="初始化部署身份与配置后退出")
@@ -201,6 +205,11 @@ def main():
         parser.error("--password 需要与 --init 或 --reset-password 搭配")
     if not 1 <= args.port <= 65535:
         parser.error("端口必须在 1 到 65535 之间")
+    if args.host is not None:
+        try:
+            ipaddress.ip_address(args.host)
+        except ValueError:
+            parser.error("--host 必须是 IP 地址（例如 127.0.0.1 或 0.0.0.0）")
     root, mode = detect_runtime(args.root)
     if args.stop:
         stop_background(root)
@@ -211,13 +220,13 @@ def main():
             "源码部署可用 --root 指定检出目录"
         )
     if args.bg:
-        start_background(root, args.port)
+        start_background(root, args.port, args.host)
         return
     if setup_mode:
         run_setup(root, mode, args, parser)
         return
     try:
-        asyncio.run(serve(args.port, root, mode))
+        asyncio.run(serve(args.port, root, mode, args.host))
     except DeploymentError as exc:
         raise SystemExit(f"初始化失败：{exc}") from None
 
