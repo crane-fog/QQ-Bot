@@ -20,6 +20,6 @@ COPY . .
 
 RUN uv sync --frozen --no-dev
 
-# The panel is the container's main process: it serves the web UI and
+# The root launcher starts the panel, which serves the web UI and
 # supervises the Bot as a child process.
-CMD ["python3", "-m", "src.deployment"]
+CMD ["python3", "/app/theresa/main.py"]

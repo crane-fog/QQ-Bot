@@ -5,12 +5,15 @@ changes the details. In the container the panel is the main process serving on
 0.0.0.0 and supervising the entrypoint chain; in a source checkout it listens on
 the loopback interface and supervises ``main.py`` directly. The panel and the
 Bot are decoupled in both directions - a panel failure never stops the Bot, and
-a Bot crash never stops the panel.
+a Bot crash never stops the panel. ``python main.py`` is a thin root launcher
+that starts the panel as a child process; ``bot.py`` runs the Bot alone.
 """
 
 import asyncio
 import json
+import os
 import signal
+import subprocess
 import sys
 from pathlib import Path
 
@@ -169,7 +172,7 @@ async def serve(port=7001, root=None, mode=None):
     """Serve entry for the CLI and the container command.
 
     面板始终拉起并守护 Bot：容器里经 entrypoint 链（数据库初始化、QQ 登录等待）
-    跑镜像侧代码，源码检出里直接跑 main.py。
+    跑镜像侧代码，源码检出里直接跑 bot.py。
     """
     if root is None or mode is None:
         root, mode = detect_runtime(root)
@@ -185,10 +188,10 @@ async def serve(port=7001, root=None, mode=None):
             pass
     if mode == "compose":
         # 容器内跑镜像侧代码，入口链含数据库初始化与 QQ 登录等待。
-        command = ["bash", "scripts/entrypoint.sh", "python3", "main.py"]
+        command = ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
         cwd = default_source_root()
     else:
-        command = [sys.executable, "main.py"]
+        command = [sys.executable, "bot.py"]
         cwd = root
     control = BotControl()
     panel = asyncio.create_task(serve_panel(root, mode, port, stop, control))
@@ -205,3 +208,62 @@ async def serve(port=7001, root=None, mode=None):
             if not task.done():
                 task.cancel()
         await asyncio.gather(panel, bot, return_exceptions=True)
+
+
+def _stop_tree(process):
+    """Stop the panel process and the Bot it supervises in one shot.
+
+    The panel was started as a session/process-group leader, so its pid is the
+    group id and one signal reaches the supervised Bot as well.
+    """
+    if os.name == "nt":
+        subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], capture_output=True)
+        return
+    try:
+        os.killpg(process.pid, signal.SIGTERM)
+    except ProcessLookupError:
+        return
+
+
+async def launch():
+    """Root entry behind ``python main.py``: run the panel, which owns the Bot.
+
+    The panel stays the process that supervises the Bot; ``main.py`` only adds a
+    thin parent that mirrors the panel's exit code and forwards stop signals to
+    the whole tree. Running the Bot alone, without the panel, is ``bot.py``.
+    """
+    flags = (
+        {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}
+        if os.name == "nt"
+        else {"start_new_session": True}
+    )
+    try:
+        process = await asyncio.create_subprocess_exec(
+            sys.executable,
+            "-m",
+            "src.deployment",
+            cwd=default_source_root(),
+            **flags,
+        )
+    except OSError as exc:
+        raise SystemExit(f"无法启动部署面板：{exc}") from None
+    stop = asyncio.Event()
+    loop = asyncio.get_running_loop()
+    for sig in (signal.SIGINT, signal.SIGTERM):
+        try:
+            # POSIX only; on Windows Ctrl+C surfaces as KeyboardInterrupt below.
+            loop.add_signal_handler(sig, stop.set)
+        except (NotImplementedError, RuntimeError):
+            pass
+    waiter = asyncio.create_task(process.wait())
+    stopper = asyncio.create_task(stop.wait())
+    try:
+        await asyncio.wait({waiter, stopper}, return_when=asyncio.FIRST_COMPLETED)
+    finally:
+        # Signal stop (or cancellation, which is how Windows Ctrl+C arrives):
+        # take the panel and the supervised Bot down before exiting.
+        if process.returncode is None:
+            _stop_tree(process)
+    code = await waiter
+    if code:
+        raise SystemExit(code)

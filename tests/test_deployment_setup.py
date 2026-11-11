@@ -1,6 +1,7 @@
 import json
 import os
 import sys
+from pathlib import Path
 
 import pytest
 
@@ -139,7 +140,7 @@ def test_serve_auto_initializes(tmp_path, monkeypatch):
     main()
     assert (tmp_path / ".webcontroller" / "settings.json").is_file()
     assert (tmp_path / ".webcontroller" / "initial-password").is_file()
-    assert recorded["command"] == [_sys.executable, "main.py"]
+    assert recorded["command"] == [_sys.executable, "bot.py"]
     assert recorded["cwd"] == tmp_path.resolve()
 
 
@@ -187,7 +188,7 @@ def test_compose_serve_supervises_entrypoint_chain(tmp_path, monkeypatch):
     monkeypatch.setattr("src.deployment.runtime.uvicorn.Server", _ImmediateServer)
     monkeypatch.setattr(sys, "argv", ["src.deployment"])
     main()
-    assert recorded["command"] == ["bash", "scripts/entrypoint.sh", "python3", "main.py"]
+    assert recorded["command"] == ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
     assert recorded["cwd"] == runtime.default_source_root().resolve()
 
 
@@ -349,3 +350,103 @@ def test_cli_flag_validation(monkeypatch):
         run("--init", "--bg")
     with pytest.raises(SystemExit):
         run("--init", "--reset-password")
+
+
+@pytest.mark.asyncio
+async def test_launch_spawns_panel_and_mirrors_exit(monkeypatch):
+    import sys as _sys
+
+    from src.deployment import runtime
+
+    recorded = {}
+
+    class FakeProcess:
+        pid = 4321
+        returncode = 3
+
+        async def wait(self):
+            return 3
+
+    async def fake_exec(*command, **kwargs):
+        recorded["command"] = list(command)
+        recorded["cwd"] = kwargs.get("cwd")
+        return FakeProcess()
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(runtime, "default_source_root", lambda: Path("/deploy-root"))
+    with pytest.raises(SystemExit) as excinfo:
+        await runtime.launch()
+    assert excinfo.value.code == 3
+    assert recorded["command"] == [_sys.executable, "-m", "src.deployment"]
+    assert recorded["cwd"] == Path("/deploy-root")
+
+
+@pytest.mark.asyncio
+async def test_launch_stops_tree_on_cancel(monkeypatch):
+    import asyncio
+
+    from src.deployment import runtime
+
+    stopped = []
+
+    class FakeProcess:
+        pid = 4321
+        returncode = None
+
+        async def wait(self):
+            while self.returncode is None:
+                await asyncio.sleep(0.01)
+            return self.returncode
+
+    async def fake_exec(*command, **kwargs):
+        return FakeProcess()
+
+    def fake_stop(process):
+        stopped.append(process.pid)
+        process.returncode = 0
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(runtime, "_stop_tree", fake_stop)
+    monkeypatch.setattr(runtime, "default_source_root", lambda: Path("/deploy-root"))
+    task = asyncio.create_task(runtime.launch())
+    await asyncio.sleep(0.05)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert stopped == [4321]
+
+
+@pytest.mark.skipif(os.name == "nt", reason="POSIX signal forwarding")
+@pytest.mark.asyncio
+async def test_launch_stops_tree_on_sigterm(monkeypatch):
+    import asyncio
+    import signal
+
+    from src.deployment import runtime
+
+    stopped = []
+
+    class FakeProcess:
+        pid = 4321
+        returncode = None
+
+        async def wait(self):
+            while self.returncode is None:
+                await asyncio.sleep(0.01)
+            return self.returncode
+
+    async def fake_exec(*command, **kwargs):
+        return FakeProcess()
+
+    def fake_stop(process):
+        stopped.append(process.pid)
+        process.returncode = 0
+
+    monkeypatch.setattr("asyncio.create_subprocess_exec", fake_exec)
+    monkeypatch.setattr(runtime, "_stop_tree", fake_stop)
+    monkeypatch.setattr(runtime, "default_source_root", lambda: Path("/deploy-root"))
+    task = asyncio.create_task(runtime.launch())
+    await asyncio.sleep(0.05)
+    os.kill(os.getpid(), signal.SIGTERM)
+    await asyncio.wait_for(task, 5)
+    assert stopped == [4321]
