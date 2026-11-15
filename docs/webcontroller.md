@@ -1,6 +1,6 @@
 # 部署面板（WebController）
 
-面板不依赖 QQ 登录和数据库，并且始终是拉起 Bot 的一方：面板先启动、先可用，Bot 作为其子进程运行，崩溃后自动退避重启；面板自身异常只记录日志、不影响 Bot，停止信号由面板转发给 Bot。Docker 部署中容器主进程是根启动器 `main.py`，它拉起面板子进程，面板再经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中 `main.py` 同样作为根启动器拉起面板，面板守护 `bot.py`。只想启动 Bot 本身时直接运行 `bot.py`，面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
+面板不依赖 QQ 登录和数据库。进程拓扑为「守护进程为底」：根启动器 `main.py` 拉起守护进程（`python -m src.deployment`），守护进程再把面板（`--panel` 子进程）和 Bot 作为两个子应用守护起来。面板先启动、先可用；面板或 Bot 任一崩溃都由守护进程按退避自动重启，互不影响，停止信号由守护进程统一转发。重载面板只是守护进程重启面板子进程，Bot 保持运行。Docker 部署中容器主进程是 `main.py`，守护进程经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中守护进程直接拉起 `bot.py`。只想启动 Bot 本身时直接运行 `bot.py`，守护进程与面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
 
 ## 纯源码部署（Windows / Linux）
 
@@ -11,13 +11,18 @@ uv sync --no-dev
 uv run main.py
 ```
 
-这一条命令会拉起面板（自动初始化）并由面板守护 Bot。只想运行 Bot 本身、不使用面板时执行 `uv run bot.py`。也可先执行 `uv run -m src.deployment --init` 只初始化不启动。
+这一条命令会拉起守护进程（自动初始化），由它守护面板与 Bot 两个子进程。只想运行 Bot 本身、不使用面板时执行 `uv run bot.py`。也可先执行 `uv run -m src.deployment --init` 只初始化不启动。
 
 初始化自动生成随机管理员密码，写入 `.webcontroller/initial-password`（仅当前用户可读），终端只提示文件路径，不显示密码内容；首次成功登录后面板自动删除该文件，请尽快用 `--reset-password` 设置自己的密码。也可在 `--init` 或 `--reset-password` 时用 `--password` 非交互指定密码，此时不生成密码文件。密码长度不限制，仅以 scrypt 哈希存储，强度由使用者自行负责。初始化从 `configs/*.toml.template` 补齐五类缺失配置，不覆盖已有文件；重复执行保留密码。设置与密码哈希存放于 `.webcontroller/`，不写入 `.env`。
 
 建议同一时间只保留一个面板实例；同一批配置被多处同时编辑时，由版本检查兜底。
 
-默认监听 `127.0.0.1:7001`，可使用 `--port` 指定端口、`--host` 指定绑定 IP（如本机局域网地址或 `0.0.0.0`）。可用 `--bg` 以后台进程运行，PID 与日志分别记录在 `.webcontroller/panel.pid`、`panel.log`，用 `--stop` 停止（面板与 Bot 一同停止）；长期运行仍建议使用下文的 systemd 服务，一个服务即可同时守护面板和 Bot。远程访问使用下文的 SSH 转发。
+默认监听 `127.0.0.1:7001`。绑定地址有两种配置方式，优先级为「命令行 > 持久化设置 > 部署默认」：
+
+- 命令行：`--port` 指定端口、`--host` 指定绑定 IP（如本机局域网地址或 `0.0.0.0`），仅当次启动生效。
+- 持久化：在面板「面板设置」页填写绑定地址与端口并保存，写入 `.webcontroller/settings.json` 的 `panel_host`/`panel_port`，点击「重载面板」即由守护进程以新绑定重启面板（Bot 不受影响）。重新初始化不会丢失这些设置。
+
+绑定非回环地址时面板会在启动日志告警：HTTP 为明文传输，管理员密码与配置可能被同网段窃听，建议改用回环地址加 SSH 转发。可用 `--bg` 以后台进程运行，PID 与日志分别记录在 `.webcontroller/panel.pid`、`panel.log`，用 `--stop` 停止（守护进程连同面板与 Bot 一同停止）；长期运行仍建议使用下文的 systemd 服务，一个服务即可同时守护面板和 Bot。远程访问使用下文的 SSH 转发。
 
 忘记密码时执行：
 
@@ -69,7 +74,7 @@ Bot 基础配置提供表单，密码和令牌默认遮蔽；插件提供全局�
 docker compose up -d
 ```
 
-容器主进程是根启动器 `main.py`：容器启动后它拉起面板子进程，面板再以子进程拉起原启动链（数据库初始化、等待 QQ 登录、`bot.py`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 崩溃后面板按 1 秒起步、指数延长至最长 10 分钟的退避自动重启（稳定运行 60 秒后重新从 1 秒开始）；等待 QQ 扫码期间面板照常可用。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
+容器主进程是根启动器 `main.py`：容器启动后它拉起守护进程，守护进程再以子进程拉起面板与原启动链（数据库初始化、等待 QQ 登录、`bot.py`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 或面板崩溃后守护进程按 1 秒起步、指数延长至最长 10 分钟的退避自动重启（稳定运行 60 秒后重新从 1 秒开始）；等待 QQ 扫码期间面板照常可用。容器内面板绑定由宿主机端口映射决定，「面板设置」页在容器部署下为只读。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
 
 访问 `http://127.0.0.1:7001`。远程服务器使用 SSH 转发：
 
@@ -110,6 +115,16 @@ bash scripts/setup_webcontroller.sh --init --project-name existing-project
 需要长期停用某个服务时，为它设置 profiles（服务表单或完整 YAML）；宿主机执行 `docker compose up -d` 时只会启动没有 profiles 的服务，不使用 `.env` 中的 `COMPOSE_PROFILES`。有 profile 的服务在宿主机显式启动。镜像按 Compose 默认策略拉取，不强制更新所有 latest 镜像；修改镜像版本可明确触发升级。
 
 Compose、Bot TOML、LLBot JSON 暂不联动。修改监听端口后要同步检查相关文件；已有 PostgreSQL 数据卷时，修改 `POSTGRES_PASSWORD` 不会修改现有用户密码，需要另外执行数据库改密。
+
+## 面板设置与重载
+
+「面板设置」页管理面板自身的监听绑定（仅源码部署可编辑；容器部署为只读，请在宿主机改端口映射）：
+
+- 填写绑定地址（IP）与端口（1–65535），点击「保存设置」写入 `.webcontroller/settings.json`。保存只落盘，不立即改变运行中的面板。
+- 点击「重载面板」：面板把 `reload_panel` 请求写入 `.webcontroller/control-request.json`，守护进程轮询到后先试绑新地址，可用才重启面板子进程；不可用则保持原绑定并回报错误，面板不会失联。重载只重启面板，Bot 保持运行。
+- 面板与守护进程通过 `.webcontroller/` 下的请求/状态文件通信（`control-request.json` / `control-status.json`），不新开端口；请求带递增序号，守护进程去重，重启不重复执行历史请求。「重启 Bot」按钮也走同一通道。
+
+绑定优先级为「命令行 > 持久化设置 > 部署默认」。命令行 `--host`/`--port` 仅当次生效；持久化设置跨重启保留，重新初始化（`--init`）不会覆盖。
 
 ## 恢复与面板维护
 
