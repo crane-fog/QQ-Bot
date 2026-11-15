@@ -20,6 +20,6 @@ COPY . .
 
 RUN uv sync --frozen --no-dev
 
-# The root launcher starts the panel, which serves the web UI and
-# supervises the Bot as a child process.
+# The root launcher starts the daemon, which supervises the panel (web UI)
+# and the Bot as child processes.
 CMD ["python3", "/app/theresa/main.py"]

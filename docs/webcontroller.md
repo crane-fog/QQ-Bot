@@ -183,6 +183,6 @@ RUN_WEB_DOCKER_TESTS=1 uv run pytest tests/test_deployment_docker.py
 
 如果测试进程本身也在 Linux 容器中运行，需要挂载 Docker socket、将测试目录以相同绝对路径挂载，并使用 `--network host`。
 
-更早版本的验证记录（2026-10-06 前后）针对含一键应用、容器状态与 Docker socket 的设计，相关结论不再逐条适用。当前版本（main.py 根启动器拉起面板、面板守护 Bot、无独立面板镜像、模块路径 src.deployment）在 Windows 运行全量测试：223 项通过、3 项跳过，其中 2 项 Chromium 浏览器测试已单独启用并通过，1 项 Linux Docker 集成测试因本机缺少 Docker Engine 跳过；theresa 容器内部署流程（面板拉起启动链、自动初始化、登录、保存）需在 Linux/WSL 验证。
+更早版本的验证记录（2026-10-06 前后）针对含一键应用、容器状态与 Docker socket 的设计，相关结论不再逐条适用。当前版本（main.py 根启动器拉起守护进程、守护进程把面板与 Bot 作为子进程守护、无独立面板镜像、模块路径 src.deployment）在 Windows 运行全量测试：223 项通过、3 项跳过，其中 2 项 Chromium 浏览器测试已单独启用并通过，1 项 Linux Docker 集成测试因本机缺少 Docker Engine 跳过；theresa 容器内部署流程（守护进程拉起启动链、自动初始化、登录、保存）需在 Linux/WSL 验证。
 
 实现依据：[Compose config](https://docs.docker.com/reference/cli/docker/compose/config/)、[Profiles](https://docs.docker.com/compose/how-tos/profiles/)、[项目名称](https://docs.docker.com/compose/how-tos/project-name/)。

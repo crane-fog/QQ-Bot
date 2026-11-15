@@ -379,10 +379,10 @@ async def serve(port=None, root=None, mode=None, host=None):
 
 
 def _stop_tree(process):
-    """Stop the panel process and the Bot it supervises in one shot.
+    """Stop the daemon and the panel/Bot children it supervises in one shot.
 
-    The panel was started as a session/process-group leader, so its pid is the
-    group id and one signal reaches the supervised Bot as well.
+    The daemon was started as a session/process-group leader, so its pid is the
+    group id and one signal reaches the supervised panel and Bot as well.
     """
     if os.name == "nt":
         subprocess.run(["taskkill", "/F", "/T", "/PID", str(process.pid)], capture_output=True)
@@ -415,7 +415,7 @@ async def launch():
             **flags,
         )
     except OSError as exc:
-        raise SystemExit(f"无法启动部署面板：{exc}") from None
+        raise SystemExit(f"无法启动守护进程：{exc}") from None
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
@@ -430,7 +430,7 @@ async def launch():
         await asyncio.wait({waiter, stopper}, return_when=asyncio.FIRST_COMPLETED)
     finally:
         # Signal stop (or cancellation, which is how Windows Ctrl+C arrives):
-        # take the panel and the supervised Bot down before exiting.
+        # take the daemon and its supervised panel/Bot children down before exiting.
         if process.returncode is None:
             _stop_tree(process)
     code = await waiter
