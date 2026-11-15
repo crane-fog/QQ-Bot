@@ -8,6 +8,7 @@
   <script src="/assets/common.js" defer></script>
   <script src="/assets/deployment.js" defer></script>
   <script src="/assets/configs.js" defer></script>
+  <script src="/assets/panel.js" defer></script>
 </head>
 <body>
   <header><span class="brand">Theresa</span><span>部署配置</span><button id="logout" hidden>退出登录</button></header>
@@ -23,7 +24,7 @@
       </form>
     </section>
     <div id="workspace" hidden>
-      <nav class="tabs" aria-label="管理内容"><button id="compose-page">Compose 部署</button><button id="configs-page">Bot 配置</button></nav>
+      <nav class="tabs" aria-label="管理内容"><button id="compose-page">Compose 部署</button><button id="configs-page">Bot 配置</button><button id="panel-page">面板设置</button></nav>
       <section id="config-area" hidden>
         <div class="heading"><h1>Bot 配置</h1><span id="config-state" class="badge">正在读取…</span></div>
         <p>保存只修改配置文件，点击“重启 Bot”应用新配置。监听端口变化也需在 LLBot 中同步调整。</p>
@@ -64,6 +65,17 @@
         <section class="panel"><div class="heading"><h2>配置备份</h2><button id="refresh-backups">刷新</button></div><p class="muted">恢复只替换配置文件，不回滚数据库、卷数据或容器状态。容器运行状态请在宿主机执行 docker compose ps 查看。</p><div id="backups">尚未查询。</div></section>
       </div>
       </div>
+      <section id="panel-area" hidden>
+        <div class="heading"><h1>面板设置</h1><span id="panel-state" class="badge">正在读取…</span></div>
+        <p>修改面板监听的地址与端口，保存后点击“重载面板”生效；Bot 不受影响。绑定非回环地址时 HTTP 为明文传输，请谨慎暴露到局域网。</p>
+        <div id="panel-readonly" class="notice" hidden>容器部署的面板绑定由宿主机端口映射决定，请在宿主机修改 compose.yaml 的端口映射后重建容器。</div>
+        <form id="panel-form" class="field-grid">
+          <div class="field"><label for="panel-host">绑定地址（IP）</label><input id="panel-host" type="text" autocomplete="off" spellcheck="false"></div>
+          <div class="field"><label for="panel-port">端口</label><input id="panel-port" type="number" min="1" max="65535" autocomplete="off"></div>
+        </form>
+        <div class="toolbar"><button id="panel-save" class="primary">保存设置</button><button id="panel-reload">重载面板</button></div>
+        <p id="panel-hint" class="muted"></p>
+      </section>
     </div>
   </main>
   <dialog id="confirm-dialog">

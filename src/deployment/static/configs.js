@@ -280,6 +280,7 @@ $("configs-page").addEventListener("click", () =>
   action(async () => {
     await syncForm();
     $("compose-area").hidden = true;
+    $("panel-area").hidden = true;
     $("config-area").hidden = false;
   })
 );
@@ -289,6 +290,7 @@ $("compose-page").addEventListener("click", () =>
     await syncConfigForm();
     $("compose-area").hidden = false;
     $("config-area").hidden = true;
+    $("panel-area").hidden = true;
   })
 );
 

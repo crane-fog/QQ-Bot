@@ -97,6 +97,66 @@ def test_source_browser_form_text_conflict_restore_and_groups(tmp_path):
         thread.join(timeout=10)
 
 
+def test_source_browser_panel_settings(tmp_path):
+    import shutil
+    from pathlib import Path
+
+    from playwright.sync_api import expect, sync_playwright
+
+    from src.deployment.runtime import build_app
+    from src.deployment.setup import read_settings
+
+    (tmp_path / "configs").mkdir()
+    for template in Path("configs").glob("*.toml.template"):
+        shutil.copyfile(template, tmp_path / "configs" / template.name)
+    initialize_source(tmp_path, "test-password")
+    with socket.socket() as listener:
+        listener.bind(("127.0.0.1", 0))
+        port = listener.getsockname()[1]
+    server = uvicorn.Server(
+        uvicorn.Config(build_app(tmp_path), host="127.0.0.1", port=port, log_level="error")
+    )
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+    try:
+        deadline = time.monotonic() + 10
+        while not server.started:
+            if time.monotonic() > deadline:
+                raise AssertionError("Source panel did not start")
+            time.sleep(0.02)
+        with sync_playwright() as playwright:
+            browser = playwright.chromium.launch()
+            page = browser.new_page(viewport={"width": 1440, "height": 1000})
+            errors = []
+            page.on("pageerror", lambda error: errors.append(str(error)))
+            page.goto(f"http://127.0.0.1:{port}")
+            page.locator("#password").fill("test-password")
+            page.get_by_role("button", name="登录", exact=True).click()
+            page.locator("#panel-page").click()
+            expect(page.locator("#panel-area")).to_be_visible()
+            expect(page.locator("#panel-host")).to_have_value("127.0.0.1")
+            # 非法 IP 被前端校验拦截。
+            page.locator("#panel-host").fill("not-an-ip")
+            page.locator("#panel-save").click()
+            expect(page.locator("#notice")).to_contain_text("合法 IP")
+            # 合法保存写入 settings.json。
+            page.locator("#panel-host").fill("0.0.0.0")
+            page.locator("#panel-port").fill("8080")
+            page.locator("#panel-save").click()
+            expect(page.locator("#notice")).to_contain_text("重载面板")
+            settings = read_settings(tmp_path / ".webcontroller")
+            assert settings["panel_host"] == "0.0.0.0"
+            assert settings["panel_port"] == 8080
+            for width in (320, 768, 1024, 1440):
+                page.set_viewport_size({"width": width, "height": 900})
+                assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")
+            assert errors == []
+            browser.close()
+    finally:
+        server.should_exit = True
+        thread.join(timeout=10)
+
+
 def test_browser_edit_validate_save_restore_and_mobile(tmp_path):
     from playwright.sync_api import expect, sync_playwright
 
