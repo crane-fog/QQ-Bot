@@ -304,6 +304,55 @@ async def test_supervise_bot_resets_backoff_after_stable_run(tmp_path):
         await asyncio.wait_for(task, 10)
 
 
+@pytest.mark.asyncio
+async def test_supervise_bot_backoff_cancels_waiters(tmp_path, monkeypatch):
+    import asyncio
+    import sys
+    import time
+
+    from src.deployment.runtime import BotControl, supervise_bot
+
+    control = BotControl()
+    launches = tmp_path / "launches"
+    command = [
+        sys.executable,
+        "-c",
+        f"p = {str(launches)!r}\nopen(p, 'a').write('x')\nif len(open(p).read()) >= 3:\n    import time; time.sleep(30)\n",
+    ]
+    # 前两次退避强制超时，第三次退避中停机；只追踪退避等待创建的任务，
+    # 守护循环主等待的任务不算泄漏。
+    real_wait = asyncio.wait
+    backoff_waiters = []
+
+    async def tracking_wait(fs, **kwargs):
+        if kwargs.get("timeout") is not None:
+            backoff_waiters.extend(fs)
+        return await real_wait(fs, **kwargs)
+
+    monkeypatch.setattr(asyncio, "wait", tracking_wait)
+    task = asyncio.create_task(
+        supervise_bot(control, command, tmp_path, backoff_start=0.05, backoff_cap=0.05)
+    )
+    try:
+        deadline = time.monotonic() + 20
+        while True:
+            if launches.is_file() and len(launches.read_text(encoding="utf-8")) >= 3:
+                break
+            assert time.monotonic() < deadline, "supervisor did not respawn"
+            await asyncio.sleep(0.02)
+        assert len(backoff_waiters) >= 4, "expected two timed-out backoff waits"
+        for waiter in backoff_waiters[:4]:
+            for _ in range(100):
+                if waiter.done():
+                    break
+                await asyncio.sleep(0.02)
+            assert waiter.done(), "backoff timeout leaked a waiter task"
+            assert waiter.cancelled(), "backoff waiter should be cancelled after timeout"
+    finally:
+        control.stop.set()
+        await asyncio.wait_for(task, 10)
+
+
 def test_detect_runtime_uses_deploy_mount(tmp_path, monkeypatch):
     from src.deployment import runtime
 

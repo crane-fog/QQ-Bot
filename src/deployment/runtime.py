@@ -170,11 +170,14 @@ async def supervise_bot(
         if asyncio.get_running_loop().time() - started >= reset_after:
             backoff = backoff_start
         _notify(f"Bot 进程退出（exit {code}），{backoff:g} 秒后重启")
-        await asyncio.wait(
-            [asyncio.create_task(stop.wait()), asyncio.create_task(control.restart.wait())],
-            timeout=backoff,
-            return_when=asyncio.FIRST_COMPLETED,
-        )
+        waiters = [asyncio.create_task(stop.wait()), asyncio.create_task(control.restart.wait())]
+        try:
+            await asyncio.wait(waiters, timeout=backoff, return_when=asyncio.FIRST_COMPLETED)
+        finally:
+            # asyncio.wait 超时不会取消传入的任务；不取消则每次崩溃重启都留下挂起任务。
+            for waiter in waiters:
+                waiter.cancel()
+            await asyncio.gather(*waiters, return_exceptions=True)
         backoff = min(backoff * 2, backoff_cap)
 
 
