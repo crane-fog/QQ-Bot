@@ -40,7 +40,6 @@
 | [`I_like_you`](plugins/I_like_you.md) | `Group` | 根据固定台词发送本地语音。 | 命令触发：`我喜欢你`、`我不喜欢你` | 是 |
 | [`LineCount`](plugins/LineCount.md) | `Group` | 查询用户代码行数相关信息。 | 命令触发：`Theresa linecount` | 是 |
 | [`MessageRecorder`](plugins/MessageRecorder.md) | `Record` | 记录群消息到数据库，为上下文类插件提供数据。 | 自动触发 | 是 |
-| [`MoeGoe`](plugins/MoeGoe.md) | `Group` | 调用语音合成服务生成并发送语音。 | 命令触发：`moegoe ema/sheri zh/ja <文本>` | 是 |
 | [`QiuDao`](plugins/QiuDao.md) | `Group` | 根据数据库中的记录响应“求刀/公开刀数”类指令。 | 命令触发：`Theresa 求刀`、`Theresa 公开我的刀数` | 是 |
 | [`RecallPrevent`](plugins/RecallPrevent.md) | `GroupRecall` | 记录消息并在用户撤回后把内容重新发出来。 | 自动触发；撤回事件触发 | 是 |
 | [`Repeater`](plugins/Repeater.md) | `Group` | 检测复读并按配置撤回或禁言。 | 自动触发 | 是 |

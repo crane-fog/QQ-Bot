@@ -1,6 +1,6 @@
 # 部署面板（WebController）
 
-面板不依赖 QQ 登录和数据库。进程拓扑为「守护进程为底」：根启动器 `main.py` 拉起守护进程（`python -m src.deployment`），守护进程再把面板（`--panel` 子进程）和 Bot 作为两个子应用守护起来。面板先启动、先可用；面板或 Bot 任一崩溃都由守护进程按退避自动重启，互不影响，停止信号由守护进程统一转发。重载面板只是守护进程重启面板子进程，Bot 保持运行。Docker 部署中容器主进程是 `main.py`，守护进程经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中守护进程直接拉起 `bot.py`。只想启动 Bot 本身时直接运行 `bot.py`，守护进程与面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
+面板不依赖 QQ 登录和数据库。进程拓扑为「守护进程为底」：根启动器 `main.py` 拉起守护进程（`python -m src.deployment`），守护进程再把面板（`--panel` 子进程）和 Bot 作为两个子应用守护起来。面板先启动、先可用；面板或 Bot 任一崩溃都由守护进程按退避自动重启，停止信号由守护进程统一转发。Docker 部署中容器主进程是 `main.py`，守护进程经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中守护进程直接拉起 `bot.py`。只想启动 Bot 本身时直接运行 `bot.py`，守护进程与面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
 
 ## 纯源码部署（Windows / Linux）
 
@@ -24,7 +24,7 @@ uv run main.py
 
 绑定非回环地址时面板会在启动日志告警：HTTP 为明文传输，管理员密码与配置可能被同网段窃听，建议改用回环地址加 SSH 转发。可用 `--bg` 以后台进程运行，PID 与日志分别记录在 `.webcontroller/panel.pid`、`panel.log`，用 `--stop` 停止（守护进程连同面板与 Bot 一同停止）；长期运行仍建议使用下文的 systemd 服务，一个服务即可同时守护面板和 Bot。远程访问使用下文的 SSH 转发。
 
-忘记密码时执行：
+忘记密码时执行以下命令交互式重置：
 
 ```bash
 uv run -m src.deployment --reset-password
@@ -52,7 +52,7 @@ WantedBy=multi-user.target
 
 将服务保存为 `/etc/systemd/system/theresa-webcontroller.service` 后，由管理员执行 `sudo systemctl daemon-reload` 和 `sudo systemctl enable --now theresa-webcontroller`。Windows 可在独立终端运行或使用 `--bg`；本版不自动安装系统服务。
 
-## Bot TOML 配置管理（两种部署共用）
+## Bot TOML 配置管理
 
 源码部署下面板只有这一部分；Docker 部署下面板另有 Compose 部署页，通过页签切换到“Bot 配置”。只允许管理 `bot.toml`、`plugins.toml`、`groups.toml`、`ai.toml`、`scheduler.toml`，不能编辑任意宿主机文件。
 
@@ -76,7 +76,7 @@ Bot 基础配置提供表单，密码和令牌默认遮蔽；插件提供全局�
 docker compose up -d
 ```
 
-容器主进程是根启动器 `main.py`：容器启动后它拉起守护进程，守护进程再以子进程拉起面板与原启动链（数据库初始化、等待 QQ 登录、`bot.py`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 或面板崩溃后守护进程按 1 秒起步、指数延长至最长 10 分钟的退避自动重启（稳定运行 60 秒后重新从 1 秒开始）；等待 QQ 扫码期间面板照常可用。容器内面板绑定由宿主机端口映射决定，「面板设置」页在容器部署下为只读。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
+容器主进程是根启动器 `main.py`：容器启动后它拉起守护进程，守护进程再以子进程拉起面板与原启动链（数据库初始化、等待 QQ 登录、`bot.py`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 或面板崩溃后守护进程按 1 秒起步的指数退避自动重启（稳定运行 60 秒后重新从 1 秒开始），Bot 退避最长 10 分钟、面板最长 1 分钟；等待 QQ 扫码期间面板照常可用。容器内面板绑定由宿主机端口映射决定，「面板设置」页在容器部署下为只读。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
 
 访问 `http://127.0.0.1:7001`。远程服务器使用 SSH 转发：
 
@@ -184,7 +184,3 @@ RUN_WEB_DOCKER_TESTS=1 uv run pytest tests/test_deployment_docker.py
 浏览器测试使用临时配置和进程内的校验替身（FakeRunner），不访问 Docker；Docker 集成测试在宿主机上使用随机命名的隔离项目、Alpine 容器和临时挂载，结束后仅清理该测试项目及其卷。
 
 如果测试进程本身也在 Linux 容器中运行，需要挂载 Docker socket、将测试目录以相同绝对路径挂载，并使用 `--network host`。
-
-更早版本的验证记录（2026-10-06 前后）针对含一键应用、容器状态与 Docker socket 的设计，相关结论不再逐条适用。当前版本（main.py 根启动器拉起守护进程、守护进程把面板与 Bot 作为子进程守护、无独立面板镜像、模块路径 src.deployment）在 Windows 运行全量测试：223 项通过、3 项跳过，其中 2 项 Chromium 浏览器测试已单独启用并通过，1 项 Linux Docker 集成测试因本机缺少 Docker Engine 跳过；theresa 容器内部署流程（守护进程拉起启动链、自动初始化、登录、保存）需在 Linux/WSL 验证。
-
-实现依据：[Compose config](https://docs.docker.com/reference/cli/docker/compose/config/)、[Profiles](https://docs.docker.com/compose/how-tos/profiles/)、[项目名称](https://docs.docker.com/compose/how-tos/project-name/)。

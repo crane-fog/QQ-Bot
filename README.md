@@ -71,7 +71,7 @@ ssh -L 3080:localhost:3080 user@remote_host
 
 #### 3. 启动面板和 Bot
 
-完成 `uv sync --no-dev` 后，用原启动命令运行：
+完成 `uv sync --no-dev` 后，执行以下命令启动：
 
 ```bash
 uv run main.py
@@ -87,7 +87,7 @@ uv run main.py
 
 尽管 bot 本身并不强制要求使用数据库，但大部分主要插件都需要数据库支持
 
-建表脚本从 `configs/bot.toml` 读取连接信息，因此在配置生成（首次启动自动完成）并在面板填好数据库连接后执行（若 `database_enable = true`）：
+建表脚本从 `configs/bot.toml` 读取连接信息。请先完成配置生成（首次启动自动完成），并在面板填好数据库连接（`database_enable = true`），再执行：
 
 ```bash
 uv run scripts/create_tables.py
