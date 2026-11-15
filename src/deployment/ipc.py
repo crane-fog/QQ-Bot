@@ -60,6 +60,7 @@ class FileControl:
     def __init__(self, state: Path):
         self.state = Path(state)
         self._seq = int(time.time() * 1000)
+        self.status_timeout = 10.0
 
     def request(self, action: str) -> int:
         self._seq += 1
@@ -69,8 +70,13 @@ class FileControl:
     def restart_bot(self) -> int:
         return self.request("restart_bot")
 
-    async def wait_status(self, seq: int, timeout: float = 10.0):
+    def reload_panel(self) -> int:
+        return self.request("reload_panel")
+
+    async def wait_status(self, seq: int, timeout: float | None = None):
         """轮询守护进程回报的状态；超时返回 None。"""
+        if timeout is None:
+            timeout = self.status_timeout
         loop = asyncio.get_running_loop()
         deadline = loop.time() + timeout
         while loop.time() < deadline:

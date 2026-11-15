@@ -1,5 +1,6 @@
 import asyncio
 import hmac
+import ipaddress
 from pathlib import Path
 
 from fastapi import FastAPI, Request
@@ -10,6 +11,7 @@ from pydantic import BaseModel, Field
 
 from .auth import Authentication
 from .config import MAX_SOURCE, ComposeDocument, DeploymentError, plain
+from .setup import merge_settings, read_settings
 from .toml_config import CONFIG_NAMES, ConfigStore, form_values
 
 
@@ -41,6 +43,11 @@ class ConfigChange(BaseModel):
 class ConfigPatch(BaseModel):
     source: str = Field(max_length=MAX_SOURCE)
     changes: list[ConfigChange] = Field(max_length=1000)
+
+
+class PanelSettings(BaseModel):
+    panel_host: str = Field(max_length=64)
+    panel_port: int = Field(ge=1, le=65535)
 
 
 def create_app(
@@ -189,6 +196,51 @@ def create_app(
         if bot_control.process.returncode is None:
             bot_control.process.terminate()
         return {"restarted": True}
+
+    def _panel_bind_defaults():
+        return ("0.0.0.0", 7001) if document is not None else ("127.0.0.1", 7001)
+
+    @app.get("/api/panel/settings")
+    async def panel_settings():
+        settings = await asyncio.to_thread(read_settings, state)
+        default_host, default_port = _panel_bind_defaults()
+        return {
+            "panel_host": settings.get("panel_host") or default_host,
+            "panel_port": settings.get("panel_port") or default_port,
+            "editable": document is None,
+        }
+
+    @app.put("/api/panel/settings")
+    async def update_panel_settings(body: PanelSettings):
+        if document is not None:
+            raise DeploymentError("容器部署请在宿主机修改端口映射，不能从面板改绑定", 400)
+        try:
+            ipaddress.ip_address(body.panel_host)
+        except ValueError:
+            raise DeploymentError("绑定地址必须是 IP（例如 127.0.0.1 或 0.0.0.0）", 422) from None
+        await asyncio.to_thread(
+            merge_settings, state, panel_host=body.panel_host, panel_port=body.panel_port
+        )
+        return {"panel_host": body.panel_host, "panel_port": body.panel_port}
+
+    @app.post("/api/panel/reload")
+    async def reload_panel():
+        if bot_control is None or not hasattr(bot_control, "reload_panel"):
+            raise DeploymentError("当前部署不支持重载面板", 503)
+        seq = await asyncio.to_thread(bot_control.reload_panel)
+        status = await bot_control.wait_status(seq)
+        if status is None:
+            raise DeploymentError("守护进程未响应重载请求，请稍后重试", 503)
+        if not status.get("ok"):
+            raise DeploymentError(status.get("message") or "重载面板失败", 503)
+        return {"reloaded": True}
+
+    @app.get("/api/panel/status")
+    async def panel_status():
+        from .ipc import read_status
+
+        status = await asyncio.to_thread(read_status, state)
+        return {"status": status}
 
     @app.get("/api/configs")
     async def config_list():

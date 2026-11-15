@@ -148,7 +148,10 @@ async def test_serve_auto_initializes(tmp_path, monkeypatch):
     assert (tmp_path / ".webcontroller" / "initial-password").is_file()
     assert recorded["command"] == [_sys.executable, "bot.py"]
     assert recorded["cwd"] == tmp_path.resolve()
-    assert "--panel" in recorded["panel_command"]
+    panel_command = recorded["panel_command"]
+    if callable(panel_command):
+        panel_command = panel_command()
+    assert "--panel" in panel_command
 
 
 @pytest.mark.asyncio

@@ -266,3 +266,90 @@ async def test_resolved_env_file_values_are_filtered_from_logs(tmp_path):
     runner.execute = execute
     await runner.validate(SOURCE)
     assert "from-env-file" not in runner.redact("output from-env-file", SOURCE)
+
+
+@pytest.fixture
+def source_panel(tmp_path):
+    from src.deployment.ipc import FileControl
+    from src.deployment.setup import initialize_source
+    from src.deployment.toml_config import CONFIG_NAMES
+
+    configs = tmp_path / "configs"
+    configs.mkdir()
+    for name in CONFIG_NAMES:
+        (configs / f"{name}.template").write_text("", encoding="utf-8")
+    initialize_source(tmp_path, "test-password")
+    state = tmp_path / ".webcontroller"
+    control = FileControl(state)
+    app = create_app(
+        None,
+        None,
+        create_credentials("test-password"),
+        configs=ConfigStore(tmp_path, state),
+        bot_control=control,
+    )
+    with TestClient(app, base_url="http://localhost") as client:
+        yield client, state, control
+
+
+def test_panel_settings_round_trip(source_panel):
+    client, state, _ = source_panel
+    headers = login(client)
+    default = client.get("/api/panel/settings", headers=headers).json()
+    assert default["editable"] is True
+    assert default["panel_host"] == "127.0.0.1"
+    body = {"panel_host": "0.0.0.0", "panel_port": 8080}
+    assert client.put("/api/panel/settings", json=body, headers=headers).status_code == 200
+    saved = client.get("/api/panel/settings", headers=headers).json()
+    assert saved["panel_host"] == "0.0.0.0"
+    assert saved["panel_port"] == 8080
+    # 非法 IP 与越界端口被拒绝。
+    assert (
+        client.put(
+            "/api/panel/settings",
+            json={"panel_host": "not-an-ip", "panel_port": 8080},
+            headers=headers,
+        ).status_code
+        == 422
+    )
+    assert (
+        client.put(
+            "/api/panel/settings",
+            json={"panel_host": "127.0.0.1", "panel_port": 99999},
+            headers=headers,
+        ).status_code
+        == 422
+    )
+
+
+def test_panel_settings_readonly_in_compose(panel):
+    client, _, _ = panel
+    headers = login(client)
+    assert client.get("/api/panel/settings", headers=headers).json()["editable"] is False
+    assert (
+        client.put(
+            "/api/panel/settings",
+            json={"panel_host": "0.0.0.0", "panel_port": 8080},
+            headers=headers,
+        ).status_code
+        == 400
+    )
+
+
+def test_panel_reload_writes_request(source_panel):
+    client, state, control = source_panel
+    control.status_timeout = 0.3
+    headers = login(client)
+    # 无守护进程响应时，重载应超时回报 503，但请求文件已写入。
+    response = client.post("/api/panel/reload", headers=headers)
+    assert response.status_code == 503
+    from src.deployment.ipc import read_request
+
+    request = read_request(state)
+    assert request["action"] == "reload_panel"
+
+
+def test_panel_reload_unavailable_without_control(panel):
+    client, _, _ = panel
+    headers = login(client)
+    assert client.post("/api/panel/reload", headers=headers).status_code == 503

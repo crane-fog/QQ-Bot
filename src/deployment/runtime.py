@@ -14,6 +14,7 @@ import ipaddress
 import json
 import os
 import signal
+import socket
 import subprocess
 import sys
 from pathlib import Path
@@ -22,7 +23,7 @@ import uvicorn
 
 from . import default_source_root
 from .app import create_app
-from .config import ComposeDocument
+from .config import ComposeDocument, DeploymentError
 from .ipc import FileControl, poll_control
 from .runner import ComposeRunner
 from .setup import (
@@ -161,6 +162,8 @@ class PanelControl:
         self.stop = asyncio.Event()
         self.reload = asyncio.Event()
         self.process = None
+        self.host = None
+        self.port = None
 
 
 async def supervise_child(
@@ -177,14 +180,17 @@ async def supervise_child(
 
     A child that stayed up for `reset_after` seconds counts as stable and the
     next crash restarts at `backoff_start` again; a restart request bypasses
-    the backoff entirely. Shared by the Bot and panel supervisors.
+    the backoff entirely. Shared by the Bot and panel supervisors. ``command``
+    may be a fixed list or a callable returning one (re-resolved each spawn so
+    the panel can pick up a new bind on reload).
     """
     stop = control.stop
     backoff = backoff_start
     while not stop.is_set():
         started = asyncio.get_running_loop().time()
+        current_command = command() if callable(command) else command
         try:
-            process = await asyncio.create_subprocess_exec(*command, cwd=cwd)
+            process = await asyncio.create_subprocess_exec(*current_command, cwd=cwd)
         except OSError as exc:
             _notify(f"无法启动 {label} 进程，放弃拉起：{exc}")
             return
@@ -258,6 +264,17 @@ async def supervise_panel(
     )
 
 
+def can_bind(host, port):
+    """试绑 host:port，判断重载目标是否可用（不实际占用）。"""
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as probe:
+            probe.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+            probe.bind((host, port))
+        return True
+    except OSError:
+        return False
+
+
 def panel_command(root, mode, host, port):
     """构造面板子进程命令行（显式传入解析后的绑定，确保守护与面板一致）。"""
     command = [
@@ -286,18 +303,45 @@ async def serve_daemon(root, mode, host, port, stop):
         bot_cwd = root
     bot_control = BotControl()
     panel_control = PanelControl()
+    panel_control.host = host
+    panel_control.port = port
+    last_good = {"host": host, "port": port}
     bot = asyncio.create_task(supervise_bot(bot_control, bot_command, bot_cwd))
+
     # 面板子进程以 -m src.deployment 启动，须在包所在仓库根运行才能导入模块；
     # 部署目录（--root）可能不含源码（如独立部署目录），不能用作 cwd。
+    # 命令用闭包按当前绑定动态生成，重载切换绑定后下一次拉起即生效。
+    def current_panel_command():
+        return panel_command(root, mode, panel_control.host, panel_control.port)
+
     panel = asyncio.create_task(
-        supervise_panel(panel_control, panel_command(root, mode, host, port), default_source_root())
+        supervise_panel(panel_control, current_panel_command, default_source_root())
     )
 
     def restart_bot():
         bot_control.restart.set()
 
+    async def reload_panel():
+        settings = await asyncio.to_thread(read_settings, root / ".webcontroller")
+        new_host = settings.get("panel_host") or panel_control.host
+        new_port = settings.get("panel_port") or panel_control.port
+        if not isinstance(new_port, int) or not 1 <= new_port <= 65535:
+            new_port = panel_control.port
+        # 预检新绑定；不可用则保持当前绑定并回报错误，面板不失联。
+        if not await asyncio.to_thread(can_bind, new_host, new_port):
+            raise DeploymentError(f"无法绑定 {new_host}:{new_port}，已保持原绑定")
+        panel_control.host = new_host
+        panel_control.port = new_port
+        last_good["host"] = new_host
+        last_good["port"] = new_port
+        panel_control.reload.set()
+
     control_task = asyncio.create_task(
-        poll_control(root / ".webcontroller", {"restart_bot": restart_bot}, stop)
+        poll_control(
+            root / ".webcontroller",
+            {"restart_bot": restart_bot, "reload_panel": reload_panel},
+            stop,
+        )
     )
     stopper = asyncio.create_task(stop.wait())
     try:
