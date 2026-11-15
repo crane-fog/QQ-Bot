@@ -87,16 +87,21 @@ def atomic_write(path: Path, source: str, mode: int = 0o600) -> None:
 
 
 def _lock_byte(handle) -> None:
-    """对锁文件首字节加排他锁（跨平台）。"""
+    """非阻塞尝试对锁文件首字节加排他锁；被占用时抛 OSError。
+
+    必须非阻塞：file_lock 的重试循环依赖立即失败才能执行超时。
+    POSIX 的 LOCK_EX 会阻塞等待、Windows 的 LK_LOCK 会内部重试，
+    两者都会绕过超时控制，故分别用 LOCK_NB 与 LK_NBLCK。
+    """
     if os.name == "nt":
         import msvcrt
 
         handle.seek(0)
-        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_NBLCK, 1)
     else:
         import fcntl
 
-        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
 
 
 def _unlock_byte(handle) -> None:
