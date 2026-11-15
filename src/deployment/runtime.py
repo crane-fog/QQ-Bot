@@ -29,6 +29,7 @@ from .setup import (
     initialize,
     initialize_source,
     print_initial_password,
+    read_settings,
 )
 from .toml_config import ConfigStore
 
@@ -85,6 +86,27 @@ def prepare(root, mode, control=None, host=None):
 
 def _notify(message):
     print(message, flush=True)
+
+
+def resolve_panel_bind(root, mode, host=None, port=None):
+    """解析面板绑定地址：命令行 > 持久化设置 > 部署默认。
+
+    持久化值来自 .webcontroller/settings.json 的 panel_host/panel_port；
+    缺失或非法时回退默认（源码回环、容器全接口，端口 7001）。
+    """
+    settings = read_settings(Path(root) / ".webcontroller")
+    if host is None:
+        persisted_host = settings.get("panel_host")
+        host = persisted_host if isinstance(persisted_host, str) and persisted_host else None
+    if port is None:
+        persisted_port = settings.get("panel_port")
+        if isinstance(persisted_port, int) and 1 <= persisted_port <= 65535:
+            port = persisted_port
+    if host is None:
+        host = "127.0.0.1" if mode == "source" else "0.0.0.0"
+    if port is None:
+        port = 7001
+    return host, port
 
 
 async def serve_panel(root, mode, port, stop, control, host=None):
@@ -191,7 +213,7 @@ async def serve(port=7001, root=None, mode=None, host=None):
     if root is None or mode is None:
         root, mode = detect_runtime(root)
     root = Path(root).resolve()
-    bind = host or ("127.0.0.1" if mode == "source" else "0.0.0.0")
+    bind, port = resolve_panel_bind(root, mode, host, port)
     if not ipaddress.ip_address(bind).is_loopback:
         _notify(
             f"警告：面板绑定非回环地址 {bind}，HTTP 明文传输，管理员密码与配置可能被同网段窃听；"

@@ -376,6 +376,45 @@ async def test_serve_warns_on_non_loopback_bind(tmp_path, monkeypatch, host, mod
     assert any("明文" in message for message in notifications) is warns
 
 
+def test_merge_settings_preserves_panel_bind(tmp_path):
+    from src.deployment.setup import merge_settings, read_settings
+
+    configs = tmp_path / "configs"
+    configs.mkdir()
+    for name in CONFIG_NAMES:
+        (configs / f"{name}.template").write_text("", encoding="utf-8")
+    initialize_source(tmp_path, "pw")
+    state = tmp_path / ".webcontroller"
+    merge_settings(state, panel_host="0.0.0.0", panel_port=8080)
+    # 重新初始化不得丢弃面板绑定设置。
+    initialize_source(tmp_path)
+    settings = read_settings(state)
+    assert settings["panel_host"] == "0.0.0.0"
+    assert settings["panel_port"] == 8080
+    assert settings["root"] == str(tmp_path.resolve())
+
+
+def test_resolve_panel_bind_priority(tmp_path):
+    from src.deployment.runtime import resolve_panel_bind
+    from src.deployment.setup import merge_settings
+
+    state = tmp_path / ".webcontroller"
+    # 无持久化：源码回环、容器全接口，默认端口。
+    assert resolve_panel_bind(tmp_path, "source") == ("127.0.0.1", 7001)
+    assert resolve_panel_bind(tmp_path, "compose") == ("0.0.0.0", 7001)
+    merge_settings(state, panel_host="192.168.1.5", panel_port=8080)
+    # 持久化生效。
+    assert resolve_panel_bind(tmp_path, "source") == ("192.168.1.5", 8080)
+    # 命令行覆盖持久化。
+    assert resolve_panel_bind(tmp_path, "source", host="127.0.0.1", port=9000) == (
+        "127.0.0.1",
+        9000,
+    )
+    # 非法持久化值回退默认。
+    merge_settings(state, panel_host="", panel_port=99999)
+    assert resolve_panel_bind(tmp_path, "source") == ("127.0.0.1", 7001)
+
+
 def test_detect_runtime_uses_deploy_mount(tmp_path, monkeypatch):
     from src.deployment import runtime
 

@@ -10,6 +10,25 @@ from .config import ComposeDocument, DeploymentError, atomic_write, plain
 from .toml_config import CONFIG_NAMES, ConfigStore
 
 
+def read_settings(state: Path) -> dict:
+    """读取状态目录下的 settings.json；缺失时返回空表。"""
+    path = state / "settings.json"
+    if not path.is_file():
+        return {}
+    return json.loads(path.read_text(encoding="utf-8"))
+
+
+def merge_settings(state: Path, **updates) -> dict:
+    """合并写入 settings.json：保留既有键（含面板绑定设置），仅更新传入项。
+
+    重新初始化不得丢弃面板设置等后续写入的字段，因此一律先读旧值再合并。
+    """
+    settings = read_settings(state)
+    settings.update(updates)
+    atomic_write(state / "settings.json", json.dumps(settings, ensure_ascii=False))
+    return settings
+
+
 def initialize_source(root: Path, password=None):
     root = root.resolve()
     state = root / ".webcontroller"
@@ -38,7 +57,7 @@ def initialize_source(root: Path, password=None):
         atomic_write(credentials, json.dumps(create_credentials(password)))
     for path, source in missing:
         atomic_write(path, source)
-    atomic_write(settings_path, json.dumps(settings))
+    merge_settings(state, root=settings["root"])
     if os.name != "nt":
         state.chmod(0o700)
     return store
@@ -94,7 +113,7 @@ def initialize(root: Path, project: str, password=None):
             password = generate_password()
             atomic_write(state / "initial-password", password + "\n")
         atomic_write(credentials, json.dumps(create_credentials(password)))
-    atomic_write(settings_path, json.dumps(settings))
+    merge_settings(state, root=settings["root"], project=project)
     for directory in (state, state / "backups"):
         directory.mkdir(exist_ok=True, mode=0o700)
         directory.chmod(0o700)
