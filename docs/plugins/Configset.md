@@ -36,6 +36,7 @@
 ## 注意事项
 - `TheresaHelp` 和 `Configset` 自身不允许通过 `/close` 关闭
 - 只传命令不传插件名时会回复「未选择插件」
+- `modify_plugin` 对 `groups.toml` 的读-改-写在跨进程文件锁内进行，与部署面板的并发编辑串行化，不会互相覆盖丢更新
 
 ## 相关代码
 - `plugins/Configset/Configset.py`
