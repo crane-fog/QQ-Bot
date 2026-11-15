@@ -353,6 +353,29 @@ async def test_supervise_bot_backoff_cancels_waiters(tmp_path, monkeypatch):
         await asyncio.wait_for(task, 10)
 
 
+@pytest.mark.asyncio
+@pytest.mark.parametrize(
+    ("host", "mode", "warns"),
+    [(None, "source", False), ("127.0.0.1", "compose", False), (None, "compose", True)],
+)
+async def test_serve_warns_on_non_loopback_bind(tmp_path, monkeypatch, host, mode, warns):
+    from src.deployment import runtime
+
+    notifications = []
+
+    async def fake_serve_panel(root, mode, port, stop, control, host=None):
+        stop.set()
+
+    async def fake_supervise(control, command, cwd, **kwargs):
+        pass
+
+    monkeypatch.setattr(runtime, "serve_panel", fake_serve_panel)
+    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise)
+    monkeypatch.setattr(runtime, "_notify", notifications.append)
+    await runtime.serve(root=tmp_path, mode=mode, host=host)
+    assert any("明文" in message for message in notifications) is warns
+
+
 def test_detect_runtime_uses_deploy_mount(tmp_path, monkeypatch):
     from src.deployment import runtime
 

@@ -10,6 +10,7 @@ that starts the panel as a child process; ``bot.py`` runs the Bot alone.
 """
 
 import asyncio
+import ipaddress
 import json
 import os
 import signal
@@ -190,6 +191,12 @@ async def serve(port=7001, root=None, mode=None, host=None):
     if root is None or mode is None:
         root, mode = detect_runtime(root)
     root = Path(root).resolve()
+    bind = host or ("127.0.0.1" if mode == "source" else "0.0.0.0")
+    if not ipaddress.ip_address(bind).is_loopback:
+        _notify(
+            f"警告：面板绑定非回环地址 {bind}，HTTP 明文传输，管理员密码与配置可能被同网段窃听；"
+            "建议改用回环地址加 SSH 隧道访问。"
+        )
     stop = asyncio.Event()
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
