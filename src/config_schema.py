@@ -8,6 +8,8 @@ Bot（启动时读取、群开关写回）和部署面板（离线编辑）需�
 import os
 import stat
 import tempfile
+import time
+from contextlib import contextmanager
 from pathlib import Path
 
 import tomlkit
@@ -80,3 +82,73 @@ def atomic_write(path: Path, source: str, mode: int = 0o600) -> None:
     finally:
         if os.path.exists(temporary):
             os.unlink(temporary)
+
+
+def _lock_byte(handle) -> None:
+    """对锁文件首字节加排他锁（跨平台）。"""
+    if os.name == "nt":
+        import msvcrt
+
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_LOCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_EX)
+
+
+def _unlock_byte(handle) -> None:
+    if os.name == "nt":
+        import msvcrt
+
+        handle.seek(0)
+        msvcrt.locking(handle.fileno(), msvcrt.LK_UNLCK, 1)
+    else:
+        import fcntl
+
+        fcntl.flock(handle.fileno(), fcntl.LOCK_UN)
+
+
+@contextmanager
+def file_lock(path: Path, timeout: float = 10.0):
+    """对 ``<path>.lock`` 加跨进程排他锁，串行化同一文件的读-改-写。
+
+    atomic_write 只保证单次替换原子，保护不了整个读-改-写周期；Bot（群指令）
+    与面板可能并发编辑同一配置，需此锁避免互相覆盖丢更新。锁加在独立的 .lock
+    文件上，不影响对目标文件本身的原子替换。超时未获锁则抛 TimeoutError。
+    """
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+    lock_path = path.with_name(path.name + ".lock")
+    handle = open(lock_path, "a+b")
+    deadline = time.monotonic() + timeout
+    locked = False
+    try:
+        while True:
+            try:
+                _lock_byte(handle)
+                locked = True
+                break
+            except OSError:
+                if time.monotonic() >= deadline:
+                    raise TimeoutError(f"获取配置锁超时：{lock_path.name}") from None
+                time.sleep(0.05)
+        yield
+    finally:
+        # 只有真正持锁才解锁；获锁失败时解锁会抛 PermissionError 掩盖原异常。
+        if locked:
+            _unlock_byte(handle)
+        handle.close()
+
+
+@contextmanager
+def locked_edit(path: Path, timeout: float = 10.0):
+    """在跨进程排他锁内读取 TOML，交由调用方修改后原子写回。
+
+    用法：``with locked_edit(p) as doc: doc[...] = ...``。读、改、写全程持锁，
+    保证并发写者串行化、后写者基于最新内容，不丢更新。
+    """
+    with file_lock(path, timeout=timeout):
+        document = load_toml(path)
+        yield document
+        atomic_write(path, tomlkit.dumps(document))

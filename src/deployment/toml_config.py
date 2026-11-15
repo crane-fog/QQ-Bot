@@ -11,7 +11,7 @@ from pathlib import Path
 import tomlkit
 from tomlkit.exceptions import ParseError
 
-from ..config_schema import BOT_SCHEMA, CONFIG_FILES
+from ..config_schema import BOT_SCHEMA, CONFIG_FILES, file_lock
 from .config import MAX_SOURCE, DeploymentError, atomic_write
 
 CONFIG_NAMES = CONFIG_FILES
@@ -199,21 +199,25 @@ class ConfigStore:
 
     def save(self, name, source, version):
         self.validate(name, source)
-        current = self.check_version(name, version)
-        if source != current:
-            try:
-                if current is not None:
-                    backup = (
-                        datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
-                        + "-"
-                        + uuid.uuid4().hex
-                        + ".toml"
-                    )
-                    atomic_write(self.backup_directory(name) / backup, current)
-                self.check_version(name, version)
-                atomic_write(self.path(name), source)
-            except OSError:
-                raise DeploymentError("写入配置失败，请检查目录权限；原文件未被覆盖", 500) from None
+        # 加锁覆盖「版本校验 + 写入」：与 Bot 的群指令写者串行化，避免读-改-写互相覆盖。
+        with file_lock(self.path(name)):
+            current = self.check_version(name, version)
+            if source != current:
+                try:
+                    if current is not None:
+                        backup = (
+                            datetime.now(UTC).strftime("%Y%m%dT%H%M%S")
+                            + "-"
+                            + uuid.uuid4().hex
+                            + ".toml"
+                        )
+                        atomic_write(self.backup_directory(name) / backup, current)
+                    self.check_version(name, version)
+                    atomic_write(self.path(name), source)
+                except OSError:
+                    raise DeploymentError(
+                        "写入配置失败，请检查目录权限；原文件未被覆盖", 500
+                    ) from None
         return self.read(name)
 
     def backups(self, name):

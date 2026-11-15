@@ -80,6 +80,58 @@ class Test:
             f"以下插件未在 plugins.toml.template 中声明: {missing_sections}"
         )
 
+    def test_modify_plugin_and_panel_save_do_not_lose_updates(self, bot, tmp_path):
+        """Bot 群指令并发写、面板顺序保存，双方更新都保留（锁防丢更新）。
+
+        面板是单管理员、保存串行化；Bot 的 /open /close 可能并发。两者经同一把
+        文件锁串行化读-改-写，后写者基于最新内容，不互相覆盖。
+        """
+        from concurrent.futures import ThreadPoolExecutor
+
+        from src.deployment.config import DeploymentError
+        from src.deployment.toml_config import ConfigStore
+
+        # ConfigStore 读 root/configs/，Bot 的 configs_path 也指向该目录，二者须一致。
+        configs_dir = tmp_path / "configs"
+        configs_dir.mkdir()
+        groups = configs_dir / "groups.toml"
+        groups.write_text("[111]\nExisting = true\n", encoding="utf-8")
+        bot.configs_path = str(configs_dir)
+        store = ConfigStore(tmp_path, tmp_path / ".webcontroller")
+        bot.reload_plugin = lambda name: True  # 隔离热重载，聚焦写盘并发
+        plugin_names = get_plugin_names()[:10]  # modify_plugin 要求插件真实存在
+
+        def bot_write(name):
+            bot.modify_plugin(name, ["222"], True)
+
+        def panel_save(index):
+            # 面板顺序保存；与 Bot 并发时版本可能 409，按真实 UI 行为重读重试。
+            for _ in range(100):
+                current = store.read("groups.toml")
+                patched = store.patch(
+                    "groups.toml",
+                    current["source"],
+                    [{"path": ["333", f"PanelPlugin{index}"], "value": True}],
+                )
+                try:
+                    store.save("groups.toml", patched, current["version"])
+                    return
+                except DeploymentError:
+                    continue
+            raise AssertionError("panel save kept conflicting")
+
+        with ThreadPoolExecutor(max_workers=6) as pool:
+            bot_futures = [pool.submit(bot_write, name) for name in plugin_names]
+            for index in range(10):
+                panel_save(index)
+            for future in bot_futures:
+                future.result()
+
+        result = load_config(str(groups))
+        assert all(result["222"][name] is True for name in plugin_names)
+        assert all(result["333"][f"PanelPlugin{i}"] is True for i in range(10))
+        assert result["111"]["Existing"] is True
+
     @pytest.mark.parametrize("plugin_name", get_plugin_names())
     def test_plugin_importable(self, bot, plugin_name):
         """所有插件包（含未启用）应能被正常导入和实例化"""

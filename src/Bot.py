@@ -12,7 +12,7 @@ from utils.Database import build_database_url
 
 from .agent.AIService import ai
 from .Api import api
-from .config_schema import BOT_SCHEMA, CONFIG_FILES, atomic_write, load_toml
+from .config_schema import BOT_SCHEMA, CONFIG_FILES, load_toml, locked_edit
 from .EventController import Event
 from .PrintLog import Log
 from .Scheduler import Scheduler
@@ -180,17 +180,17 @@ class Bot:
             Log.error(f"没有找到插件{plugin_name}")
             return False
 
-        groups_config = load_toml(os.path.join(self.configs_path, "groups.toml"))
-
         for gid in group_ids:
             if not gid.isdigit():
                 Log.error(f"无效的群号：{gid}")
                 return False
-        for gid in group_ids:
-            if gid not in groups_config:
-                groups_config[gid] = tomlkit.table()
-            groups_config[gid][plugin_name] = True if enable else False
-        atomic_write(os.path.join(self.configs_path, "groups.toml"), tomlkit.dumps(groups_config))
+        groups_path = os.path.join(self.configs_path, "groups.toml")
+        # 加锁读-改-写：与面板并发编辑 groups.toml 时不互相覆盖。
+        with locked_edit(groups_path) as groups_config:
+            for gid in group_ids:
+                if gid not in groups_config:
+                    groups_config[gid] = tomlkit.table()
+                groups_config[gid][plugin_name] = True if enable else False
 
         return self.reload_plugin(plugin_name)
 

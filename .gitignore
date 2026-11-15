@@ -5,6 +5,7 @@
 
 # config
 /configs/*.toml
+/configs/*.toml.lock
 
 # runtime
 **/temp/**
