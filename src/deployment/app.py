@@ -134,7 +134,8 @@ def create_app(
 
     @app.get("/", response_class=HTMLResponse)
     async def index():
-        return (Path(__file__).parent / "templates" / "deployment.html").read_text(encoding="utf-8")
+        template = Path(__file__).parent / "templates" / "deployment.html"
+        return await asyncio.to_thread(template.read_text, encoding="utf-8")
 
     @app.post("/api/login")
     async def login(body: Login):
@@ -178,26 +179,29 @@ def create_app(
 
     @app.get("/api/configs")
     async def config_list():
-        return {
-            "configs": [
-                {"name": name, "exists": configs.path(name).is_file()} for name in CONFIG_NAMES
-            ]
-        }
+        def snapshot():
+            return [{"name": name, "exists": configs.path(name).is_file()} for name in CONFIG_NAMES]
+
+        return {"configs": await asyncio.to_thread(snapshot)}
 
     @app.get("/api/configs/{name}")
     async def read_config(name: str):
-        return configs.read(name)
+        return await asyncio.to_thread(configs.read, name)
 
     @app.post("/api/configs/{name}/patch")
     async def patch_config(name: str, body: ConfigPatch):
-        source = configs.patch(name, body.source, [change.model_dump() for change in body.changes])
-        return {"source": source, "values": form_values(configs.validate(name, source).unwrap())}
+        source = await asyncio.to_thread(
+            configs.patch, name, body.source, [change.model_dump() for change in body.changes]
+        )
+        document = await asyncio.to_thread(configs.validate, name, source)
+        return {"source": source, "values": form_values(document.unwrap())}
 
     @app.post("/api/configs/{name}/validate")
     async def validate_config(name: str, body: Draft):
-        configs.check_version(name, body.version)
-        values = form_values(configs.validate(name, body.source).unwrap())
-        return {"valid": True, "diff": configs.diff(name, body.source), "values": values}
+        await asyncio.to_thread(configs.check_version, name, body.version)
+        document = await asyncio.to_thread(configs.validate, name, body.source)
+        diff = await asyncio.to_thread(configs.diff, name, body.source)
+        return {"valid": True, "diff": diff, "values": form_values(document.unwrap())}
 
     def config_available():
         if operation_lock.locked():
@@ -207,70 +211,72 @@ def create_app(
     async def save_config(name: str, body: Draft):
         config_available()
         async with operation_lock:
-            return configs.save(name, body.source, body.version)
+            return await asyncio.to_thread(configs.save, name, body.source, body.version)
 
     @app.get("/api/configs/{name}/backups")
     async def config_backups(name: str):
-        return {"backups": configs.backups(name)}
+        return {"backups": await asyncio.to_thread(configs.backups, name)}
 
     @app.get("/api/configs/{name}/backups/{backup_id}")
     async def preview_config_backup(name: str, backup_id: str):
-        source = configs.backup_source(name, backup_id)
-        return {"source": source, "diff": configs.diff(name, source)}
+        source = await asyncio.to_thread(configs.backup_source, name, backup_id)
+        return {"source": source, "diff": await asyncio.to_thread(configs.diff, name, source)}
 
     @app.post("/api/configs/{name}/backups/{backup_id}/restore")
     async def restore_config(name: str, backup_id: str, body: Version):
         config_available()
         async with operation_lock:
-            return configs.save(name, configs.backup_source(name, backup_id), body.version)
+            source = await asyncio.to_thread(configs.backup_source, name, backup_id)
+            return await asyncio.to_thread(configs.save, name, source, body.version)
 
     @app.get("/api/compose")
     async def read_compose():
-        return document.read()
+        return await asyncio.to_thread(document.read)
 
     @app.post("/api/compose/patch")
     async def patch_compose(body: Patch):
-        source = document.patch(body.source, body.service, body.changes)
-        return {"source": source, "services": plain(document.parse(source))["services"]}
+        source = await asyncio.to_thread(document.patch, body.source, body.service, body.changes)
+        services = plain(await asyncio.to_thread(document.parse, source))["services"]
+        return {"source": source, "services": services}
 
     @app.post("/api/compose/parse")
     async def parse_compose(body: Draft):
-        return {"services": plain(document.parse(body.source))["services"]}
+        return {"services": plain(await asyncio.to_thread(document.parse, body.source))["services"]}
 
     @app.post("/api/compose/validate")
     async def validate_compose(body: Draft):
-        document.check_version(body.version)
-        document.parse(body.source)
+        await asyncio.to_thread(document.check_version, body.version)
+        await asyncio.to_thread(document.parse, body.source)
         await runner.validate(body.source)
-        document.check_version(body.version)
-        return {"valid": True, "diff": document.diff(body.source)}
+        await asyncio.to_thread(document.check_version, body.version)
+        return {"valid": True, "diff": await asyncio.to_thread(document.diff, body.source)}
 
     @app.put("/api/compose")
     async def save_compose(body: Draft):
         config_available()
         async with operation_lock:
-            document.check_version(body.version)
-            document.parse(body.source)
+            await asyncio.to_thread(document.check_version, body.version)
+            await asyncio.to_thread(document.parse, body.source)
             await runner.validate(body.source)
-            return document.save(body.source, body.version)
+            return await asyncio.to_thread(document.save, body.source, body.version)
 
     @app.get("/api/backups")
     async def backups():
-        return {"backups": document.backups()}
+        return {"backups": await asyncio.to_thread(document.backups)}
 
     @app.get("/api/backups/{backup_id}")
     async def preview_backup(backup_id: str):
-        source = document.backup_source(backup_id)
-        return {"source": source, "diff": document.diff(source)}
+        source = await asyncio.to_thread(document.backup_source, backup_id)
+        return {"source": source, "diff": await asyncio.to_thread(document.diff, source)}
 
     @app.post("/api/backups/{backup_id}/restore")
     async def restore(backup_id: str, body: Version):
         config_available()
         async with operation_lock:
-            document.check_version(body.version)
-            source = document.backup_source(backup_id)
-            document.parse(source)
+            await asyncio.to_thread(document.check_version, body.version)
+            source = await asyncio.to_thread(document.backup_source, backup_id)
+            await asyncio.to_thread(document.parse, source)
             await runner.validate(source)
-            return document.save(source, body.version)
+            return await asyncio.to_thread(document.save, source, body.version)
 
     return app

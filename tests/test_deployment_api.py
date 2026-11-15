@@ -1,12 +1,15 @@
 import json
+import threading
 
 import pytest
 from fastapi.testclient import TestClient
+from httpx import ASGITransport, AsyncClient
 
 from src.deployment.app import create_app
 from src.deployment.auth import create_credentials
 from src.deployment.config import ComposeDocument, DeploymentError
 from src.deployment.runner import ComposeRunner
+from src.deployment.toml_config import ConfigStore
 from tests.test_deployment_config import SOURCE
 
 
@@ -198,6 +201,52 @@ def test_bind_host_extends_host_allowlist(tmp_path, bind_host, requested, status
     app = create_app(document, FakeRunner(), create_credentials("test-password"), host=bind_host)
     with TestClient(app, base_url="http://localhost") as client:
         assert client.get("/", headers={"Host": requested}).status_code == status
+
+
+@pytest.mark.asyncio
+async def test_disk_io_runs_off_the_event_loop(tmp_path, monkeypatch):
+    (tmp_path / "compose.yaml").write_text(SOURCE, encoding="utf-8")
+    state = tmp_path / ".webcontroller"
+    document = ComposeDocument(tmp_path, state)
+    store = ConfigStore(tmp_path, state)
+    configs_dir = tmp_path / "configs"
+    configs_dir.mkdir()
+    (configs_dir / "plugins.toml").write_text("[Example]\nenable = false\n", encoding="utf-8")
+    main_thread = threading.get_ident()
+    loop_threads = []
+    real_read = document.read
+    real_save = store.save
+
+    def document_read():
+        loop_threads.append(threading.get_ident())
+        return real_read()
+
+    def store_save(*args):
+        loop_threads.append(threading.get_ident())
+        return real_save(*args)
+
+    monkeypatch.setattr(document, "read", document_read)
+    monkeypatch.setattr(store, "save", store_save)
+    app = create_app(document, FakeRunner(), create_credentials("test-password"), configs=store)
+    async with app.router.lifespan_context(app):
+        loop_threads.append(threading.get_ident())
+        transport = ASGITransport(app=app)
+        async with AsyncClient(transport=transport, base_url="http://localhost") as client:
+            response = await client.post("/api/login", json={"password": "test-password"})
+            assert response.status_code == 200
+            headers = {"X-CSRF-Token": response.json()["csrf"]}
+            assert (await client.get("/api/compose")).status_code == 200
+            original = store.read("plugins.toml")
+            body = {
+                "source": original["source"].replace("false", "true"),
+                "version": original["version"],
+            }
+            response = await client.put("/api/configs/plugins.toml", json=body, headers=headers)
+            assert response.status_code == 200
+    # 第一次记录是事件循环线程，其后是磁盘操作实际运行的线程，必须不同。
+    assert loop_threads[0] == main_thread
+    assert len(loop_threads) == 3
+    assert all(thread != main_thread for thread in loop_threads[1:])
 
 
 @pytest.mark.asyncio
