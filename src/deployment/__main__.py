@@ -13,7 +13,7 @@ from pathlib import Path
 from . import default_source_root
 from .auth import create_credentials
 from .config import ComposeDocument, DeploymentError, atomic_write
-from .runtime import detect_runtime, serve
+from .runtime import detect_runtime, run_panel, serve
 from .setup import discover_project, initialize, initialize_source, print_initial_password
 
 
@@ -182,8 +182,9 @@ def run_setup(root, mode, args, parser):
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Theresa 部署面板：面板拉起并守护 Bot")
+    parser = argparse.ArgumentParser(description="Theresa 部署面板：守护进程拉起并守护面板与 Bot")
     parser.add_argument("--root", type=Path, help="源码模式的检出目录，默认取包所在仓库")
+    parser.add_argument("--panel", action="store_true", help=argparse.SUPPRESS)
     parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--host", help="面板监听的 IP，默认源码 127.0.0.1、容器 0.0.0.0")
     parser.add_argument("--bg", action="store_true", help="以后台进程运行，日志写入状态目录")
@@ -226,7 +227,10 @@ def main():
         run_setup(root, mode, args, parser)
         return
     try:
-        asyncio.run(serve(args.port, root, mode, args.host))
+        if args.panel:
+            asyncio.run(run_panel(root, mode, args.host, args.port))
+        else:
+            asyncio.run(serve(args.port, root, mode, args.host))
     except DeploymentError as exc:
         raise SystemExit(f"初始化失败：{exc}") from None
 

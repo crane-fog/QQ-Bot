@@ -1,12 +1,12 @@
-"""Panel runtime assembly: build the app, auto-initialize, and serve in-process.
+"""Daemon-first runtime: a supervisor owns both the panel and the Bot.
 
-The panel is always the process that owns the Bot; the deployment shape only
-changes the details. In the container the panel is the main process serving on
-0.0.0.0 and supervising the entrypoint chain; in a source checkout it listens on
-the loopback interface and supervises ``main.py`` directly. The panel and the
-Bot are decoupled in both directions - a panel failure never stops the Bot, and
-a Bot crash never stops the panel. ``python main.py`` is a thin root launcher
-that starts the panel as a child process; ``bot.py`` runs the Bot alone.
+``python main.py`` is a thin root launcher that starts the daemon (``python -m
+src.deployment``) as a process-group leader and mirrors its exit code. The daemon
+holds the signal handlers and supervises two child applications: the HTTP panel
+(``--panel``) and the Bot. A panel crash never stops the Bot and a Bot crash never
+stops the panel; the daemon restarts either with exponential backoff. Reloading
+the panel is just the daemon restarting the panel child, leaving the Bot running.
+``bot.py`` still runs the Bot alone, without the daemon or panel.
 """
 
 import asyncio
@@ -109,15 +109,16 @@ def resolve_panel_bind(root, mode, host=None, port=None):
     return host, port
 
 
-async def serve_panel(root, mode, port, stop, control, host=None):
-    """Serve the HTTP panel; `stop` is set only on a clean uvicorn exit (shutdown).
+async def run_panel(root, mode, host=None, port=None):
+    """面板子进程入口：构建并服务 HTTP 面板，直到收到停机信号。
 
-    ``host`` is the user-specified bind address; unset it falls back to the
-    deployment default (loopback for source, all interfaces in the container).
+    绑定地址经 resolve_panel_bind 解析（命令行 > 持久化 > 默认）。面板异常只记录
+    日志并以非零码退出，由守护进程退避重启；Bot 不受影响。
     """
+    root = Path(root).resolve()
+    bind, port = resolve_panel_bind(root, mode, host, port)
     try:
-        app = prepare(root, mode, control, host)
-        bind = host or ("127.0.0.1" if mode == "source" else "0.0.0.0")
+        app = prepare(root, mode, host=bind)
         config = uvicorn.Config(
             app,
             host=bind,
@@ -131,8 +132,7 @@ async def serve_panel(root, mode, port, stop, control, host=None):
     except Exception as exc:
         kind = type(exc).__name__
         _notify(f"WebController 面板异常退出，Bot 不受影响（{kind}）：{exc}")
-        return
-    stop.set()
+        raise SystemExit(1) from None
 
 
 class BotControl:
@@ -148,14 +148,34 @@ class BotControl:
         self.process = None
 
 
-async def supervise_bot(
-    control, command, cwd, backoff_start=1.0, backoff_cap=600.0, reset_after=60.0
+class PanelControl:
+    """Daemon-side handle for the panel child.
+
+    ``stop`` shuts the panel supervisor down; ``reload`` asks for an immediate
+    panel restart that skips the backoff (used by the "重载面板" panel action).
+    """
+
+    def __init__(self):
+        self.stop = asyncio.Event()
+        self.reload = asyncio.Event()
+        self.process = None
+
+
+async def supervise_child(
+    control,
+    command,
+    cwd,
+    label,
+    restart_event,
+    backoff_start=1.0,
+    backoff_cap=600.0,
+    reset_after=60.0,
 ):
-    """Run the Bot as a child process and restart it with exponential backoff.
+    """Run a child application and restart it with exponential backoff.
 
     A child that stayed up for `reset_after` seconds counts as stable and the
     next crash restarts at `backoff_start` again; a restart request bypasses
-    the backoff entirely.
+    the backoff entirely. Shared by the Bot and panel supervisors.
     """
     stop = control.stop
     backoff = backoff_start
@@ -164,17 +184,17 @@ async def supervise_bot(
         try:
             process = await asyncio.create_subprocess_exec(*command, cwd=cwd)
         except OSError as exc:
-            _notify(f"无法启动 Bot 进程，放弃拉起：{exc}")
+            _notify(f"无法启动 {label} 进程，放弃拉起：{exc}")
             return
         control.process = process
-        _notify(f"Bot 进程已启动（PID {process.pid}）")
+        _notify(f"{label} 进程已启动（PID {process.pid}）")
         waiter = asyncio.create_task(process.wait())
         stopper = asyncio.create_task(stop.wait())
-        restarter = asyncio.create_task(control.restart.wait())
+        restarter = asyncio.create_task(restart_event.wait())
         await asyncio.wait({waiter, stopper, restarter}, return_when=asyncio.FIRST_COMPLETED)
         stopper.cancel()
         restarter.cancel()
-        requested = control.restart.is_set()
+        requested = restart_event.is_set()
         if (stop.is_set() or requested) and process.returncode is None:
             process.terminate()
             try:
@@ -183,7 +203,7 @@ async def supervise_bot(
                 process.kill()
                 await process.wait()
         code = await waiter
-        control.restart.clear()
+        restart_event.clear()
         if stop.is_set():
             return
         if requested:
@@ -192,8 +212,8 @@ async def supervise_bot(
             continue
         if asyncio.get_running_loop().time() - started >= reset_after:
             backoff = backoff_start
-        _notify(f"Bot 进程退出（exit {code}），{backoff:g} 秒后重启")
-        waiters = [asyncio.create_task(stop.wait()), asyncio.create_task(control.restart.wait())]
+        _notify(f"{label} 进程退出（exit {code}），{backoff:g} 秒后重启")
+        waiters = [asyncio.create_task(stop.wait()), asyncio.create_task(restart_event.wait())]
         try:
             await asyncio.wait(waiters, timeout=backoff, return_when=asyncio.FIRST_COMPLETED)
         finally:
@@ -204,12 +224,86 @@ async def supervise_bot(
         backoff = min(backoff * 2, backoff_cap)
 
 
-async def serve(port=7001, root=None, mode=None, host=None):
-    """Serve entry for the CLI and the container command.
+async def supervise_bot(
+    control, command, cwd, backoff_start=1.0, backoff_cap=600.0, reset_after=60.0
+):
+    """Supervise the Bot child (backoff restart, stable-run reset)."""
+    await supervise_child(
+        control,
+        command,
+        cwd,
+        "Bot",
+        control.restart,
+        backoff_start=backoff_start,
+        backoff_cap=backoff_cap,
+        reset_after=reset_after,
+    )
 
-    面板始终拉起并守护 Bot：容器里经 entrypoint 链（数据库初始化、QQ 登录等待）
-    跑镜像侧代码，源码检出里直接跑 bot.py。
-    """
+
+async def supervise_panel(
+    control, command, cwd, backoff_start=1.0, backoff_cap=60.0, reset_after=60.0
+):
+    """Supervise the panel child; a reload request restarts it immediately."""
+    await supervise_child(
+        control,
+        command,
+        cwd,
+        "面板",
+        control.reload,
+        backoff_start=backoff_start,
+        backoff_cap=backoff_cap,
+        reset_after=reset_after,
+    )
+
+
+def panel_command(root, mode, host, port):
+    """构造面板子进程命令行（显式传入解析后的绑定，确保守护与面板一致）。"""
+    command = [
+        sys.executable,
+        "-m",
+        "src.deployment",
+        "--panel",
+        "--root",
+        str(root),
+        "--host",
+        host,
+        "--port",
+        str(port),
+    ]
+    return command
+
+
+async def serve_daemon(root, mode, host, port, stop):
+    """守护两个子应用：面板与 Bot。任一崩溃都不影响另一个，停机时一并停止。"""
+    if mode == "compose":
+        # 容器内跑镜像侧代码，入口链含数据库初始化与 QQ 登录等待。
+        bot_command = ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
+        bot_cwd = default_source_root()
+    else:
+        bot_command = [sys.executable, "bot.py"]
+        bot_cwd = root
+    bot_control = BotControl()
+    panel_control = PanelControl()
+    bot = asyncio.create_task(supervise_bot(bot_control, bot_command, bot_cwd))
+    # 面板子进程以 -m src.deployment 启动，须在包所在仓库根运行才能导入模块；
+    # 部署目录（--root）可能不含源码（如独立部署目录），不能用作 cwd。
+    panel = asyncio.create_task(
+        supervise_panel(panel_control, panel_command(root, mode, host, port), default_source_root())
+    )
+    stopper = asyncio.create_task(stop.wait())
+    try:
+        await stopper
+    finally:
+        bot_control.stop.set()
+        panel_control.stop.set()
+        for task in (panel, bot):
+            if not task.done():
+                task.cancel()
+        await asyncio.gather(panel, bot, return_exceptions=True)
+
+
+async def serve(port=None, root=None, mode=None, host=None):
+    """守护进程入口：解析绑定、装信号处理，守护面板与 Bot 两个子进程。"""
     if root is None or mode is None:
         root, mode = detect_runtime(root)
     root = Path(root).resolve()
@@ -223,33 +317,12 @@ async def serve(port=7001, root=None, mode=None, host=None):
     loop = asyncio.get_running_loop()
     for sig in (signal.SIGINT, signal.SIGTERM):
         try:
-            # Covers the phases before/after uvicorn's own signal capture; as PID 1
-            # the process would otherwise ignore SIGTERM entirely.
+            # Covers the phases before/after the children's own signal capture; as
+            # PID 1 the process would otherwise ignore SIGTERM entirely.
             loop.add_signal_handler(sig, stop.set)
         except (NotImplementedError, RuntimeError):
             pass
-    if mode == "compose":
-        # 容器内跑镜像侧代码，入口链含数据库初始化与 QQ 登录等待。
-        command = ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
-        cwd = default_source_root()
-    else:
-        command = [sys.executable, "bot.py"]
-        cwd = root
-    control = BotControl()
-    panel = asyncio.create_task(serve_panel(root, mode, port, stop, control, host))
-    bot = asyncio.create_task(supervise_bot(control, command, cwd))
-    try:
-        await panel
-        if stop.is_set():
-            return
-        # 面板先于停机请求结束（启动失败或崩溃）：Bot 继续运行，直到停机信号。
-        await bot
-    finally:
-        stop.set()
-        for task in (panel, bot):
-            if not task.done():
-                task.cancel()
-        await asyncio.gather(panel, bot, return_exceptions=True)
+    await serve_daemon(root, mode, bind, port, stop)
 
 
 def _stop_tree(process):
@@ -268,11 +341,12 @@ def _stop_tree(process):
 
 
 async def launch():
-    """Root entry behind ``python main.py``: run the panel, which owns the Bot.
+    """Root entry behind ``python main.py``: run the daemon, which owns both apps.
 
-    The panel stays the process that supervises the Bot; ``main.py`` only adds a
-    thin parent that mirrors the panel's exit code and forwards stop signals to
-    the whole tree. Running the Bot alone, without the panel, is ``bot.py``.
+    The daemon supervises the panel and the Bot as child processes; ``main.py``
+    only adds a thin parent that mirrors the daemon's exit code and forwards stop
+    signals to the whole tree. Running the Bot alone, without the daemon, is
+    ``bot.py``.
     """
     flags = (
         {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}

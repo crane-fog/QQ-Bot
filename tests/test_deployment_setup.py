@@ -110,15 +110,9 @@ def test_compose_init_generates_initial_password(tmp_path):
     assert len(initial.read_text(encoding="utf-8").strip()) >= 12
 
 
-class _ImmediateServer:
-    def __init__(self, config):
-        pass
-
-    async def serve(self):
-        pass
-
-
-def test_serve_auto_initializes(tmp_path, monkeypatch):
+@pytest.mark.asyncio
+async def test_serve_auto_initializes(tmp_path, monkeypatch):
+    import asyncio
     import sys as _sys
 
     from src.deployment import runtime
@@ -129,36 +123,60 @@ def test_serve_auto_initializes(tmp_path, monkeypatch):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     recorded = {}
 
-    async def fake_supervise(control, command, cwd, **kwargs):
+    async def fake_supervise_bot(control, command, cwd, **kwargs):
         recorded["command"] = command
         recorded["cwd"] = cwd
-        control.stop.set()
+        await control.stop.wait()
 
-    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise)
-    monkeypatch.setattr("src.deployment.runtime.uvicorn.Server", _ImmediateServer)
-    monkeypatch.setattr(_sys, "argv", ["src.deployment", "--root", str(tmp_path)])
-    main()
+    async def fake_supervise_panel(control, command, cwd, **kwargs):
+        recorded["panel_command"] = command
+        # 面板子进程启动时自动初始化（prepare 内完成）。
+        runtime.prepare(tmp_path, "source")
+        await control.stop.wait()
+
+    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise_bot)
+    monkeypatch.setattr(runtime, "supervise_panel", fake_supervise_panel)
+    task = asyncio.create_task(runtime.serve(root=tmp_path, mode="source"))
+    for _ in range(200):
+        if (tmp_path / ".webcontroller" / "settings.json").is_file():
+            break
+        await asyncio.sleep(0.02)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
     assert (tmp_path / ".webcontroller" / "settings.json").is_file()
     assert (tmp_path / ".webcontroller" / "initial-password").is_file()
     assert recorded["command"] == [_sys.executable, "bot.py"]
     assert recorded["cwd"] == tmp_path.resolve()
+    assert "--panel" in recorded["panel_command"]
 
 
-def test_compose_serve_auto_initializes(tmp_path, monkeypatch):
-    import sys
+@pytest.mark.asyncio
+async def test_compose_serve_auto_initializes(tmp_path, monkeypatch):
+    import asyncio
 
     from src.deployment import runtime
 
     (tmp_path / "compose.yaml").write_text(SOURCE, encoding="utf-8")
 
-    async def no_supervise(*args, **kwargs):
-        pass
+    async def fake_supervise_bot(control, command, cwd, **kwargs):
+        await control.stop.wait()
 
-    monkeypatch.setattr(runtime, "supervise_bot", no_supervise)
+    async def fake_supervise_panel(control, command, cwd, **kwargs):
+        runtime.prepare(tmp_path, "compose")
+        await control.stop.wait()
+
+    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise_bot)
+    monkeypatch.setattr(runtime, "supervise_panel", fake_supervise_panel)
     monkeypatch.setattr(runtime, "PANEL_DEPLOY_MOUNT", str(tmp_path))
-    monkeypatch.setattr("src.deployment.runtime.uvicorn.Server", _ImmediateServer)
-    monkeypatch.setattr(sys, "argv", ["src.deployment"])
-    main()
+    task = asyncio.create_task(runtime.serve(root=tmp_path, mode="compose"))
+    for _ in range(200):
+        if (tmp_path / ".webcontroller" / "settings.json").is_file():
+            break
+        await asyncio.sleep(0.02)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
     settings = json.loads(
         (tmp_path / ".webcontroller" / "settings.json").read_text(encoding="utf-8")
     )
@@ -170,24 +188,34 @@ def test_compose_serve_auto_initializes(tmp_path, monkeypatch):
     assert (tmp_path / ".webcontroller" / "protected.json").is_file()
 
 
-def test_compose_serve_supervises_entrypoint_chain(tmp_path, monkeypatch):
-    import sys
+@pytest.mark.asyncio
+async def test_compose_serve_supervises_entrypoint_chain(tmp_path, monkeypatch):
+    import asyncio
 
     from src.deployment import runtime
 
     (tmp_path / "compose.yaml").write_text(SOURCE, encoding="utf-8")
     recorded = {}
 
-    async def fake_supervise(control, command, cwd, **kwargs):
+    async def fake_supervise_bot(control, command, cwd, **kwargs):
         recorded["command"] = command
         recorded["cwd"] = cwd
-        control.stop.set()
+        await control.stop.wait()
 
-    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise)
+    async def fake_supervise_panel(control, command, cwd, **kwargs):
+        await control.stop.wait()
+
+    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise_bot)
+    monkeypatch.setattr(runtime, "supervise_panel", fake_supervise_panel)
     monkeypatch.setattr(runtime, "PANEL_DEPLOY_MOUNT", str(tmp_path))
-    monkeypatch.setattr("src.deployment.runtime.uvicorn.Server", _ImmediateServer)
-    monkeypatch.setattr(sys, "argv", ["src.deployment"])
-    main()
+    task = asyncio.create_task(runtime.serve(root=tmp_path, mode="compose"))
+    for _ in range(200):
+        if "command" in recorded:
+            break
+        await asyncio.sleep(0.02)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
     assert recorded["command"] == ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
     assert recorded["cwd"] == runtime.default_source_root().resolve()
 
@@ -363,14 +391,10 @@ async def test_serve_warns_on_non_loopback_bind(tmp_path, monkeypatch, host, mod
 
     notifications = []
 
-    async def fake_serve_panel(root, mode, port, stop, control, host=None):
+    async def fake_serve_daemon(root, mode, host, port, stop):
         stop.set()
 
-    async def fake_supervise(control, command, cwd, **kwargs):
-        pass
-
-    monkeypatch.setattr(runtime, "serve_panel", fake_serve_panel)
-    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise)
+    monkeypatch.setattr(runtime, "serve_daemon", fake_serve_daemon)
     monkeypatch.setattr(runtime, "_notify", notifications.append)
     await runtime.serve(root=tmp_path, mode=mode, host=host)
     assert any("明文" in message for message in notifications) is warns
