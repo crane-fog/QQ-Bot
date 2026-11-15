@@ -23,6 +23,7 @@ import uvicorn
 from . import default_source_root
 from .app import create_app
 from .config import ComposeDocument
+from .ipc import FileControl, poll_control
 from .runner import ComposeRunner
 from .setup import (
     discover_project,
@@ -81,7 +82,7 @@ def prepare(root, mode, control=None, host=None):
         else:
             initialize(root, discover_project(root), None)
         print_initial_password(root)
-    return build_app(root, host=host)
+    return build_app(root, bot_control=control, host=host)
 
 
 def _notify(message):
@@ -118,7 +119,8 @@ async def run_panel(root, mode, host=None, port=None):
     root = Path(root).resolve()
     bind, port = resolve_panel_bind(root, mode, host, port)
     try:
-        app = prepare(root, mode, host=bind)
+        control = FileControl(root / ".webcontroller")
+        app = prepare(root, mode, control=control, host=bind)
         config = uvicorn.Config(
             app,
             host=bind,
@@ -290,16 +292,23 @@ async def serve_daemon(root, mode, host, port, stop):
     panel = asyncio.create_task(
         supervise_panel(panel_control, panel_command(root, mode, host, port), default_source_root())
     )
+
+    def restart_bot():
+        bot_control.restart.set()
+
+    control_task = asyncio.create_task(
+        poll_control(root / ".webcontroller", {"restart_bot": restart_bot}, stop)
+    )
     stopper = asyncio.create_task(stop.wait())
     try:
         await stopper
     finally:
         bot_control.stop.set()
         panel_control.stop.set()
-        for task in (panel, bot):
+        for task in (panel, bot, control_task):
             if not task.done():
                 task.cancel()
-        await asyncio.gather(panel, bot, return_exceptions=True)
+        await asyncio.gather(panel, bot, control_task, return_exceptions=True)
 
 
 async def serve(port=None, root=None, mode=None, host=None):

@@ -76,6 +76,7 @@ def create_app(
     app.state.document = document
     app.state.runner = runner
     app.state.operation_lock = operation_lock
+    app.state.bot_control = bot_control
     assets = Path(__file__).parent / "static"
     app.mount("/assets", StaticFiles(directory=assets), name="assets")
 
@@ -170,7 +171,19 @@ def create_app(
 
     @app.post("/api/bot/restart")
     async def restart_bot():
-        if bot_control is None or bot_control.process is None:
+        if bot_control is None:
+            raise DeploymentError("Bot 子进程未在运行", 503)
+        # 生产路径：FileControl 代理把请求转发给守护进程执行。
+        if hasattr(bot_control, "restart_bot"):
+            seq = await asyncio.to_thread(bot_control.restart_bot)
+            status = await bot_control.wait_status(seq)
+            if status is None:
+                raise DeploymentError("守护进程未响应重启请求，请稍后重试", 503)
+            if not status.get("ok"):
+                raise DeploymentError(status.get("message") or "重启 Bot 失败", 503)
+            return {"restarted": True}
+        # 进程内句柄（测试/直跑）：直接触发重启事件。
+        if bot_control.process is None:
             raise DeploymentError("Bot 子进程未在运行", 503)
         bot_control.restart.set()
         if bot_control.process.returncode is None:
