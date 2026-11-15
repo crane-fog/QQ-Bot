@@ -155,6 +155,42 @@ async def test_serve_auto_initializes(tmp_path, monkeypatch):
 
 
 @pytest.mark.asyncio
+async def test_daemon_generates_configs_before_supervising_bot(tmp_path, monkeypatch):
+    """首启竞态回归：守护进程须在拉起 Bot 之前生成好全部配置。"""
+    import asyncio
+
+    from src.deployment import runtime
+
+    configs = tmp_path / "configs"
+    configs.mkdir()
+    for name in CONFIG_NAMES:
+        (configs / f"{name}.template").write_text("", encoding="utf-8")
+    observed = {}
+
+    async def fake_supervise_bot(control, command, cwd, **kwargs):
+        # Bot 守护循环启动这一刻，配置必须已经就绪（Bot 启动即读取）。
+        observed["settings"] = (tmp_path / ".webcontroller" / "settings.json").is_file()
+        observed["configs"] = all((configs / name).is_file() for name in CONFIG_NAMES)
+        await control.stop.wait()
+
+    async def fake_supervise_panel(control, command, cwd, **kwargs):
+        await control.stop.wait()
+
+    monkeypatch.setattr(runtime, "supervise_bot", fake_supervise_bot)
+    monkeypatch.setattr(runtime, "supervise_panel", fake_supervise_panel)
+    task = asyncio.create_task(runtime.serve(root=tmp_path, mode="source"))
+    for _ in range(200):
+        if "settings" in observed:
+            break
+        await asyncio.sleep(0.02)
+    task.cancel()
+    with pytest.raises(asyncio.CancelledError):
+        await task
+    assert observed["settings"] is True
+    assert observed["configs"] is True
+
+
+@pytest.mark.asyncio
 async def test_compose_serve_auto_initializes(tmp_path, monkeypatch):
     import asyncio
 
@@ -397,6 +433,7 @@ async def test_serve_warns_on_non_loopback_bind(tmp_path, monkeypatch, host, mod
     async def fake_serve_daemon(root, mode, host, port, stop):
         stop.set()
 
+    monkeypatch.setattr(runtime, "ensure_initialized", lambda root, mode: None)
     monkeypatch.setattr(runtime, "serve_daemon", fake_serve_daemon)
     monkeypatch.setattr(runtime, "_notify", notifications.append)
     await runtime.serve(root=tmp_path, mode=mode, host=host)

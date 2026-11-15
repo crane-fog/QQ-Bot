@@ -74,8 +74,13 @@ def build_app(root, mode=None, bot_control=None, *, host=None):
     return create_app(document, runner, credentials, bot_control=bot_control, host=host)
 
 
-def prepare(root, mode, control=None, host=None):
-    """Auto-initialize on first run, then build the app."""
+def ensure_initialized(root, mode):
+    """首次运行时生成身份与缺失配置（幂等）。
+
+    守护进程在拉起面板与 Bot 之前调用，确保 Bot 启动读取时配置必然就绪，
+    消除「面板尚未生成、Bot 已读取」的首启竞态。面板构建应用时也会再调一次，
+    已初始化则直接跳过。
+    """
     root = Path(root).resolve()
     if not (root / ".webcontroller" / "settings.json").is_file():
         if mode == "source":
@@ -83,6 +88,12 @@ def prepare(root, mode, control=None, host=None):
         else:
             initialize(root, discover_project(root), None)
         print_initial_password(root)
+
+
+def prepare(root, mode, control=None, host=None):
+    """Auto-initialize on first run, then build the app."""
+    root = Path(root).resolve()
+    ensure_initialized(root, mode)
     return build_app(root, bot_control=control, host=host)
 
 
@@ -356,10 +367,12 @@ async def serve_daemon(root, mode, host, port, stop):
 
 
 async def serve(port=None, root=None, mode=None, host=None):
-    """守护进程入口：解析绑定、装信号处理，守护面板与 Bot 两个子进程。"""
+    """守护进程入口：先确保配置就绪，再解析绑定、装信号处理，守护面板与 Bot。"""
     if root is None or mode is None:
         root, mode = detect_runtime(root)
     root = Path(root).resolve()
+    # 先生成身份与缺失配置，再拉起子进程：Bot 启动读取时配置必然就绪。
+    ensure_initialized(root, mode)
     bind, port = resolve_panel_bind(root, mode, host, port)
     if not ipaddress.ip_address(bind).is_loopback:
         _notify(
