@@ -77,7 +77,7 @@ ssh -L 3080:localhost:3080 user@remote_host
 uv run main.py
 ```
 
-`main.py` 会拉起守护进程，由它把面板和 Bot 作为两个子进程守护起来；面板从 `configs/*.toml.template` 自动生成缺失的配置文件。面板或 Bot 崩溃都会自动退避重启，互不影响。初始管理员密码生成于 `.webcontroller/initial-password`，首次成功登录后自动删除。
+`main.py` 会拉起守护进程，由它把面板和 Bot 作为两个子进程守护起来；守护进程在拉起子进程前先从 `configs/*.toml.template` 自动生成缺失的配置文件，确保 Bot 启动时配置就绪。面板或 Bot 崩溃都会自动退避重启，互不影响。初始管理员密码生成于 `.webcontroller/initial-password`，首次成功登录后自动删除。
 
 浏览器打开 `http://127.0.0.1:7001`，在“Bot 配置”中按 [配置文件解释](#配置文件解释) 修改必要配置项并保存。对于远程开发环境，建议在本地使用 ssh 端口转发；需要局域网内其他设备访问面板时，在面板「面板设置」页把绑定地址改为 `0.0.0.0`（或本机局域网 IP）并保存，点击「重载面板」即可生效（也可用 `uv run -m src.deployment --host <本机局域网IP>` 命令行指定，仅当次生效）。
 
@@ -87,7 +87,7 @@ uv run main.py
 
 尽管 bot 本身并不强制要求使用数据库，但大部分主要插件都需要数据库支持
 
-建表脚本从 `configs/bot.toml` 读取连接信息，因此在面板生成配置并填好数据库连接后执行（若 `database_enable = true`）：
+建表脚本从 `configs/bot.toml` 读取连接信息，因此在配置生成（首次启动自动完成）并在面板填好数据库连接后执行（若 `database_enable = true`）：
 
 ```bash
 uv run scripts/create_tables.py
