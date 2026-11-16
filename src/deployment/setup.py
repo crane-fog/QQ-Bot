@@ -1,13 +1,19 @@
 """Initialize standalone source or Compose panel credentials and deployment identity."""
 
+import ipaddress
 import json
 import os
 import re
 from pathlib import Path
 
+import tomlkit
+
+from ..config_schema import file_lock
 from .auth import create_credentials, generate_password
 from .config import ComposeDocument, DeploymentError, atomic_write, plain
 from .toml_config import CONFIG_NAMES, ConfigStore
+
+PANEL_CONFIG_NAME = "webcontroller.toml"
 
 
 def read_settings(state: Path) -> dict:
@@ -19,14 +25,64 @@ def read_settings(state: Path) -> dict:
 
 
 def merge_settings(state: Path, **updates) -> dict:
-    """合并写入 settings.json：保留既有键（含面板绑定设置），仅更新传入项。
+    """合并写入 settings.json：保留既有键，仅更新传入项。
 
-    重新初始化不得丢弃面板设置等后续写入的字段，因此一律先读旧值再合并。
+    settings.json 只存部署身份（root/project）；面板绑定在 configs/webcontroller.toml。
     """
     settings = read_settings(state)
     settings.update(updates)
     atomic_write(state / "settings.json", json.dumps(settings, ensure_ascii=False))
     return settings
+
+
+def panel_config_path(root: Path) -> Path:
+    return Path(root) / "configs" / PANEL_CONFIG_NAME
+
+
+def read_panel_config(root: Path):
+    """读取 configs/webcontroller.toml 的 [panel] host/port。
+
+    文件缺失、损坏或字段非法时返回 (None, None)，由调用方回退默认；
+    不回显解析原文（可能含敏感内容）。host 须为合法 IP，port 须为 1-65535 整数。
+    """
+    path = panel_config_path(root)
+    try:
+        document = tomlkit.parse(path.read_text(encoding="utf-8")).unwrap()
+    except (OSError, ValueError):
+        return None, None
+    panel = document.get("panel")
+    if not isinstance(panel, dict):
+        return None, None
+    host = panel.get("host")
+    port = panel.get("port")
+    if not isinstance(host, str) or not host:
+        host = None
+    else:
+        try:
+            ipaddress.ip_address(host)
+        except ValueError:
+            host = None
+    if not isinstance(port, int) or not 1 <= port <= 65535:
+        port = None
+    return host, port
+
+
+def write_panel_config(root: Path, host: str, port: int) -> None:
+    """把面板绑定写入 configs/webcontroller.toml（加锁、原子替换）。
+
+    文件缺失或损坏时重建最小 [panel] 表；保留其余未知字段与注释。
+    """
+    path = panel_config_path(root)
+    with file_lock(path):
+        try:
+            document = tomlkit.parse(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            document = tomlkit.document()
+        if not isinstance(document.get("panel"), dict):
+            document["panel"] = tomlkit.table()
+        document["panel"]["host"] = host
+        document["panel"]["port"] = port
+        atomic_write(path, tomlkit.dumps(document))
 
 
 def initialize_source(root: Path, password=None):
@@ -42,8 +98,9 @@ def initialize_source(root: Path, password=None):
             )
     store = ConfigStore(root, state)
     missing = []
-    for name in CONFIG_NAMES:
-        path = store.path(name)
+    # Bot 五件套之外，面板自身的 webcontroller.toml 也走同一模板补齐机制。
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
+        path = store.path(name) if name in CONFIG_NAMES else panel_config_path(root)
         if not path.exists():
             template = path.with_suffix(path.suffix + ".template")
             if not template.is_file() or template.is_symlink():

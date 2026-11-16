@@ -111,12 +111,12 @@ async def test_poll_control_ignores_preexisting_request(tmp_path):
 
 def test_prepare_wires_file_control(tmp_path):
     from src.deployment.runtime import prepare
-    from src.deployment.setup import initialize_source
+    from src.deployment.setup import PANEL_CONFIG_NAME, initialize_source
     from src.deployment.toml_config import CONFIG_NAMES
 
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     initialize_source(tmp_path, "pw")
     control = FileControl(tmp_path / ".webcontroller")

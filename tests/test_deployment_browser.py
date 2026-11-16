@@ -104,7 +104,7 @@ def test_source_browser_panel_settings(tmp_path):
     from playwright.sync_api import expect, sync_playwright
 
     from src.deployment.runtime import build_app
-    from src.deployment.setup import read_settings
+    from src.deployment.setup import read_panel_config
 
     (tmp_path / "configs").mkdir()
     for template in Path("configs").glob("*.toml.template"):
@@ -139,14 +139,12 @@ def test_source_browser_panel_settings(tmp_path):
             page.locator("#panel-host").fill("not-an-ip")
             page.locator("#panel-save").click()
             expect(page.locator("#notice")).to_contain_text("合法 IP")
-            # 合法保存写入 settings.json。
+            # 合法保存写入 configs/webcontroller.toml。
             page.locator("#panel-host").fill("0.0.0.0")
             page.locator("#panel-port").fill("8080")
             page.locator("#panel-save").click()
             expect(page.locator("#notice")).to_contain_text("重载面板")
-            settings = read_settings(tmp_path / ".webcontroller")
-            assert settings["panel_host"] == "0.0.0.0"
-            assert settings["panel_port"] == 8080
+            assert read_panel_config(tmp_path) == ("0.0.0.0", 8080)
             for width in (320, 768, 1024, 1440):
                 page.set_viewport_size({"width": width, "height": 900})
                 assert page.evaluate("document.documentElement.scrollWidth <= window.innerWidth")

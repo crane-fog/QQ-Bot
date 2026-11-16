@@ -68,7 +68,10 @@ class ConfigStore:
         ).hexdigest()
 
     def read(self, name):
-        source = self.source(name)
+        # 读也持锁：与 Bot 的写串行化，避免 Windows 上未关的读句柄阻塞对方的原子替换。
+        # source()/check_version() 本身无锁，供 save 在已持锁时复用，不会重入。
+        with file_lock(self.path(name)):
+            source = self.source(name)
         result = {
             "name": name,
             "source": source or "",

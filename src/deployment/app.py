@@ -11,7 +11,7 @@ from pydantic import BaseModel, Field
 
 from .auth import Authentication
 from .config import MAX_SOURCE, ComposeDocument, DeploymentError, plain
-from .setup import merge_settings, read_settings
+from .setup import read_panel_config, write_panel_config
 from .toml_config import CONFIG_NAMES, ConfigStore, form_values
 
 
@@ -200,13 +200,16 @@ def create_app(
     def _panel_bind_defaults():
         return ("0.0.0.0", 7001) if document is not None else ("127.0.0.1", 7001)
 
+    # 部署根目录：状态目录 .webcontroller 的父目录（源码与容器模式一致）。
+    panel_root = state.parent
+
     @app.get("/api/panel/settings")
     async def panel_settings():
-        settings = await asyncio.to_thread(read_settings, state)
         default_host, default_port = _panel_bind_defaults()
+        persisted_host, persisted_port = await asyncio.to_thread(read_panel_config, panel_root)
         return {
-            "panel_host": settings.get("panel_host") or default_host,
-            "panel_port": settings.get("panel_port") or default_port,
+            "panel_host": persisted_host or default_host,
+            "panel_port": persisted_port or default_port,
             "editable": document is None,
         }
 
@@ -218,9 +221,7 @@ def create_app(
             ipaddress.ip_address(body.panel_host)
         except ValueError:
             raise DeploymentError("绑定地址必须是 IP（例如 127.0.0.1 或 0.0.0.0）", 422) from None
-        await asyncio.to_thread(
-            merge_settings, state, panel_host=body.panel_host, panel_port=body.panel_port
-        )
+        await asyncio.to_thread(write_panel_config, panel_root, body.panel_host, body.panel_port)
         return {"panel_host": body.panel_host, "panel_port": body.panel_port}
 
     @app.post("/api/panel/reload")

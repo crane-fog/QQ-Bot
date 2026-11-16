@@ -3,7 +3,7 @@ from pathlib import Path
 import pytest
 
 from src.deployment.config import DeploymentError
-from src.deployment.toml_config import ConfigStore
+from src.deployment.toml_config import CONFIG_NAMES, ConfigStore
 
 
 @pytest.fixture
@@ -77,8 +77,11 @@ def test_validation(store, name, source):
 
 
 def test_templates_are_valid(store):
+    # 只校验面板可编辑的五件套；webcontroller.toml 不在通用编辑清单，由专用测试覆盖。
     for path in Path("configs").glob("*.toml.template"):
-        store.validate(path.name.removesuffix(".template"), path.read_text(encoding="utf-8"))
+        name = path.name.removesuffix(".template")
+        if name in CONFIG_NAMES:
+            store.validate(name, path.read_text(encoding="utf-8"))
 
 
 def test_unknown_toml_types_survive_form_patch(store):

@@ -31,7 +31,7 @@ from .setup import (
     initialize,
     initialize_source,
     print_initial_password,
-    read_settings,
+    read_panel_config,
 )
 from .toml_config import ConfigStore
 
@@ -104,16 +104,14 @@ def _notify(message):
 def resolve_panel_bind(root, mode, host=None, port=None):
     """解析面板绑定地址：命令行 > 持久化设置 > 部署默认。
 
-    持久化值来自 .webcontroller/settings.json 的 panel_host/panel_port；
+    持久化值来自 configs/webcontroller.toml 的 [panel] host/port（仅源码模式读取）；
     缺失或非法时回退默认（源码回环、容器全接口，端口 7001）。
     """
-    settings = read_settings(Path(root) / ".webcontroller")
-    if host is None:
-        persisted_host = settings.get("panel_host")
-        host = persisted_host if isinstance(persisted_host, str) and persisted_host else None
-    if port is None:
-        persisted_port = settings.get("panel_port")
-        if isinstance(persisted_port, int) and 1 <= persisted_port <= 65535:
+    if mode == "source":
+        persisted_host, persisted_port = read_panel_config(root)
+        if host is None:
+            host = persisted_host
+        if port is None:
             port = persisted_port
     if host is None:
         host = "127.0.0.1" if mode == "source" else "0.0.0.0"
@@ -333,11 +331,9 @@ async def serve_daemon(root, mode, host, port, stop):
         bot_control.restart.set()
 
     async def reload_panel():
-        settings = await asyncio.to_thread(read_settings, root / ".webcontroller")
-        new_host = settings.get("panel_host") or panel_control.host
-        new_port = settings.get("panel_port") or panel_control.port
-        if not isinstance(new_port, int) or not 1 <= new_port <= 65535:
-            new_port = panel_control.port
+        persisted_host, persisted_port = await asyncio.to_thread(read_panel_config, root)
+        new_host = persisted_host or panel_control.host
+        new_port = persisted_port or panel_control.port
         # 预检新绑定；不可用则保持当前绑定并回报错误，面板不失联。
         if not await asyncio.to_thread(can_bind, new_host, new_port):
             raise DeploymentError(f"无法绑定 {new_host}:{new_port}，已保持原绑定")

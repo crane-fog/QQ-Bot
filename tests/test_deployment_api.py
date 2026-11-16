@@ -271,13 +271,16 @@ async def test_resolved_env_file_values_are_filtered_from_logs(tmp_path):
 @pytest.fixture
 def source_panel(tmp_path):
     from src.deployment.ipc import FileControl
-    from src.deployment.setup import initialize_source
+    from src.deployment.setup import PANEL_CONFIG_NAME, initialize_source
     from src.deployment.toml_config import CONFIG_NAMES
 
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
+    (configs / f"{PANEL_CONFIG_NAME}.template").write_text(
+        '[panel]\nhost = "127.0.0.1"\nport = 7001\n', encoding="utf-8"
+    )
     initialize_source(tmp_path, "test-password")
     state = tmp_path / ".webcontroller"
     control = FileControl(state)

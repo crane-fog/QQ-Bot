@@ -10,6 +10,7 @@ from src.deployment.__main__ import main
 from src.deployment.auth import Authentication
 from src.deployment.config import DeploymentError
 from src.deployment.setup import (
+    PANEL_CONFIG_NAME,
     discover_project,
     initialize,
     initialize_source,
@@ -71,7 +72,7 @@ def test_default_source_root_points_at_checkout():
 def test_source_main_defaults_to_package_root(tmp_path, monkeypatch):
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     monkeypatch.setattr(sys, "argv", ["src.deployment", "--init"])
     monkeypatch.setattr("src.deployment.runtime.default_source_root", lambda: tmp_path)
@@ -87,7 +88,7 @@ def test_source_main_defaults_to_package_root(tmp_path, monkeypatch):
 def test_initial_password_file_lifecycle(tmp_path):
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     initialize_source(tmp_path)
     initial = tmp_path / ".webcontroller" / "initial-password"
@@ -119,7 +120,7 @@ async def test_serve_auto_initializes(tmp_path, monkeypatch):
 
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     recorded = {}
 
@@ -163,7 +164,7 @@ async def test_daemon_generates_configs_before_supervising_bot(tmp_path, monkeyp
 
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     observed = {}
 
@@ -440,42 +441,77 @@ async def test_serve_warns_on_non_loopback_bind(tmp_path, monkeypatch, host, mod
     assert any("明文" in message for message in notifications) is warns
 
 
-def test_merge_settings_preserves_panel_bind(tmp_path):
-    from src.deployment.setup import merge_settings, read_settings
-
+def _source_configs(tmp_path):
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
+    (configs / f"{PANEL_CONFIG_NAME}.template").write_text(
+        '[panel]\nhost = "127.0.0.1"\nport = 7001\n', encoding="utf-8"
+    )
+    return configs
+
+
+def test_panel_config_generated_from_template(tmp_path):
+    from src.deployment.setup import panel_config_path, read_panel_config
+
+    _source_configs(tmp_path)
     initialize_source(tmp_path, "pw")
-    state = tmp_path / ".webcontroller"
-    merge_settings(state, panel_host="0.0.0.0", panel_port=8080)
-    # 重新初始化不得丢弃面板绑定设置。
+    assert panel_config_path(tmp_path).is_file()
+    assert read_panel_config(tmp_path) == ("127.0.0.1", 7001)
+
+
+def test_panel_config_write_read_round_trip(tmp_path):
+    from src.deployment.setup import read_panel_config, write_panel_config
+
+    _source_configs(tmp_path)
+    initialize_source(tmp_path, "pw")
+    write_panel_config(tmp_path, "0.0.0.0", 8080)
+    assert read_panel_config(tmp_path) == ("0.0.0.0", 8080)
+    # 重新初始化不覆盖已有 webcontroller.toml。
     initialize_source(tmp_path)
-    settings = read_settings(state)
-    assert settings["panel_host"] == "0.0.0.0"
-    assert settings["panel_port"] == 8080
-    assert settings["root"] == str(tmp_path.resolve())
+    assert read_panel_config(tmp_path) == ("0.0.0.0", 8080)
+
+
+def test_panel_config_corrupt_falls_back_and_rebuilds(tmp_path):
+    from src.deployment.setup import panel_config_path, read_panel_config, write_panel_config
+
+    _source_configs(tmp_path)
+    initialize_source(tmp_path, "pw")
+    panel_config_path(tmp_path).write_text("broken[", encoding="utf-8")
+    assert read_panel_config(tmp_path) == (None, None)
+    write_panel_config(tmp_path, "127.0.0.1", 7001)
+    assert read_panel_config(tmp_path) == ("127.0.0.1", 7001)
 
 
 def test_resolve_panel_bind_priority(tmp_path):
     from src.deployment.runtime import resolve_panel_bind
-    from src.deployment.setup import merge_settings
+    from src.deployment.setup import merge_settings, write_panel_config
 
-    state = tmp_path / ".webcontroller"
     # 无持久化：源码回环、容器全接口，默认端口。
     assert resolve_panel_bind(tmp_path, "source") == ("127.0.0.1", 7001)
     assert resolve_panel_bind(tmp_path, "compose") == ("0.0.0.0", 7001)
-    merge_settings(state, panel_host="192.168.1.5", panel_port=8080)
+    write_panel_config(tmp_path, "192.168.1.5", 8080)
     # 持久化生效。
     assert resolve_panel_bind(tmp_path, "source") == ("192.168.1.5", 8080)
+    # 容器模式不读 toml，仍用全接口默认。
+    assert resolve_panel_bind(tmp_path, "compose") == ("0.0.0.0", 7001)
     # 命令行覆盖持久化。
     assert resolve_panel_bind(tmp_path, "source", host="127.0.0.1", port=9000) == (
         "127.0.0.1",
         9000,
     )
-    # 非法持久化值回退默认。
-    merge_settings(state, panel_host="", panel_port=99999)
+    # 旧 settings.json 里面板键被忽略（不迁移）。
+    merge_settings(tmp_path / ".webcontroller", panel_host="10.0.0.1", panel_port=9999)
+    assert resolve_panel_bind(tmp_path, "source") == ("192.168.1.5", 8080)
+
+
+def test_resolve_panel_bind_invalid_toml_falls_back(tmp_path):
+    from src.deployment.runtime import resolve_panel_bind
+    from src.deployment.setup import panel_config_path
+
+    panel_config_path(tmp_path).parent.mkdir(parents=True, exist_ok=True)
+    panel_config_path(tmp_path).write_text('[panel]\nhost = ""\nport = 99999\n', encoding="utf-8")
     assert resolve_panel_bind(tmp_path, "source") == ("127.0.0.1", 7001)
 
 
@@ -495,7 +531,7 @@ def test_detect_runtime_uses_deploy_mount(tmp_path, monkeypatch):
 def test_source_init_with_explicit_password(tmp_path):
     configs = tmp_path / "configs"
     configs.mkdir()
-    for name in CONFIG_NAMES:
+    for name in (*CONFIG_NAMES, PANEL_CONFIG_NAME):
         (configs / f"{name}.template").write_text("", encoding="utf-8")
     initialize_source(tmp_path, "chosen-pw")
     assert not (tmp_path / ".webcontroller" / "initial-password").exists()
