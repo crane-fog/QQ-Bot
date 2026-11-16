@@ -51,7 +51,7 @@ def start_background(root, port=None, host=None):
     if record.is_file():
         recorded = record.read_text(encoding="utf-8").strip()
         if recorded.isdigit() and process_alive(int(recorded)):
-            raise SystemExit(f"面板已在后台运行（PID {recorded}），如需重启请先执行 --stop")
+            raise SystemExit(f"守护进程已在后台运行（PID {recorded}），如需重启请先执行 --stop")
         record.unlink()
     log_path = state / "panel.log"
     # -m resolves the package through sys.path, so the child must run with the
@@ -85,8 +85,8 @@ def start_background(root, port=None, host=None):
     time.sleep(1)
     if child.poll() is not None:
         record.unlink(missing_ok=True)
-        raise SystemExit(f"后台面板启动失败，请查看日志：{log_path}")
-    print(f"面板已在后台运行（PID {child.pid}）")
+        raise SystemExit(f"后台守护进程启动失败，请查看日志：{log_path}")
+    print(f"守护进程已在后台运行（PID {child.pid}），面板与 Bot 由其守护")
     print(f"日志：{log_path}")
     print("停止：uv run -m src.deployment --stop")
     print_initial_password(root)
@@ -96,7 +96,7 @@ def start_background(root, port=None, host=None):
 def stop_background(root):
     record = pid_record(root)
     if not record.is_file():
-        print("没有正在后台运行的面板")
+        print("没有正在后台运行的守护进程")
         return
     pid = int(record.read_text(encoding="utf-8").strip())
     if not process_alive(pid):
@@ -104,7 +104,7 @@ def stop_background(root):
         print(f"记录的 PID {pid} 已退出，清理残留记录")
         return
     if os.name == "nt":
-        # /T kills the supervised Bot child along with the panel.
+        # /T kills the daemon's whole tree: the supervised panel and Bot children.
         finished = subprocess.run(["taskkill", "/F", "/T", "/PID", str(pid)], capture_output=True)
         if finished.returncode != 0:
             detail = (finished.stderr or finished.stdout).decode(errors="replace").strip()
@@ -112,7 +112,7 @@ def stop_background(root):
     else:
         os.kill(pid, signal.SIGTERM)
     record.unlink(missing_ok=True)
-    print(f"已停止后台面板（PID {pid}）")
+    print(f"已停止后台守护进程（PID {pid}），面板与 Bot 一同停止")
 
 
 def prompt_password(text, explicit):
@@ -145,7 +145,7 @@ def run_setup(root, mode, args, parser):
             print("管理员密码已重置，重启面板后使用新密码登录")
             return
         initialize_source(root, args.password)
-        print("源码面板初始化完成，执行 uv run -m src.deployment 启动面板和 Bot")
+        print("源码面板初始化完成，执行 uv run -m src.deployment 启动守护进程（守护面板与 Bot）")
         print_initial_password(root)
         return
     project = discover_project(root, args.project_name)
@@ -188,7 +188,9 @@ def main():
     parser.add_argument("--port", type=int, default=None)
     parser.add_argument("--host", help="面板监听的 IP，默认源码 127.0.0.1、容器 0.0.0.0")
     parser.add_argument("--bg", action="store_true", help="以后台进程运行，日志写入状态目录")
-    parser.add_argument("--stop", action="store_true", help="停止后台运行的面板")
+    parser.add_argument(
+        "--stop", action="store_true", help="停止后台守护进程（面板与 Bot 一同停止）"
+    )
     parser.add_argument("--init", action="store_true", help="初始化部署身份与配置后退出")
     parser.add_argument("--reset-password", action="store_true", help="重置管理员密码后退出")
     parser.add_argument("--password", help="与 --init 或 --reset-password 搭配，非交互指定密码")
