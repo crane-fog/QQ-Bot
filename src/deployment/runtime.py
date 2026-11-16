@@ -6,7 +6,7 @@ holds the signal handlers and supervises two child applications: the HTTP panel
 (``--panel``) and the Bot. A panel crash never stops the Bot and a Bot crash never
 stops the panel; the daemon restarts either with exponential backoff. Reloading
 the panel is just the daemon restarting the panel child, leaving the Bot running.
-``bot.py`` still runs the Bot alone, without the daemon or panel.
+``python -m src`` still runs the Bot alone, without the daemon or panel.
 """
 
 import asyncio
@@ -305,10 +305,10 @@ async def serve_daemon(root, mode, host, port, stop):
     """守护两个子应用：面板与 Bot。任一崩溃都不影响另一个，停机时一并停止。"""
     if mode == "compose":
         # 容器内跑镜像侧代码，入口链含数据库初始化与 QQ 登录等待。
-        bot_command = ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
+        bot_command = ["bash", "scripts/entrypoint.sh", "python3", "-m", "src"]
         bot_cwd = default_source_root()
     else:
-        bot_command = [sys.executable, "bot.py"]
+        bot_command = [sys.executable, "-m", "src"]
         bot_cwd = root
     bot_control = BotControl()
     panel_control = PanelControl()
@@ -408,7 +408,7 @@ async def launch():
     The daemon supervises the panel and the Bot as child processes; ``main.py``
     only adds a thin parent that mirrors the daemon's exit code and forwards stop
     signals to the whole tree. Running the Bot alone, without the daemon, is
-    ``bot.py``.
+    ``python -m src``.
     """
     flags = (
         {"creationflags": subprocess.CREATE_NEW_PROCESS_GROUP}

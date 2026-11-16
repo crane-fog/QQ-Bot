@@ -1,6 +1,6 @@
 # 部署面板（WebController）
 
-面板不依赖 QQ 登录和数据库。进程拓扑为「守护进程为底」：根启动器 `main.py` 拉起守护进程（`python -m src.deployment`），守护进程再把面板（`--panel` 子进程）和 Bot 作为两个子应用守护起来。面板先启动、先可用；面板或 Bot 任一崩溃都由守护进程按退避自动重启，停止信号由守护进程统一转发。Docker 部署中容器主进程是 `main.py`，守护进程经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中守护进程直接拉起 `bot.py`。只想启动 Bot 本身时直接运行 `bot.py`，守护进程与面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
+面板不依赖 QQ 登录和数据库。进程拓扑为「守护进程为底」：根启动器 `main.py` 拉起守护进程（`python -m src.deployment`），守护进程再把面板（`--panel` 子进程）和 Bot 作为两个子应用守护起来。面板先启动、先可用；面板或 Bot 任一崩溃都由守护进程按退避自动重启，停止信号由守护进程统一转发。Docker 部署中容器主进程是 `main.py`，守护进程经启动链（数据库初始化、等待 QQ 登录）拉起 Bot；源码部署中守护进程直接拉起 Bot（`python -m src`）。只想启动 Bot 本身时直接运行 `python -m src`，守护进程与面板不会介入。两种方式均提供 TOML 配置管理、校验、差异及备份恢复；Docker 部署另外提供 Compose 表单/YAML 编辑。面板不挂载 Docker socket，对 Docker daemon 零访问：不显示容器运行状态，也不执行任何容器操作。
 
 ## 纯源码部署（Windows / Linux）
 
@@ -11,7 +11,7 @@ uv sync --no-dev
 uv run main.py
 ```
 
-这一条命令会拉起守护进程（自动初始化），由它守护面板与 Bot 两个子进程。只想运行 Bot 本身、不使用面板时执行 `uv run bot.py`。也可先执行 `uv run -m src.deployment --init` 只初始化不启动。
+这一条命令会拉起守护进程（自动初始化），由它守护面板与 Bot 两个子进程。只想运行 Bot 本身、不使用面板时执行 `uv run python -m src`。也可先执行 `uv run -m src.deployment --init` 只初始化不启动。
 
 初始化自动生成随机管理员密码，写入 `.webcontroller/initial-password`（仅当前用户可读），终端只提示文件路径，不显示密码内容；首次成功登录后面板自动删除该文件，请尽快用 `--reset-password` 设置自己的密码。也可在 `--init` 或 `--reset-password` 时用 `--password` 非交互指定密码，此时不生成密码文件。密码长度不限制，仅以 scrypt 哈希存储，强度由使用者自行负责。初始化从 `configs/*.toml.template` 补齐五类缺失配置，不覆盖已有文件；重复执行保留密码。设置与密码哈希存放于 `.webcontroller/`，不写入 `.env`。
 
@@ -76,7 +76,7 @@ Bot 基础配置提供表单，密码和令牌默认遮蔽；插件提供全局�
 docker compose up -d
 ```
 
-容器主进程是根启动器 `main.py`：容器启动后它拉起守护进程，守护进程再以子进程拉起面板与原启动链（数据库初始化、等待 QQ 登录、`bot.py`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 或面板崩溃后守护进程按 1 秒起步的指数退避自动重启（稳定运行 60 秒后重新从 1 秒开始），Bot 退避最长 10 分钟、面板最长 1 分钟；等待 QQ 扫码期间面板照常可用。容器内面板绑定由宿主机端口映射决定，「面板设置」页在容器部署下为只读。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
+容器主进程是根启动器 `main.py`：容器启动后它拉起守护进程，守护进程再以子进程拉起面板与原启动链（数据库初始化、等待 QQ 登录、`python -m src`）。部署目录以 `source: .` 挂载到容器内固定路径 `/deploy`，端口映射为 `127.0.0.1:7001:7001`。首次启动自动初始化，初始面板密码生成于宿主机的 `.webcontroller/initial-password`，首次成功登录后自动删除；与 LLBot WebUI 密码独立。Bot 或面板崩溃后守护进程按 1 秒起步的指数退避自动重启（稳定运行 60 秒后重新从 1 秒开始），Bot 退避最长 10 分钟、面板最长 1 分钟；等待 QQ 扫码期间面板照常可用。容器内面板绑定由宿主机端口映射决定，「面板设置」页在容器部署下为只读。面板不使用 Docker socket，`compose.yaml` 无需为面板增加任何变量。
 
 访问 `http://127.0.0.1:7001`。远程服务器使用 SSH 转发：
 

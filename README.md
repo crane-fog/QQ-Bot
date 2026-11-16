@@ -81,7 +81,7 @@ uv run main.py
 
 浏览器打开 `http://127.0.0.1:7001`，在“Bot 配置”中按 [配置文件解释](#配置文件解释) 修改必要配置项并保存。对于远程开发环境，建议在本地使用 ssh 端口转发；需要局域网内其他设备访问面板时，在面板「面板设置」页把绑定地址改为 `0.0.0.0`（或本机局域网 IP）并保存，点击「重载面板」即可生效（也可用 `uv run -m src.deployment --host <本机局域网IP>` 命令行指定，仅当次生效）。
 
-修改配置并保存后，点击面板上的“重启 Bot”即应用新配置；`--bg` 可后台运行。只想直接运行 Bot 本身（不使用面板）可执行 `uv run bot.py`。更多说明见 [WebController 文档](docs/webcontroller.md)。
+修改配置并保存后，点击面板上的“重启 Bot”即应用新配置；`--bg` 可后台运行。只想直接运行 Bot 本身（不使用面板）可执行 `uv run python -m src`。更多说明见 [WebController 文档](docs/webcontroller.md)。
 
 #### 4. 初始化数据库（可选）
 

@@ -147,7 +147,7 @@ async def test_serve_auto_initializes(tmp_path, monkeypatch):
         await task
     assert (tmp_path / ".webcontroller" / "settings.json").is_file()
     assert (tmp_path / ".webcontroller" / "initial-password").is_file()
-    assert recorded["command"] == [_sys.executable, "bot.py"]
+    assert recorded["command"] == [_sys.executable, "-m", "src"]
     assert recorded["cwd"] == tmp_path.resolve()
     panel_command = recorded["panel_command"]
     if callable(panel_command):
@@ -256,7 +256,7 @@ async def test_compose_serve_supervises_entrypoint_chain(tmp_path, monkeypatch):
     task.cancel()
     with pytest.raises(asyncio.CancelledError):
         await task
-    assert recorded["command"] == ["bash", "scripts/entrypoint.sh", "python3", "bot.py"]
+    assert recorded["command"] == ["bash", "scripts/entrypoint.sh", "python3", "-m", "src"]
     assert recorded["cwd"] == runtime.default_source_root().resolve()
 
 
