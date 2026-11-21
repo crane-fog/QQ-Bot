@@ -69,43 +69,37 @@ ssh -L 3080:localhost:3080 user@remote_host
     - 消息格式选择“CQ码”
     - 保存
 
-#### 3. 编辑 configs/\*.toml 配置文件
+#### 3. 启动面板和 Bot
 
-```bash
-cp configs/bot.toml.template configs/bot.toml
-cp configs/ai.toml.template configs/ai.toml
-cp configs/groups.toml.template configs/groups.toml
-cp configs/plugins.toml.template configs/plugins.toml
-cp configs/scheduler.toml.template configs/scheduler.toml
-```
-
-对于 `configs` 文件夹下的每个配置文件，需要复制一份去掉 `.template` 后缀的文件，并根据需要修改配置项，bot 启动时如无法找到配置文件将报错
-
-首次启动请务必修改 `configs/bot.toml` 中的部分配置项，详见 [配置文件解释](#配置文件解释)
-
-#### 4. 初始化数据库
-
-尽管 bot 本身并不强制要求使用数据库，但大部分主要插件都需要数据库支持
-
-若 `bot.toml` 中 `database_enable = true`，首次启动前需有可用的 PostgreSQL 数据库，并手动执行建表脚本
-
-```bash
-uv run scripts/create_tables.py
-```
-
-#### 5. 启动 bot
+完成 `uv sync --no-dev` 后，执行以下命令启动：
 
 ```bash
 uv run main.py
 ```
 
-> 与 LLBot 类似，长期运行建议编写 systemd 服务脚本
+`main.py` 会拉起守护进程，由它把面板和 Bot 作为两个子进程守护起来；守护进程在拉起子进程前先从 `configs/*.toml.template` 自动生成缺失的配置文件，确保 Bot 启动时配置就绪。面板或 Bot 崩溃都会自动退避重启，互不影响。初始管理员密码生成于 `.webcontroller/initial-password`，首次成功登录后自动删除。
+
+浏览器打开 `http://127.0.0.1:7001`，在“Bot 配置”中按 [配置文件解释](#配置文件解释) 修改必要配置项并保存。对于远程开发环境，建议在本地使用 ssh 端口转发；需要局域网内其他设备访问面板时，在面板「面板设置」页把绑定地址改为 `0.0.0.0`（或本机局域网 IP）并保存，点击「重载面板」即可生效（也可用 `uv run -m src.deployment --host <本机局域网IP>` 命令行指定，仅当次生效）。
+
+修改配置并保存后，点击面板上的“重启 Bot”即应用新配置；`--bg` 可后台运行。只想直接运行 Bot 本身（不使用面板）可执行 `uv run python -m src`。更多说明见 [WebController 文档](docs/webcontroller.md)。
+
+#### 4. 初始化数据库（可选）
+
+尽管 bot 本身并不强制要求使用数据库，但大部分主要插件都需要数据库支持
+
+建表脚本从 `configs/bot.toml` 读取连接信息。请先完成配置生成（首次启动自动完成），并在面板填好数据库连接（`database_enable = true`），再执行：
+
+```bash
+uv run scripts/create_tables.py
+```
+
+执行完成后在面板点击“重启 Bot”，Bot 即以新配置连接数据库。
 
 > 如果你想为 `src/Api.py` 添加尚未实现在该项目中的 LLBot api，请参考 [LLBot api 文档](https://llonebot.apifox.cn/)
 
 ### 方式二：Docker compose 部署
 
-> 对于 Windows 用户，下面的脚本需在 wsl 中执行，或安装 git 后在 git bash 中执行
+> 对于 Windows 用户，下面的脚本需在已安装 Docker Engine 的 WSL 中执行。
 
 从 [Github Releases](https://github.com/crane-fog/QQ-Bot/releases/latest) 下载最新 `Theresa-<version>-Docker.tar.gz`，解压、进入目录、执行脚本
 
@@ -126,9 +120,13 @@ bash scripts/docker_compose_init.sh
 >     - "3000:3000"
 > ```
 
-执行 `docker compose up -d`，等待镜像拉取完毕，容器启动后，执行 `docker compose logs`，日志中将显示 QQ 登录二维码（也可直接在浏览器打开 `http://localhost:3080` 登录 llbot WebUI 后查看），手机扫码登录，务必勾选“下次登录无需手机确认”
+执行 `docker compose up -d`。theresa 容器的主进程 `main.py` 拉起守护进程，由它守护面板与 Bot，浏览器打开 `http://127.0.0.1:7001` 即可使用（初始管理员密码生成于 `.webcontroller/initial-password`，首次登录后自动删除），等待 QQ 登录期间面板照常可用。
 
-> 宿主机 `configs/` 目录（以及 `llbot_config/` 目录）会被挂载到容器中，在修改 bot 配置文件后，可使用 `docker compose restart theresa` 使配置生效
+容器启动后执行 `docker compose logs`，日志中将显示 QQ 登录二维码（也可直接在浏览器打开 `http://localhost:3080` 登录 llbot WebUI 后查看），手机扫码登录，务必勾选“下次登录无需手机确认”
+
+> 宿主机 `configs/` 目录（以及 `llbot_config/` 目录）会被挂载到容器中。修改配置后，在面板上点击“重启 Bot”即可生效（也可在宿主机执行 `docker compose restart theresa`）
+
+
 
 ### 配置文件解释
 
@@ -136,7 +134,7 @@ bash scripts/docker_compose_init.sh
 
 > 首次启动只需关注该配置文件
 
-对于标注 + 的配置项，请勿在 Docker compose 部署时手动修改
+对于标注 + 的配置项，请勿在 Docker compose 部署时手动修改（无论直接编辑文件还是通过面板）：初始化脚本已把它们改写为容器网络的专用值（`server_address` 指向 `llbot`、`database_address` 指向 `db`、`database_passwd` 与 `db` 服务的 `POSTGRES_PASSWORD` 成套）；模板默认的 `127.0.0.1` 在容器内指向容器自身，手动改回会直接断连
 
 请特别关注标注 \* 的配置项
 
@@ -144,7 +142,6 @@ bash scripts/docker_compose_init.sh
 | ---------------------- | ---------------------------------------------------------------- |
 | server_address         | +\* 监听端的监听地址（即 bot 上报事件的目标地址）                |
 | client_address         | +\* 监听端的事件上报的地址（即 bot 接收事件的监听地址）          |
-| web_controller_address | 目前弃用，bot web 控制面板的监听地址                             |
 | bot_name               | 目前无实际用途，bot 的名字                                       |
 | debug                  | 是否开启日志调试模式（true/false）                               |
 | database_enable        | +\* 是否启用 PostgreSQL 数据库（true/false）                     |
@@ -211,6 +208,10 @@ some_special_config = 123
 #### 5. `configs/scheduler.toml` 定时任务配置
 
 键名对应 `scheduled_tasks` 目录下的文件名，`enable` 决定是否启用该定时任务，`kwargs` 为注册任务时传递给 main 函数的参数
+
+#### 6. `configs/webcontroller.toml` 部署面板配置
+
+面板自身的监听绑定，`[panel]` 节的 `host`（IP）与 `port`（1–65535）。仅源码部署生效；容器部署的绑定由宿主机端口映射决定，不读取此文件。可在面板「面板设置」页编辑保存，点击「重载面板」应用。缺失时从模板自动补齐，与其他配置一致。
 
 ## 开发提交
 

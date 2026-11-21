@@ -5,6 +5,7 @@
 
 # config
 /configs/*.toml
+/configs/*.toml.lock
 
 # runtime
 **/temp/**
@@ -15,3 +16,6 @@
 !/plugins/**/data/**/.gitkeep
 /.venv/
 /log.out*
+/.webcontroller/
+/.env
+/.compose-check-*.yaml

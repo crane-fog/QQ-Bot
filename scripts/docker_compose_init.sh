@@ -2,10 +2,11 @@
 # docker compose 所需配置的初始化脚本
 
 set -e
-cd "$(dirname "$0")"
+DEPLOY_DIR="$(cd "$(dirname "$0")/.." && pwd -P)"
+cd "$DEPLOY_DIR"
 
-LLBOT_DIR="../llbot_config"
-COMPOSE_FILE="../compose.yaml"
+LLBOT_DIR="$DEPLOY_DIR/llbot_config"
+COMPOSE_FILE="$DEPLOY_DIR/compose.yaml"
 
 if [ -d "$LLBOT_DIR" ]; then
     echo "llbot 配置目录已存在，如需重新初始化，请先删除 $LLBOT_DIR 目录"
@@ -97,7 +98,7 @@ sedi -E "s|(POSTGRES_PASSWORD: ).*|\1\"${escaped_db_pass}\"|" "$COMPOSE_FILE"
 
 echo "compose.yaml 已更新"
 
-THERESA_DIR="../configs"
+THERESA_DIR="$DEPLOY_DIR/configs"
 
 for tpl in "$THERESA_DIR"/*.template; do
     [ -f "$tpl" ] || continue
@@ -117,4 +118,5 @@ done
 
 echo "--------------------------------------------------------"
 echo "请在手动填写 bot 相关配置文件后执行"
-echo "docker compose up"
+echo "docker compose up -d"
+echo "面板随 compose 自动初始化，初始管理员密码生成于 .webcontroller/initial-password"

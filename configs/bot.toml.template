@@ -1,7 +1,6 @@
 [Init]
 server_address = "127.0.0.1:5700"
 client_address = "127.0.0.1:5701"
-web_controller_address = "0.0.0.0:7001"
 bot_name = "Theresa"
 debug = true
 database_enable = true

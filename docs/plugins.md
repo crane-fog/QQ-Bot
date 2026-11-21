@@ -16,7 +16,7 @@
 
 ## 开发约定
 
-- 数据库模型统一定义在 [`src/models.py`](../src/models.py)，插件禁止自行调用 `declarative_base` 或定义 `__tablename__`。新增表或字段时，请修改 `src/models.py` 并同步修改数据库（项目暂无迁移工具）。`tests/test_models.py` 会通过 AST 扫描插件源码，检查是否违反该约定。
+- 数据库模型统一定义在 [`src/Models.py`](../src/Models.py)，插件禁止自行调用 `declarative_base` 或定义 `__tablename__`。新增表或字段时，请修改 `src/Models.py` 并同步修改数据库（项目暂无迁移工具）。`tests/test_models.py` 会通过 AST 扫描插件源码，检查是否违反该约定。
 - 需要直接访问 `bot.database` 的插件，应通过 `sessionmaker(bind=self.bot.database, class_=AsyncSession, expire_on_commit=False)` 创建异步会话工厂；入口依赖数据库可用性时，应使用 `@plugin_main(require_db=True)` 声明该依赖。两项要求相互独立，不直接访问数据库的插件无需创建会话工厂。
 
 
@@ -40,7 +40,6 @@
 | [`I_like_you`](plugins/I_like_you.md) | `Group` | 根据固定台词发送本地语音。 | 命令触发：`我喜欢你`、`我不喜欢你` | 是 |
 | [`LineCount`](plugins/LineCount.md) | `Group` | 查询用户代码行数相关信息。 | 命令触发：`Theresa linecount` | 是 |
 | [`MessageRecorder`](plugins/MessageRecorder.md) | `Record` | 记录群消息到数据库，为上下文类插件提供数据。 | 自动触发 | 是 |
-| [`MoeGoe`](plugins/MoeGoe.md) | `Group` | 调用语音合成服务生成并发送语音。 | 命令触发：`moegoe ema/sheri zh/ja <文本>` | 是 |
 | [`QiuDao`](plugins/QiuDao.md) | `Group` | 根据数据库中的记录响应“求刀/公开刀数”类指令。 | 命令触发：`Theresa 求刀`、`Theresa 公开我的刀数` | 是 |
 | [`RecallPrevent`](plugins/RecallPrevent.md) | `GroupRecall` | 记录消息并在用户撤回后把内容重新发出来。 | 自动触发；撤回事件触发 | 是 |
 | [`Repeater`](plugins/Repeater.md) | `Group` | 检测复读并按配置撤回或禁言。 | 自动触发 | 是 |

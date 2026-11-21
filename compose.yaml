@@ -54,9 +54,12 @@ services:
 
     theresa:
         image: heai/theresa:latest
-        entrypoint: ["/bin/sh", "/app/theresa/scripts/entrypoint.sh"]
-        command: ["python3", "/app/theresa/main.py"]
+        ports:
+            - "127.0.0.1:7001:7001"
         volumes:
+            - type: bind
+              source: .
+              target: /deploy
             - ./configs:/app/theresa/configs
             - qq_volume:/root/.config/QQ
             - ./llbot_config:/app/llbot/data
