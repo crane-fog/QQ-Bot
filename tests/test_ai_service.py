@@ -12,7 +12,7 @@ def _make_service(api_key: str = "test-secret") -> AIService:
     service = AIService()
     service.set_configs(
         "configs/ai.toml.template",
-        "utils/persona.j2",
+        "src/agent/persona.j2",
         "src/agent/ToolDef.py",
     )
     provider_name = service._config["profile"]["default"]["provider"]

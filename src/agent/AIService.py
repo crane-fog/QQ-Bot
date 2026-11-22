@@ -131,7 +131,7 @@ class AIService:
                 if group_id is None:
                     Log.warning("多轮对话调用工具时应提供 group_id")
                 elif response.choices[0].message.content:
-                    api.groupService.send_group_msg(
+                    await api.asyncGroupService.send_group_msg(
                         group_id=group_id,
                         message=response.choices[0].message.content,
                     )
