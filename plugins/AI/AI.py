@@ -4,7 +4,7 @@ import time
 from openai.types.chat import ChatCompletionMessageParam
 
 from plugins import Plugins, plugin_main
-from src.AIService import AIConfigurationError, AIProviderError
+from src.agent.AIService import AIConfigurationError, AIProviderError, ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
@@ -70,7 +70,7 @@ class AI(Plugins):
                 {"role": "user", "content": question},
             ]
             try:
-                response = await self.bot.ai.generate("default", messages)
+                response = await ai.generate("default", messages)
             except AIConfigurationError as exc:
                 Log.error(f"插件：{self.name} AI 配置错误：{exc}")
                 api.groupService.send_group_msg(

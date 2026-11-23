@@ -10,7 +10,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, create_async_engine
 from plugins import Plugins
 from utils.Database import build_database_url
 
-from .AIService import AIService
+from .agent.AIService import ai
 from .Api import api
 from .EventController import Event
 from .PrintLog import Log
@@ -93,9 +93,10 @@ class Bot:
             Log.info(str(item))
 
         api.set_server_address(self.server_address)
-        self.ai = AIService(
+        ai.set_configs(
             os.path.join(self.configs_path, "ai.toml"),
-            os.path.join(os.path.dirname(__file__), "../utils/persona.j2"),
+            os.path.join(os.path.dirname(__file__), "agent/persona.j2"),
+            os.path.join(os.path.dirname(__file__), "agent/ToolDef.py"),
         )  # ai 辅助工具对象
 
     def initialize(self) -> None:

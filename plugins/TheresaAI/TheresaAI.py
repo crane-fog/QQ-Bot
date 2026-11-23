@@ -6,6 +6,7 @@ import time
 from jinja2 import Template
 
 from plugins import Plugins, plugin_main
+from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.PrintLog import Log
@@ -75,7 +76,7 @@ class TheresaAI(Plugins):
             question_full = f"提问者：{event.nickname}(群名片：{event.card})\n问题内容：{question}"
 
             # 获取大模型回复
-            response = await self.bot.ai.generate(
+            response = await ai.generate(
                 "Theresa_simple",
                 [
                     {"role": "system", "content": persona},

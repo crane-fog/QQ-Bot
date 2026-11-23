@@ -5,7 +5,7 @@ from typing import TYPE_CHECKING
 
 import tomlkit
 
-from src.metrics import PLUGIN_CALL_COUNT, PLUGIN_DURATION
+from src.Metrics import PLUGIN_CALL_COUNT, PLUGIN_DURATION
 
 if TYPE_CHECKING:
     from src.Bot import Bot

@@ -5,7 +5,7 @@ from unittest.mock import AsyncMock, Mock, patch
 import pytest
 
 from plugins.AI.AI import AI
-from src.AIService import AIConfigurationError, AIProviderError
+from src.agent.AIService import AIConfigurationError, AIProviderError
 from src.Bot import Bot
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 
@@ -29,7 +29,6 @@ async def test_ai_plugin_returns_friendly_message_for_ai_service_errors(error, e
             object,
             SimpleNamespace(
                 bot_name="monika",
-                ai=SimpleNamespace(generate=AsyncMock(side_effect=error)),
             ),
         ),
     )
@@ -50,7 +49,11 @@ async def test_ai_plugin_returns_friendly_message_for_ai_service_errors(error, e
         ),
     )
 
-    with patch("src.Api.api.groupService", group_service):
+    ai_service = SimpleNamespace(generate=AsyncMock(side_effect=error))
+    with (
+        patch("src.Api.api.groupService", group_service),
+        patch("plugins.AI.AI.ai", ai_service),
+    ):
         await cast(Any, AI.main).__wrapped__(plugin, event, debug=False)
 
     assert group_service.send_group_msg.call_count == 2

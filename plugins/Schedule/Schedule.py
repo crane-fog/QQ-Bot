@@ -346,8 +346,8 @@ class Schedule(Plugins):
                     }
                 )
 
-        # 按课时数降序排序
-        rank_data.sort(key=lambda x: x["periods"], reverse=True)
+        # 按课时数降序排序，如果课时数相同则按用户ID升序排序
+        rank_data.sort(key=lambda x: (-x["periods"], x["user_id"]))
 
         # 构造模板渲染数据
         current_time = datetime.now()
@@ -385,15 +385,7 @@ class Schedule(Plugins):
             f"temp/pic/rank_{event.group_id}_{current_time.strftime('%Y-%m-%d_%H-%M-%S')}.png",
         )
 
-        async with async_playwright() as p:
-            browser = await p.chromium.launch(headless=True)
-            page = await browser.new_page(device_scale_factor=2)
-            await page.set_content(html_content)
-            await page.wait_for_load_state("networkidle")
-            element = await page.query_selector("#capture-area")
-            await element.screenshot(path=output_image_path)
-            await browser.close()
-
+        await self._render_html_to_image(html_content, output_image_path)
         await api.asyncGroupService.send_group_img(
             group_id=event.group_id, image_path=output_image_path
         )
@@ -408,11 +400,8 @@ class Schedule(Plugins):
         browser = await self._get_browser()
         page = await browser.new_page(device_scale_factor=2)
         try:
-            await page.set_content(html_content, wait_until="load")
-            await page.evaluate("""async () => {
-                const imgs = Array.from(document.querySelectorAll("img"));
-                await Promise.all(imgs.map(img => img.complete ? null : new Promise(r => { img.onload = r; img.onerror = r; })));
-            }""")
+            await page.set_content(html_content)
+            await page.wait_for_load_state("networkidle")
             element = await page.query_selector("#capture-area")
             await element.screenshot(path=output_image_path)
         finally:

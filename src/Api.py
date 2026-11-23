@@ -255,6 +255,13 @@ class Api:
         def __init__(self, api_instance):
             self.api: Api = api_instance
 
+        async def send_private_msg(self, user_id: int, message: str) -> dict:
+            params = {"user_id": user_id, "message": message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_private_msg", json=params
+            )
+            return response.json()
+
         async def send_private_forward_msg(self, user_id: int, forward_message: list) -> dict:
             params = {"user_id": user_id, "messages": forward_message}
             response = await self.api.client.post(
@@ -273,20 +280,12 @@ class Api:
             )
             return response.json()
 
-        async def send_group_file(
-            self, group_id: int, file_path: str, name: str, folder_id: str = None
+        async def get_group_member_info(
+            self, group_id: int, user_id: int, no_cache: bool = True
         ) -> dict:
-            if folder_id:
-                params = {
-                    "group_id": group_id,
-                    "file": f"file://{file_path}",
-                    "name": name,
-                    "folder_id": folder_id,
-                }
-            else:
-                params = {"group_id": group_id, "file": f"file://{file_path}", "name": name}
+            params = {"group_id": group_id, "user_id": user_id, "no_cache": no_cache}
             response = await self.api.client.post(
-                self.api.bot_api_address + "upload_group_file", json=params
+                self.api.bot_api_address + "get_group_member_info", json=params
             )
             return response.json()
 
@@ -307,6 +306,13 @@ class Api:
             )
             return response.json()
 
+        async def send_group_forward_msg(self, group_id: int, forward_message: list[dict]) -> dict:
+            params = {"group_id": group_id, "messages": forward_message}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "send_group_forward_msg", json=params
+            )
+            return response.json()
+
         async def send_group_img(self, group_id: int, image_path: str) -> dict:
             params = {
                 "group_id": group_id,
@@ -317,10 +323,100 @@ class Api:
             )
             return response.json()
 
-        async def send_group_forward_msg(self, group_id: int, forward_message: list) -> dict:
-            params = {"group_id": group_id, "messages": forward_message}
+        async def send_group_msg_with_img(
+            self, group_id: int, message: str, image_path: str
+        ) -> dict:
+            params = {
+                "group_id": group_id,
+                "message": [
+                    {"type": "text", "data": {"text": message}},
+                    {"type": "image", "data": {"file": f"file://{image_path}"}},
+                ],
+            }
             response = await self.api.client.post(
-                self.api.bot_api_address + "send_group_forward_msg", json=params
+                self.api.bot_api_address + "send_group_msg", json=params
+            )
+            return response.json()
+
+        async def send_group_file(
+            self, group_id: int, file_path: str, name: str, folder_id: str = None
+        ) -> dict:
+            if folder_id:
+                params = {
+                    "group_id": group_id,
+                    "file": f"file://{file_path}",
+                    "name": name,
+                    "folder_id": folder_id,
+                }
+            else:
+                params = {"group_id": group_id, "file": f"file://{file_path}", "name": name}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "upload_group_file", json=params
+            )
+            return response.json()
+
+        async def set_group_ban(self, group_id: int, user_id: int, duration: int) -> dict:
+            params = {
+                "group_id": group_id,
+                "user_id": user_id,
+                "duration": duration,  # 禁言时长，单位为秒
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "set_group_ban", json=params
+            )
+            return response.json()
+
+        async def set_group_kick(self, group_id: int, user_id: int) -> dict:
+            params = {
+                "group_id": group_id,
+                "user_id": user_id,
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "set_group_kick", json=params
+            )
+            return response.json()
+
+        async def delete_msg(self, message_id: int) -> dict:
+            params = {
+                "message_id": message_id,
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "delete_msg", json=params
+            )
+            return response.json()
+
+        async def set_group_add_request(
+            self, flag: str, approve: bool = True, reason: str = ""
+        ) -> dict:
+            params = {
+                "flag": flag,
+                "sub_type": "add",
+                "approve": approve,
+                "reason": reason,
+            }
+            response = await self.api.client.post(
+                self.api.bot_api_address + "set_group_add_request", json=params
+            )
+            return response.json()
+
+        async def get_group_info(self, group_id: int) -> dict:
+            params = {"group_id": group_id}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "get_group_info", json=params
+            )
+            return response.json()
+
+        async def set_msg_emoji_like(self, message_id: int, emoji_id: int) -> dict:
+            params = {"message_id": message_id, "emoji_id": emoji_id}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "set_msg_emoji_like", json=params
+            )
+            return response.json()
+
+        async def send_group_poke(self, group_id: int, user_id: int) -> dict:
+            params = {"group_id": group_id, "user_id": user_id}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "group_poke", json=params
             )
             return response.json()
 
@@ -328,12 +424,51 @@ class Api:
         def __init__(self, api_instance):
             self.api: Api = api_instance
 
+        async def get_msg(self, message_id: int) -> dict:
+            params = {
+                "message_id": message_id,
+            }
+            response = await self.api.client.post(self.api.bot_api_address + "get_msg", json=params)
+            return response.json()
+
         async def get_image(self, file_name: str) -> dict:
             params = {"file": file_name}
             response = await self.api.client.post(
                 self.api.bot_api_address + "get_image", json=params
             )
             return response.json()
+
+        async def get_group_file_url(self, group_id: int, file_id: str) -> dict:
+            params = {"group_id": group_id, "file_id": file_id}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "get_group_file_url", json=params
+            )
+            return response.json()
+
+        async def get_forward(self, message_id: int) -> list:
+            """使用这个函数得到的结果可以直接由 send_forward_message 发出"""
+            params = {"message_id": message_id}
+            response = await self.api.client.post(
+                self.api.bot_api_address + "get_forward_msg", json=params
+            )
+            origin_dict = response.json()
+
+            messages = origin_dict.get("data", {}).get("messages", [])
+
+            return_dict = Forward()
+            for message in messages:
+                msg = message.get("content", None)
+                cq_obj = CQHelper.load_cq(msg)
+                if cq_obj:
+                    if cq_obj.cq_type == "forward":
+                        msg = await self.get_forward(cq_obj.id)
+                return_dict.add_node(
+                    type="msg",
+                    uid=message.get("sender", {}).get("user_id", None),
+                    sender_name=message.get("sender", {}).get("nickname", None),
+                    msg=msg,
+                )
+            return return_dict.message
 
 
 api: Api = Api()

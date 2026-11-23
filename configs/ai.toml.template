@@ -3,14 +3,13 @@ base_url = "https://api.deepseek.com"
 api_key = "<your-api-key>"
 timeout_seconds = 60.0 # 可选参数
 
-[provider.mnapi]
-base_url = "https://api.mnapi.com/v1"
+[provider.myapi]
+base_url = "http://127.0.0.1:3000/v1"
 api_key = "<your-api-key>"
 
 [provider.tavily]
+base_url = "https://api.tavily.com"
 api_key = "<your-api-key>"
-search.url = "https://api.tavily.com/search"
-extract.url = "https://api.tavily.com/extract"
 
 [profile.example]
 provider = "deepseek"
@@ -40,7 +39,7 @@ insert_persona = true
 [profile.chat]
 provider = "deepseek"
 model = "deepseek-flash"
-tools = ["send_private_msg", "send_group_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "delete_msg", "get_group_info", "set_msg_emoji_like", "send_group_poke", "get_msg", "shell", "read_img_file"]
+tools = ["send_private_msg", "send_group_msg", "get_group_member_list", "get_group_member_info", "set_group_ban", "set_group_kick", "delete_msg", "get_group_info", "set_msg_emoji_like", "send_group_poke", "get_msg", "shell", "read_img_file", "set_notification"]
 max_turns = 10
 insert_persona = true
 
@@ -53,187 +52,3 @@ insert_persona = true
 [profile.image_simple]
 provider = "deepseek"
 model = "deepseek-flash"
-
-[tool.send_private_msg]
-name = "send_private_msg"
-strict = false
-description = "Send a private message to a user."
-parameters.type = "object"
-parameters.properties.user_id.type = "integer"
-parameters.properties.user_id.description = "The user ID of the recipient."
-parameters.properties.message.type = "string"
-parameters.properties.message.description = "The message content to send."
-parameters.required = ["user_id", "message"]
-parameters.additionalProperties = false
-
-[tool.get_group_member_list]
-name = "get_group_member_list"
-strict = false
-description = "Get the list of members in a group. Be careful when using this tool, as it may return a large amount of data."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID to retrieve members from."
-parameters.properties.no_cache.type = "boolean"
-parameters.properties.no_cache.description = "Whether to bypass the cache and fetch fresh data. Defaults to true."
-parameters.required = ["group_id"]
-parameters.additionalProperties = false
-
-[tool.send_group_msg]
-name = "send_group_msg"
-strict = false
-description = "Send a message to a group. Be aware that your output will always be sent to the current group by default, so you should only use this tool when you have to send multiple messages to the current group. You shouldn't send messages to other groups."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID to send the message to."
-parameters.properties.message.type = "string"
-parameters.properties.message.description = "The message to send."
-parameters.required = ["group_id", "message"]
-parameters.additionalProperties = false
-
-[tool.get_group_member_info]
-name = "get_group_member_info"
-strict = false
-description = "Get information about a specific member in a group."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID where the member is located."
-parameters.properties.user_id.type = "integer"
-parameters.properties.user_id.description = "The user ID of the member to retrieve information for."
-parameters.properties.no_cache.type = "boolean"
-parameters.properties.no_cache.description = "Whether to bypass the cache and fetch fresh data. Defaults to true."
-parameters.required = ["group_id", "user_id"]
-parameters.additionalProperties = false
-
-[tool.set_group_ban]
-name = "set_group_ban"
-strict = false
-description = "Ban a user in a group, the user will not be able to send messages in the group for a certain period of time. You can unset the ban by use duration 0. You should prudently use this tool."
-parameters.type = "object"
-parameters.properties.user_id.type = "integer"
-parameters.properties.user_id.description = "The user ID of the person to ban."
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID where the ban will be applied."
-parameters.properties.duration.type = "integer"
-parameters.properties.duration.description = "The duration of the ban in seconds. Must be in the range of 0 to 2592000."
-parameters.required = ["user_id", "group_id", "duration"]
-parameters.additionalProperties = false
-
-[tool.set_group_kick]
-name = "set_group_kick"
-strict = false
-description = "Kick a user from a group. You should prudently use this tool. Use this tool may cause serious consequences. ONLY USE THIS TOOL WHEN ADMINISTRATORS OR YOUR OWNER REQUESTS YOU TO DO SO."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID where the kick will be applied."
-parameters.properties.user_id.type = "integer"
-parameters.properties.user_id.description = "The user ID of the person to kick."
-parameters.required = ["group_id", "user_id"]
-parameters.additionalProperties = false
-
-[tool.delete_msg]
-name = "delete_msg"
-strict = false
-description = "Delete / Recall a group message by its ID. The message will be deleted for all users in the group. You should prudently use this tool."
-parameters.type = "object"
-parameters.properties.message_id.type = "integer"
-parameters.properties.message_id.description = "The ID of the message to delete."
-parameters.required = ["message_id"]
-parameters.additionalProperties = false
-
-[tool.get_group_info]
-name = "get_group_info"
-strict = false
-description = "Get information about a specific group."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID to retrieve information for."
-parameters.required = ["group_id"]
-parameters.additionalProperties = false
-
-[tool.set_msg_emoji_like]
-name = "set_msg_emoji_like"
-strict = false
-description = "Like an emoji on a message."
-parameters.type = "object"
-parameters.properties.message_id.type = "integer"
-parameters.properties.message_id.description = "The ID of the message to like."
-parameters.properties.emoji_id.type = "string"
-parameters.properties.emoji_id.description = "The ID of the emoji to like."
-parameters.required = ["message_id", "emoji_id"]
-parameters.additionalProperties = false
-
-[tool.send_group_poke]
-name = "send_group_poke"
-strict = false
-description = "Send a poke to a user in a group."
-parameters.type = "object"
-parameters.properties.group_id.type = "integer"
-parameters.properties.group_id.description = "The group ID where the poke will be sent."
-parameters.properties.user_id.type = "integer"
-parameters.properties.user_id.description = "The user ID of the person to poke."
-parameters.required = ["group_id", "user_id"]
-parameters.additionalProperties = false
-
-[tool.get_msg]
-name = "get_msg"
-strict = false
-description = "Get the content of a message by its ID."
-parameters.type = "object"
-parameters.properties.message_id.type = "integer"
-parameters.properties.message_id.description = "The ID of the message to retrieve."
-parameters.required = ["message_id"]
-parameters.additionalProperties = false
-
-[tool.shell]
-name = "shell"
-strict = false
-description = "Execute a shell command on the server. This tool is restricted to the owner of the bot. You should prudently use this tool."
-parameters.type = "object"
-parameters.properties.cmd.type = "string"
-parameters.properties.cmd.description = "The shell command to execute."
-parameters.required = ["cmd"]
-parameters.additionalProperties = false
-
-[tool.read_img_file]
-name = "read_img_file"
-strict = false
-description = "Read an image file with its full path or URL. You must provide one of the two parameters."
-parameters.type = "object"
-parameters.properties.path.type = "string"
-parameters.properties.path.description = "The path of the image file to read."
-parameters.properties.url.type = "string"
-parameters.properties.url.description = "The URL of the image to read."
-parameters.required = []
-parameters.additionalProperties = false
-
-[tool.travily_search]
-name = "travily_search"
-strict = false
-description = "Search the web for information using the Travily API."
-parameters.type = "object"
-parameters.properties.query.type = "string"
-parameters.properties.query.description = "The search query to execute with Tavily."
-parameters.properties.chunks_per_source.type = "integer"
-parameters.properties.chunks_per_source.description = "Chunks are short content snippets (maximum 500 characterseach) pulled directly from the source. Use`chunks_per_source` to define the maximum number of relevant chunks returned per source and to control the `content` length. Chunks will appear in the `content` field as: `<chunk 1> [...] <chunk 2> [...] <chunk 3>`. Available only when `search_depth` is `advanced`.\ndefault: 3\nminimum: 1\nmaximum: 3"
-parameters.properties.max_results.type = "integer"
-parameters.properties.max_results.description = "The maximum number of search results to return.\ndefault: 5\nminimum: 0\nmaximum: 20"
-parameters.properties.topic.type = "string"
-parameters.properties.topic.description = "The category of the search.`news` is useful for retrieving real-time updates, particularly about politics, sports, and major current events covered by mainstream media sources. `general` is for broader, more general-purpose searches that may include a wide range of sources.\ndefault: general\nenum:\n- general\n- news\n- finance"
-parameters.properties.exact_match.type = "boolean"
-parameters.properties.exact_match.description = "Ensure that only search results containing the exact quoted phrase(s) in the query are returned, bypassing synonyms or semantic variations. Wrap target phrases in quotes within your query (e.g. `\"John Smith\" CEO Acme Corp`). Punctuation is typically ignored inside quotes.\ndefault: false"
-parameters.required = ["query"]
-parameters.additionalProperties = false
-
-[tool.travily_extract]
-name = "travily_extract"
-strict = false
-description = "Extract web page content from one or more specified URLs using the Tavily API."
-parameters.type = "object"
-parameters.properties.urls.type = "string"
-parameters.properties.urls.description = "The URL to extract content from."
-parameters.properties.query.type = "string"
-parameters.properties.query.description = "User intent for reranking extracted content chunks. When provided, chunks are reranked based on relevance to this query.\ndefault: null"
-parameters.properties.chunks_per_source.type = "integer"
-parameters.properties.chunks_per_source.description = "Chunks are short content snippets (maximum 500 characterseach) pulled directly from the source. Use`chunks_per_source` to define the maximum number of relevant chunks returned per source and to control the `content` length. Chunks will appear in the `content` field as: `<chunk 1> [...] <chunk 2> [...] <chunk 3>`. Available only when `search_depth` is `advanced`.\ndefault: 3\nminimum: 1\nmaximum: 5"
-parameters.required = ["urls"]
-parameters.additionalProperties = false
