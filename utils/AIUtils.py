@@ -2,6 +2,7 @@ import base64
 import io
 import os
 import re
+from typing import Literal, overload
 
 from PIL import Image
 from sqlalchemy import desc, select
@@ -12,7 +13,33 @@ from utils.CQHelper import CQHelper
 from utils.CQType import CQMessage
 
 
-def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int = 4096) -> str:
+@overload
+def encode_image(
+    image_path: str,
+    max_kb: int | None = None,
+    max_dimension: int = 4096,
+    *,
+    get_byte: Literal[False] = False,
+) -> str: ...
+
+
+@overload
+def encode_image(
+    image_path: str,
+    max_kb: int | None = None,
+    max_dimension: int = 4096,
+    *,
+    get_byte: Literal[True],
+) -> tuple[bytes, str]: ...
+
+
+def encode_image(
+    image_path: str, max_kb: int | None = None, max_dimension: int = 4096, *, get_byte: bool = False
+) -> str | tuple[bytes, str]:
+    """
+    将图片编码为 base64，并返回 data URI 格式的字符串，get_byte 为 True 时则返回 (bytes, mime_type) 元组
+    """
+
     try:
         need_reformat = False
         extension = os.path.splitext(image_path)[1].lower().replace(".", "")
@@ -35,7 +62,11 @@ def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int 
             ):
                 with open(image_path, "rb") as f:
                     image_data = f.read()
-                return f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
+                return (
+                    (image_data, mime_type)
+                    if get_byte
+                    else f"data:{mime_type};base64,{base64.b64encode(image_data).decode('utf-8')}"
+                )
 
             if img.mode != "RGB":
                 if img.mode in ("RGBA", "LA", "P", "PA"):
@@ -60,7 +91,11 @@ def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int 
                 img.save(buf, format="JPEG", quality=90, optimize=True)
                 if target_bytes is None or len(buf.getvalue()) <= target_bytes:
                     return (
-                        f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+                        (buf.getvalue(), "image/jpeg")
+                        if get_byte
+                        else (
+                            f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('utf-8')}"
+                        )
                     )
 
             # 超过大小限制
@@ -91,10 +126,21 @@ def encode_image(image_path: str, max_kb: int | None = None, max_dimension: int 
                     image_data = compressed_data
                     break
 
-            return f"data:image/jpeg;base64,{base64.b64encode(image_data).decode('utf-8')}"
+            return (
+                (image_data, "image/jpeg")
+                if get_byte
+                else f"data:image/jpeg;base64,{base64.b64encode(image_data).decode('utf-8')}"
+            )
     except Exception:
         # 兜底空白图
-        return "data:image/gif;base64,R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="
+        return (
+            (
+                base64.b64decode("R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="),
+                "image/gif",
+            )
+            if get_byte
+            else "data:image/gif;base64,R0lGODlhAQABAHAAACwAAAAAAQABAIH///8AAAAAAAAAAAACAkQBADs="
+        )
 
 
 def resolve_img(message: str) -> list[dict]:
