@@ -160,4 +160,5 @@ enable = false
 reply_repo = "owner/repo"
 
 [GenImage]
-enable = true
+enable = false
+lock_enable = true # 控制生图请求排队串行发送

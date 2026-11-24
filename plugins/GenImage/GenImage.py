@@ -1,4 +1,5 @@
 import os
+from asyncio import Lock
 
 from google.genai import types
 from sqlalchemy import desc, select
@@ -12,6 +13,7 @@ from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
 from utils.AIUtils import encode_image
 from utils.CQHelper import CQHelper
+from utils.CQType import Reply
 
 
 class GenImage(Plugins):
@@ -25,6 +27,7 @@ class GenImage(Plugins):
                                 usage: GenImage <生图描述>
                             """
         self.init_status()
+        self.lock = Lock()
         self.session_factory = sessionmaker(
             bind=self.bot.database, class_=AsyncSession, expire_on_commit=False
         )
@@ -57,16 +60,32 @@ class GenImage(Plugins):
         else:
             prompt[0]["parts"].append({"text": event.message.split("GenImage")[1].strip()})
 
-        resp = await ai.generate_image(
-            profile_name="image_gen",
-            messages=prompt,
-            system_prompt="在没有参考图地生成特定形象的角色图片前，你应进行网络搜索来确认形象",
-        )
+        try:
+            lock_enable: bool = self.config.get("lock_enable", True)
+            if lock_enable:
+                async with self.lock:
+                    resp = await ai.generate_image(
+                        profile_name="image_gen",
+                        messages=prompt,
+                        system_prompt="在没有参考图地生成特定形象的角色图片前，你应进行网络搜索来确认形象",
+                    )
+            else:
+                resp = await ai.generate_image(
+                    profile_name="image_gen",
+                    messages=prompt,
+                    system_prompt="在没有参考图地生成特定形象的角色图片前，你应进行网络搜索来确认形象",
+                )
+        except Exception as e:
+            await api.asyncGroupService.send_group_msg(
+                group_id=event.group_id, message=f"{Reply(id=event.message_id)}生成图片失败: {e}"
+            )
+            return
 
         path = f"{os.path.dirname(os.path.abspath(__file__))}/temp/{event.user_id}_{event.message_id}.{resp.mime_type.split('/')[-1]}"
         with open(path, "wb") as f:
             f.write(resp.data)
-        await api.asyncGroupService.send_group_msg_with_img(
-            group_id=event.group_id, message=resp.text, image_path=path
+        await api.asyncGroupService.send_group_msg(
+            group_id=event.group_id, message=f"{Reply(id=event.message_id)}{resp.text}"
         )
+        await api.asyncGroupService.send_group_img(group_id=event.group_id, image_path=path)
         return
