@@ -29,11 +29,8 @@ class MessageRecorder(Plugins):
         for cq in cqs:
             if cq.cq_type == "image":
                 msg = str(cq)
-                cq.path = (
-                    (await api.asyncMessageService.get_image(cq.file))
-                    .get("data", {})
-                    .get("file", None)
-                )
+                temp = (await api.asyncMessageService.get_image(cq.file)).get("data", {})
+                cq.path = temp.get("file", None) if temp else None
                 del cq.url
                 if cq.path is not None:
                     message = message.replace(msg, str(cq))
