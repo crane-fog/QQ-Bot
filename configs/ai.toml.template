@@ -1,15 +1,23 @@
 [provider.deepseek]
 base_url = "https://api.deepseek.com"
 api_key = "<your-api-key>"
-timeout_seconds = 60.0 # 可选参数
+type = "openai-compatible" # 可选参数，可选值为 openai-compatible（default，仅支持文本生成）、gemini-generate-content（仅支持图片生成）、tavily（外部搜索 API）
+timeout_seconds = 60 # 可选参数
 
 [provider.myapi]
-base_url = "http://127.0.0.1:3000/v1"
+base_url = "http://172.30.2.3:3000/v1"
 api_key = "<your-api-key>"
+type = "openai-compatible"
+
+[provider.myapi_gemini]
+base_url = "http://127.0.0.1:3000"
+api_key = "<your-api-key>"
+type = "gemini-generate-content"
 
 [provider.tavily]
 base_url = "https://api.tavily.com"
 api_key = "<your-api-key>"
+type = "tavily"
 
 [profile.example]
 provider = "deepseek"
@@ -52,3 +60,7 @@ insert_persona = true
 [profile.image_simple]
 provider = "deepseek"
 model = "deepseek-flash"
+
+[profile.image_gen]
+provider = "myapi_gemini"
+model = "gemini-nano-banana-2.1"

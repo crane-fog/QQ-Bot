@@ -1,8 +1,9 @@
 import json
 from dataclasses import dataclass
-from typing import Any
+from typing import Any, Literal
 
 import tomlkit
+from google.genai import Client, types
 from openai import AsyncOpenAI
 from openai._types import NotGiven, Omit, not_given, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
@@ -21,15 +22,16 @@ class AIProviderError(RuntimeError):
     """Raised when an AI provider request fails."""
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class AIProvider:
     name: str
     base_url: str
     api_key: str
-    timeout_seconds: float | NotGiven
+    type: Literal["openai-compatible", "gemini-generate-content", "tavily"]
+    timeout_seconds: int | NotGiven
 
 
-@dataclass(frozen=True)
+@dataclass(slots=True, frozen=True)
 class AIProfile:
     name: str
     provider: AIProvider
@@ -42,15 +44,28 @@ class AIProfile:
     insert_persona: bool
 
 
+@dataclass(slots=True, frozen=True)
+class AIGenerateImageReturn:
+    data: bytes
+    mime_type: str
+    text: str
+
+
 class AIService:
     """Loads OpenAI-compatible AI profiles and sends chat completion requests."""
 
     def __init__(self):
-        self._client = AsyncOpenAI(api_key="placeholder")
+        self._openai_client = AsyncOpenAI(api_key="placeholder")
+        self._gemini_client = Client(api_key="placeholder")
+        self._tavily_provider = None
 
     def set_configs(self, config_path: str, persona_path: str, tool_def_path: str):
         with open(config_path, encoding="utf-8") as f:
             self._config = tomlkit.load(f)
+            for _, provider_config in self._config["provider"].items():
+                if provider_config["type"] == "tavily":
+                    self._tavily_provider = provider_config
+                    break
         with open(persona_path, encoding="utf-8") as f:
             self.persona = f.read()
         with open(tool_def_path, encoding="utf-8") as f:
@@ -69,10 +84,15 @@ class AIService:
         """Generate one text completion using a configured profile."""
         profile = self._get_profile(profile_name)
 
+        if profile.provider.type != "openai-compatible":
+            raise AIConfigurationError(
+                f"AI profile {profile_name}'s provider type {profile.provider.type} is not supported for text generation"
+            )
+
         if profile.insert_persona:
             messages.insert(0, {"role": "system", "content": self.persona})
 
-        client = self._client.with_options(
+        client = self._openai_client.with_options(
             api_key=profile.provider.api_key,
             base_url=profile.provider.base_url,
             timeout=profile.provider.timeout_seconds,
@@ -167,6 +187,59 @@ class AIService:
             ).inc()
             raise AIProviderError(f"AI profile '{profile_name}' request failed: {exc}") from exc
 
+    async def generate_image(
+        self, profile_name: str, messages: types.ContentListUnionDict, system_prompt: str = ""
+    ) -> AIGenerateImageReturn:
+        profile = self._get_profile(profile_name)
+
+        if profile.provider.type != "gemini-generate-content":
+            raise AIConfigurationError(
+                f"AI profile {profile_name}'s provider type {profile.provider.type} is not supported for image generation"
+            )
+
+        resp = await self._gemini_client.aio.models.generate_content(
+            model=profile.model,
+            contents=messages,
+            config=types.GenerateContentConfig(
+                system_instruction=(self.persona + "\n\n" + system_prompt)
+                if profile.insert_persona
+                else system_prompt,
+                response_modalities=["TEXT", "IMAGE"],
+                tools=[
+                    types.Tool(
+                        google_search=types.GoogleSearch(
+                            search_types=types.SearchTypes(
+                                web_search=types.WebSearch(),
+                                image_search=types.ImageSearch(),
+                            )
+                        )
+                    )
+                ],
+                http_options=types.HttpOptions(
+                    base_url=profile.provider.base_url,
+                    timeout=None
+                    if isinstance(profile.provider.timeout_seconds, NotGiven)
+                    else profile.provider.timeout_seconds,
+                    headers={"x-goog-api-key": profile.provider.api_key},
+                ),
+            ),
+        )
+
+        data: bytes = b""
+        mime_type = ""
+        text = ""
+
+        for part in resp.candidates[0].content.parts:
+            if part.thought:
+                continue
+            if part.text:
+                text += part.text
+            if part.inline_data:
+                data = part.inline_data.data
+                mime_type = part.inline_data.mime_type
+
+        return AIGenerateImageReturn(data=data, mime_type=mime_type, text=text)
+
     def _get_profile(self, profile_name: str) -> AIProfile:
         if profile_name not in self._config["profile"]:
             raise AIConfigurationError(f"AI profile '{profile_name}' not found")
@@ -197,6 +270,7 @@ class AIService:
             name=provider_name,
             base_url=self._required_option(provider_dict, "base_url", provider_name),
             api_key=self._required_option(provider_dict, "api_key", provider_name),
+            type=provider_dict.get("type", "openai-compatible"),
             timeout_seconds=provider_dict.get("timeout_seconds", not_given),
         )
 
@@ -237,10 +311,12 @@ class AIService:
             case "image":
                 result = self.tool_map[tool_name]["func"](**kwargs)
             case "tavily":
+                if not self._tavily_provider:
+                    raise AIConfigurationError("No tavily search provider found")
                 result = str(
                     await self.tool_map[tool_name]["func"](
-                        base_url=self._config["provider"]["tavily"]["base_url"],
-                        api_key=self._config["provider"]["tavily"]["api_key"],
+                        base_url=self._tavily_provider["base_url"],
+                        api_key=self._tavily_provider["api_key"],
                         **kwargs,
                     )
                 )
