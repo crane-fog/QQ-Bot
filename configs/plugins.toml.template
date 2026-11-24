@@ -158,3 +158,6 @@ first_day = "2026-03-02"
 [GiteaReply]
 enable = false
 reply_repo = "owner/repo"
+
+[GenImage]
+enable = true
