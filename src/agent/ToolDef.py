@@ -9,7 +9,7 @@ from src.Api import api
 
 class ToolDef(TypedDict):
     func: Callable
-    type: Literal["default", "async", "image", "travily", "restricted"]
+    type: Literal["default", "async", "image", "tavily", "restricted"]
     declaration: ChatCompletionToolUnionParam
 
 
@@ -349,14 +349,14 @@ tool_defs: list[ToolDef] = [
         },
     },
     {
-        "func": Tool.travily_search,
-        "type": "travily",
+        "func": Tool.tavily_search,
+        "type": "tavily",
         "declaration": {
             "type": "function",
             "function": {
-                "name": "travily_search",
+                "name": "tavily_search",
                 "strict": False,
-                "description": "Search the web for information using the Travily API.",
+                "description": "Search the web for information using the tavily API.",
                 "parameters": {
                     "type": "object",
                     "properties": {
@@ -388,12 +388,12 @@ tool_defs: list[ToolDef] = [
         },
     },
     {
-        "func": Tool.travily_extract,
-        "type": "travily",
+        "func": Tool.tavily_extract,
+        "type": "tavily",
         "declaration": {
             "type": "function",
             "function": {
-                "name": "travily_extract",
+                "name": "tavily_extract",
                 "strict": False,
                 "description": "Extract web page content from one or more specified URLs using the Tavily API.",
                 "parameters": {

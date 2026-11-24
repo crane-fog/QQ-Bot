@@ -49,7 +49,7 @@ def read_img_file(path: str | None = None, url: str | None = None) -> list[dict]
     return [{"type": "image_url", "image_url": {"url": encode_image(path, 1024)}}]
 
 
-async def travily_search(
+async def tavily_search(
     base_url: str,
     api_key: str,
     query: str,
@@ -73,10 +73,10 @@ async def travily_search(
         if response.status_code == 200:
             return response.text
         else:
-            return f"Travily API Error: {response.status_code} - {response.text}"
+            return f"tavily API Error: {response.status_code} - {response.text}"
 
 
-async def travily_extract(
+async def tavily_extract(
     base_url: str, api_key: str, urls: str, query: str | None = None, chunks_per_source: int = 3
 ) -> str:
     url = base_url + "/extract"
@@ -92,4 +92,4 @@ async def travily_extract(
         if response.status_code == 200:
             return response.text
         else:
-            return f"Travily API Error: {response.status_code} - {response.text}"
+            return f"tavily API Error: {response.status_code} - {response.text}"

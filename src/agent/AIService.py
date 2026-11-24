@@ -236,7 +236,7 @@ class AIService:
                 result = str(await self.tool_map[tool_name]["func"](**kwargs))
             case "image":
                 result = self.tool_map[tool_name]["func"](**kwargs)
-            case "travily":
+            case "tavily":
                 result = str(
                     await self.tool_map[tool_name]["func"](
                         base_url=self._config["provider"]["tavily"]["base_url"],
