@@ -1,4 +1,5 @@
 import json
+from collections.abc import AsyncIterator
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -9,7 +10,6 @@ from openai._types import NotGiven, Omit, not_given, omit
 from openai.types.chat import ChatCompletionMessageParam, ChatCompletionToolUnionParam
 
 from src.agent.ToolDef import tool_defs
-from src.Api import api
 from src.Metrics import LLM_DURATION, LLM_SUCCESS_COUNT, LLM_TOKEN_COUNT, LLM_TOOL_USAGE_COUNT
 from src.PrintLog import Log
 
@@ -73,15 +73,14 @@ class AIService:
                 tool_def["declaration"]["function"]["name"]: tool_def for tool_def in tool_defs
             }
 
-    async def generate(
+    async def agenerate(
         self,
         profile_name: str,
         messages: list[ChatCompletionMessageParam],
         *,
         caller_is_owner: bool = False,
-        group_id: int | None = None,
-    ) -> str:
-        """Generate one text completion using a configured profile."""
+    ) -> AsyncIterator[str]:
+        """Generate multi-turn text completion with tool calling."""
         profile = self._get_profile(profile_name)
 
         if profile.provider.type != "openai-compatible":
@@ -146,15 +145,11 @@ class AIService:
                         provider=profile.provider.name,
                         model=profile.model,
                     ).inc()
-                    return response.choices[0].message.content or "[NO REPLY]"
+                    yield response.choices[0].message.content or "[NO REPLY]"
+                    return
 
-                if group_id is None:
-                    Log.warning("多轮对话调用工具时应提供 group_id")
-                elif response.choices[0].message.content:
-                    await api.asyncGroupService.send_group_msg(
-                        group_id=group_id,
-                        message=response.choices[0].message.content,
-                    )
+                if response.choices[0].message.content:
+                    yield response.choices[0].message.content
                 for tool_call in tool_calls:
                     messages.append(
                         {
@@ -177,8 +172,86 @@ class AIService:
             Log.warning(
                 f"AI profile '{profile_name}' exceeded max_turns={profile.max_turns} without a final answer"
             )
-            return "[NO REPLY]"
+            yield "[NO REPLY]"
+            return
 
+        except Exception as exc:
+            LLM_SUCCESS_COUNT.labels(
+                type="fail",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc()
+            raise AIProviderError(f"AI profile '{profile_name}' request failed: {exc}") from exc
+
+    async def generate(
+        self,
+        profile_name: str,
+        messages: list[ChatCompletionMessageParam],
+    ) -> str:
+        """Generate one text completion using a configured profile."""
+        profile = self._get_profile(profile_name)
+
+        if profile.provider.type != "openai-compatible":
+            raise AIConfigurationError(
+                f"AI profile {profile_name}'s provider type {profile.provider.type} is not supported for text generation"
+            )
+        if profile.tools != omit:
+            raise AIConfigurationError(
+                f"AI profile {profile_name} has tools configured, but generate() does not support tool calling. Use agenerate() instead."
+            )
+
+        if profile.insert_persona:
+            messages.insert(0, {"role": "system", "content": self.persona})
+
+        client = self._openai_client.with_options(
+            api_key=profile.provider.api_key,
+            base_url=profile.provider.base_url,
+            timeout=profile.provider.timeout_seconds,
+        )
+        try:
+            with LLM_DURATION.labels(
+                profile_name=profile.name,
+                provider=profile.provider.name,
+                model=profile.model,
+            ).time():
+                response = await client.chat.completions.create(
+                    model=profile.model,
+                    messages=messages,
+                    response_format=profile.response_format,
+                    reasoning_effort=profile.reasoning_effort,
+                    extra_body=profile.extra_body,
+                )
+            messages.append(response.choices[0].message)
+            LLM_TOKEN_COUNT.labels(
+                profile_name=profile.name,
+                token_type="prompt",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc(response.usage.prompt_tokens)
+            LLM_TOKEN_COUNT.labels(
+                profile_name=profile.name,
+                token_type="cached_prompt",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc(response.usage.prompt_tokens_details.cached_tokens)
+            LLM_TOKEN_COUNT.labels(
+                profile_name=profile.name,
+                token_type="completion",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc(response.usage.completion_tokens)
+            LLM_TOKEN_COUNT.labels(
+                profile_name=profile.name,
+                token_type="reasoning_completion",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc(response.usage.completion_tokens_details.reasoning_tokens)
+            LLM_SUCCESS_COUNT.labels(
+                type="success",
+                provider=profile.provider.name,
+                model=profile.model,
+            ).inc()
+            return response.choices[0].message.content or "[NO REPLY]"
         except Exception as exc:
             LLM_SUCCESS_COUNT.labels(
                 type="fail",

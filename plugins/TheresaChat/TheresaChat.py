@@ -138,7 +138,7 @@ class TheresaChat(Plugins):
                 resolve_imgs=self.config.get("model_support_image", False),
                 enable_context_optimization=True,
             )
-            response = await ai.generate(
+            stream = ai.agenerate(
                 "chat",
                 [
                     {"role": "system", "content": persona},
@@ -150,12 +150,11 @@ class TheresaChat(Plugins):
                     },
                 ],
                 caller_is_owner=event.user_id == self.bot.owner_id,
-                group_id=group_id,
             )
-            if "[NO REPLY]" not in response:
-                # 更新冷却时间
-                self.group_cooldown[group_id] = time.time()
-                await api.asyncGroupService.send_group_msg(group_id=group_id, message=response)
+            self.group_cooldown[group_id] = time.time()
+            async for response in stream:
+                if response is not None and response != "" and response != "[NO REPLY]":
+                    await api.asyncGroupService.send_group_msg(group_id=group_id, message=response)
 
     async def load_context_from_db(
         self,
