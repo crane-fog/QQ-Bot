@@ -189,7 +189,7 @@ class AIService:
 
     async def generate_image(
         self, profile_name: str, messages: types.ContentListUnionDict, system_prompt: str = ""
-    ) -> AIGenerateImageReturn:
+    ) -> AIGenerateImageReturn | None:
         profile = self._get_profile(profile_name)
 
         if profile.provider.type != "gemini-generate-content":
@@ -225,10 +225,17 @@ class AIService:
             ),
         )
 
+        try:
+            parts = resp.candidates[0].content.parts
+        except (AttributeError, IndexError, TypeError):
+            return None
+
+        if not parts:
+            return None
+
         data: bytes = b""
         mime_type = ""
         text = ""
-
         for part in resp.candidates[0].content.parts:
             if part.thought:
                 continue
@@ -237,7 +244,6 @@ class AIService:
             if part.inline_data:
                 data = part.inline_data.data
                 mime_type = part.inline_data.mime_type
-
         return AIGenerateImageReturn(data=data, mime_type=mime_type, text=text)
 
     def _get_profile(self, profile_name: str) -> AIProfile:

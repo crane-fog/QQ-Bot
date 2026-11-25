@@ -1,7 +1,9 @@
 import os
 from asyncio import Lock
+from contextlib import nullcontext
 
 from google.genai import types
+from google.genai.errors import APIError
 from sqlalchemy import desc, select
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy.orm import sessionmaker
@@ -11,6 +13,7 @@ from src.agent.AIService import ai
 from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
+from src.PrintLog import Log
 from utils.AIUtils import encode_image
 from utils.CQHelper import CQHelper
 from utils.CQType import Reply
@@ -54,30 +57,35 @@ class GenImage(Plugins):
                     prompt[0]["parts"].append(
                         {"inline_data": {"mime_type": mime_type, "data": data}}
                     )
-            prompt[0]["parts"].append(
-                {"text": event.message.split("]")[1].split("GenImage")[1].strip()}
-            )
-        else:
-            prompt[0]["parts"].append({"text": event.message.split("GenImage")[1].strip()})
+        text = event.message.split("GenImage", 1)[1].strip()
+        Log.debug(f"插件：{self.name}在群{event.group_id}触发，prompt: {text}", debug)
+        prompt[0]["parts"].append({"text": text})
 
         try:
-            lock_enable: bool = self.config.get("lock_enable", True)
-            if lock_enable:
-                async with self.lock:
-                    resp = await ai.generate_image(
-                        profile_name="image_gen",
-                        messages=prompt,
-                        system_prompt="在没有参考图地生成特定形象的角色图片前，你应进行网络搜索来确认形象",
-                    )
-            else:
+            lock_ctx = self.lock if self.config.get("lock_enable", True) else nullcontext()
+            async with lock_ctx:
                 resp = await ai.generate_image(
                     profile_name="image_gen",
                     messages=prompt,
                     system_prompt="在没有参考图地生成特定形象的角色图片前，你应进行网络搜索来确认形象",
                 )
-        except Exception as e:
+        except APIError as e:
+            Log.error(f"插件：{self.name}在群{event.group_id}生成图片失败: {e}")
+            if e.code == 429:
+                msg = "上游 API 流控，请稍后重试"
+            else:
+                msg = f"{e}"
             await api.asyncGroupService.send_group_msg(
-                group_id=event.group_id, message=f"{Reply(id=event.message_id)}生成图片失败: {e}"
+                group_id=event.group_id,
+                message=f"{Reply(id=event.message_id)}生成图片失败: {msg}",
+            )
+            return
+
+        if resp is None:
+            Log.error(f"插件：{self.name}在群{event.group_id}生成图片失败: 未收到有效响应")
+            await api.asyncGroupService.send_group_msg(
+                group_id=event.group_id,
+                message=f"{Reply(id=event.message_id)}生成图片失败: 未收到有效响应，上游拦截",
             )
             return
 
