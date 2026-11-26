@@ -176,6 +176,7 @@ async def resolve_reply(session: AsyncSession, message: str) -> str:
     if row is not None:
         cq = CQMessage()
         cq.cq_type = "reply"
+        cq.id = reply_id
         cq.content = row.msg
         cq.from_nickname = row.user_nickname
         cq.from_card = row.user_card

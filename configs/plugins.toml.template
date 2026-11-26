@@ -149,6 +149,7 @@ enable = true
 [GroupSum]
 enable = false
 max_length = 1000
+model_support_image = false
 
 [Schedule]
 enable = false

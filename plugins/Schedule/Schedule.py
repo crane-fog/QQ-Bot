@@ -24,8 +24,8 @@ class Schedule(Plugins):
         self.type = "Group"
         self.author = "Heai"
         self.introduction = """
-                                查看群友课表\n导入个人课表：1系统-个人课表-(下滑)查看教材-导出-将导出的 textbook.xls 文件发送到群聊中\n查看排名：rank，默认今日 + 显示课时数，week = 本周，time = 显示时长
-                                usage: Schedule (rank (week) (time))
+                                查看群友课表\n导入个人课表：1系统-个人课表-(下滑)查看教材-导出-将导出的 textbook.xls 文件发送到群聊中\n查看 n 天后的课表：正整数\n查看排名：rank，默认今日 + 显示课时数，week = 本周，time = 显示时长
+                                usage: Schedule (<n>) / Schedule rank (week) (time)
                             """
         self.TIME_MAP = [
             time(8, 0),
@@ -112,13 +112,25 @@ class Schedule(Plugins):
             return
 
         # 查看课表
-        current_time = datetime.now()
-        today = date.today()
-        delta_days = (today - first_day).days
-        current_week = (delta_days // 7) + 1
-        weekday_num = today.isoweekday()
+        msg_parts = event.message.split()
+        offset_days = 0
+        if len(msg_parts) >= 2 and msg_parts[1].isdigit():
+            offset_days = int(msg_parts[1])
 
-        render_data = {"current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"), "users": []}
+        current_time = datetime.now()
+        target_date = date.today() + timedelta(days=offset_days)
+        query_time = datetime.combine(target_date, time.min) if offset_days > 0 else current_time
+        delta_days = (target_date - first_day).days
+        current_week = (delta_days // 7) + 1
+        weekday_num = target_date.isoweekday()
+
+        render_data = {
+            "current_time": current_time.strftime("%Y-%m-%d %H:%M:%S"),
+            "title": (
+                f"{target_date.strftime('%Y/%m/%d')} 课程" if offset_days > 0 else "当前上课"
+            ),
+            "users": [],
+        }
 
         # 一次性获取所有群成员信息并构建字典
         group_members_data = await api.asyncGroupService.get_group_member_list(
@@ -168,15 +180,15 @@ class Schedule(Plugins):
                     ]
 
                 schedule_blocks = []
-                # 1. 扁平化提取所有的【今日课程时间块】
+                # 1. 扁平化提取所有的【目标日期课程时间块】
                 for course in today_courses:
                     for info in course.time_info:
                         if info["day_of_week"] == weekday_num and current_week in info["weeks"]:
                             periods = sorted(info["periods"])
                             start_time = self.TIME_MAP[periods[0] - 1]
-                            start_dt = datetime.combine(today, start_time)
+                            start_dt = datetime.combine(target_date, start_time)
                             end_time = self.TIME_MAP[periods[-1] - 1]
-                            end_dt = datetime.combine(today, end_time) + self.COURSE_TIME
+                            end_dt = datetime.combine(target_date, end_time) + self.COURSE_TIME
                             schedule_blocks.append(
                                 {
                                     "course_name": course.course_name,
@@ -188,12 +200,12 @@ class Schedule(Plugins):
                             )
                 # 2. 按上课时间从小到大排序
                 schedule_blocks.sort(key=lambda x: x["start_dt"])
-                # 3. 构造默认数据模型（默认状态为今天没课）
+                # 3. 构造默认数据模型（默认状态为没课）
                 person_data = {
                     "name": member_dict.get(person.user_id, "未知用户"),
                     "id": person.user_id,
                     "status_type": "none",
-                    "status_text": "今天没课",
+                    "status_text": "当天没课" if offset_days > 0 else "今天没课",
                     "course_name": "-",
                     "teacher": "-",
                     "location": "-",
@@ -209,28 +221,38 @@ class Schedule(Plugins):
                         end_dt = block["end_dt"]
                         time_str = f"{start_dt.strftime('%H:%M')}-{end_dt.strftime('%H:%M')}"
                         # 场景 A: 正在上这节课 (当前时间落在起止时间之间)
-                        if start_dt <= current_time <= end_dt:
+                        if start_dt <= query_time <= end_dt:
                             person_data["status_type"] = "current"
                             person_data["status_text"] = "正在上课"
                             person_data["course_name"] = block["course_name"]
                             person_data["teacher"] = block["teacher"]
                             person_data["location"] = block["location"]
-                            rem_mins = int((end_dt - current_time).total_seconds() / 60)
+                            rem_mins = int((end_dt - query_time).total_seconds() / 60)
                             person_data["time_info"] = f"{time_str} (还剩 {rem_mins} 分钟)"
                             break  # 命中当前课，终止判定
                         # 场景 B: 还没到这节课 (按照时间排序找到的第一节还在未来的课)
-                        elif current_time < start_dt:
+                        elif query_time < start_dt:
                             person_data["status_type"] = "next"
-                            person_data["status_text"] = "下一节课"
+                            person_data["status_text"] = (
+                                "首节课程" if offset_days > 0 else "下一节课"
+                            )
                             person_data["course_name"] = block["course_name"]
                             person_data["teacher"] = block["teacher"]
                             person_data["location"] = block["location"]
-                            rem_mins = int((start_dt - current_time).total_seconds() / 60)
-                            if rem_mins >= 60:
-                                rem_str = f"{rem_mins // 60}小时{rem_mins % 60}分钟后"
+                            if offset_days > 0:
+                                rem_hours = int((start_dt - current_time).total_seconds() // 3600)
+                                if rem_hours >= 24:
+                                    rem_str = f"{rem_hours // 24}天{rem_hours % 24}小时后"
+                                else:
+                                    rem_str = f"{rem_hours}小时后"
+                                person_data["time_info"] = f"{time_str} ({rem_str})"
                             else:
-                                rem_str = f"{rem_mins}分钟后"
-                            person_data["time_info"] = f"{time_str} ({rem_str})"
+                                rem_mins = int((start_dt - query_time).total_seconds() / 60)
+                                if rem_mins >= 60:
+                                    rem_str = f"{rem_mins // 60}小时{rem_mins % 60}分钟后"
+                                else:
+                                    rem_str = f"{rem_mins}分钟后"
+                                person_data["time_info"] = f"{time_str} ({rem_str})"
                             break  # 命中下节课，终止判定
                     # 场景 C: 所有课程都已结束（循环完毕都没有触发 break）
                     if person_data["status_type"] == "done":

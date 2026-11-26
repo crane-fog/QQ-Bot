@@ -12,8 +12,7 @@ from src.Api import api
 from src.event_handler.GroupMessageEventHandler import GroupMessageEvent
 from src.Models import Message
 from src.PrintLog import Log
-from utils.AIUtils import encode_image
-from utils.CQHelper import CQHelper
+from utils.AIUtils import resolve_img, resolve_reply
 from utils.CQType import Forward
 
 
@@ -39,6 +38,7 @@ class GroupSum(Plugins):
     @plugin_main(call_word=["Summary"], require_db=True)
     async def main(self, event: GroupMessageEvent, debug: bool):
         self.max_length = self.config.get("max_length", 1000)
+        self.model_support_image = self.config.get("model_support_image", False)
 
         msg = event.message.strip().split()
         if len(msg) != 2 or not msg[1].isdigit():
@@ -55,7 +55,7 @@ class GroupSum(Plugins):
         context_messages = await self.load_context_from_db(
             event.group_id,
             context_length,
-            resolve_imgs=False,
+            resolve_imgs=self.model_support_image,
         )
 
         response = await ai.generate(
@@ -85,39 +85,6 @@ class GroupSum(Plugins):
         Log.debug(f"插件：{self.name}在群{event.group_id}完成总结并发送消息", debug)
         return
 
-    async def resolve_img(self, message: str) -> list[dict]:
-        cqs = CQHelper.loads_cq(message)
-        msgs = []
-        for cq in cqs:
-            if cq.cq_type == "image":
-                msgs.append(
-                    {
-                        "type": "image_url",
-                        "image_url": {"url": encode_image(cq.path)},
-                    }
-                )
-                message = message.replace(str(cq), "")
-        if message.strip():
-            msgs.insert(0, {"type": "text", "text": message.strip()})
-        return msgs
-
-    async def resolve_reply(self, session: AsyncSession, message: str) -> str:
-        cqs = CQHelper.loads_cq(message)
-        for cq in cqs:
-            if cq.cq_type == "reply":
-                reply_id = int(cq.id)
-                result = await session.execute(
-                    select(Message).where(Message.msg_id == reply_id).order_by(desc(Message.id))
-                )
-                row = result.scalars().first()
-                if row is not None:
-                    msg = str(cq)
-                    cq.content = row.msg
-                    cq.from_nickname = row.user_nickname
-                    cq.from_card = row.user_card
-                    message = message.replace(msg, str(cq))
-        return message
-
     async def load_context_from_db(
         self,
         group_id: int,
@@ -136,9 +103,9 @@ class GroupSum(Plugins):
             rows = result.scalars().all()
 
             for row in reversed(rows):
-                msg = await self.resolve_reply(session, row.msg)
+                msg = await resolve_reply(session, row.msg)
                 if resolve_imgs:
-                    img_msgs = await self.resolve_img(row.msg)
+                    img_msgs = resolve_img(row.msg)
                     img_msgs.insert(
                         0,
                         {

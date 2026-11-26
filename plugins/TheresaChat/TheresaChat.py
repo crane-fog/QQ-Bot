@@ -4,7 +4,6 @@ import random
 import re
 import time
 from collections import deque
-from datetime import datetime
 
 from jinja2 import Template
 from sqlalchemy import desc, select
@@ -140,15 +139,7 @@ class TheresaChat(Plugins):
             )
             stream = ai.agenerate(
                 "chat",
-                [
-                    {"role": "system", "content": persona},
-                    *context_messages,
-                    {
-                        "role": "user",
-                        "content": f"当前时间：{datetime.now().strftime('%Y-%m-%d %H:%M:%S')}",
-                        "name": "time_info",
-                    },
-                ],
+                [{"role": "system", "content": persona}, *context_messages],
                 caller_is_owner=event.user_id == self.bot.owner_id,
             )
             self.group_cooldown[group_id] = time.time()
