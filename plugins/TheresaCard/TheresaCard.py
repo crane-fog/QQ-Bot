@@ -73,6 +73,7 @@ class TheresaCard(Plugins):
         not_allowed_ids = []
         not_allowed_cards = []
         strict_candidates: list[tuple[int, int, str, str]] = []
+        entered_stu_ids: set[int] = set()
         not_entered: dict[int, str] = {}
 
         seen_stu_ids: dict[int, int] = {}
@@ -109,13 +110,14 @@ class TheresaCard(Plugins):
                 else:
                     seen_stu_ids[stu_id] = user_id
 
-                if strict_flag or unenter_flag:
-                    if user_id not in self.bot.assistant_list:
-                        strict_candidates.append((user_id, stu_id, name, card))
+                if strict_flag and user_id not in self.bot.assistant_list:
+                    strict_candidates.append((user_id, stu_id, name, card))
+                if unenter_flag:
+                    entered_stu_ids.add(stu_id)
 
-        if strict_flag or unenter_flag:
+        if strict_flag:
             stu_ids = {stu_id for _, stu_id, _, _ in strict_candidates}
-        if strict_flag:  # 在 strict 模式下，忽略基本检查不通过的成员，只检查选课名单
+            # 在 strict 模式下，忽略基本检查不通过的成员，只检查选课名单
             not_allowed_ids = []
             not_allowed_cards = []
         if strict_flag and strict_candidates:
@@ -128,14 +130,14 @@ class TheresaCard(Plugins):
                 if db_name_map.get(stu_id) is None:  # != name:
                     not_allowed_ids.append(user_id)
                     not_allowed_cards.append(card + "\n不在选课名单中")
-        if unenter_flag and strict_candidates:
+        if unenter_flag and entered_stu_ids:
             classes = (
                 self.config.get("classes", {}).get(str(event.group_id))
                 if check_class_flag
                 else None
             )
             not_entered = await self.check_in_list_batch(
-                semester, stu_ids, reverse=True, classes=classes
+                semester, entered_stu_ids, reverse=True, classes=classes
             )
 
         # 处理检查结果
@@ -185,7 +187,7 @@ class TheresaCard(Plugins):
             )
 
         if unenter_flag:
-            if strict_candidates:
+            if entered_stu_ids:
                 if not_entered:
                     not_entered_lines = [f"{stu_id} {name}" for stu_id, name in not_entered.items()]
                     forward = Forward()
